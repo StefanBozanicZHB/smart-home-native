@@ -212,6 +212,11 @@
     <string name="connections_legacy_no_message">stari firmver, nije se javio</string>
     <string name="connections_reason_last_will">veza prekinuta (Last Will)</string>
     <string name="connections_reason_no_heartbeat">ne javlja se duže od 3 min</string>
+    <string name="connections_signal">Signal: %1$s, %2$d dBm</string>
+    <string name="connections_signal_excellent">odličan</string>
+    <string name="connections_signal_good">dobar</string>
+    <string name="connections_signal_weak">slab signal</string>
+    <string name="connections_signal_poor">vrlo slab signal</string>
     <string name="connections_last_seen">poslednji put %1$s</string>
     <string name="connections_legend">Novi čvorovi javljaju status i heartbeat na 60 s. Stari čvorovi su onlajn kad pošalju poruku posle povezivanja aplikacije.</string>
 

@@ -31,7 +31,26 @@ data class NodeInfo(
     val gitRevision: String?,
     val ip: String?,
     val host: String?,
+    /** RSSI at connect time (dBm). */
+    val rssi: Int? = null,
 )
+
+/** Wi-Fi signal quality from RSSI (dBm), using the usual ESP8266 thresholds. */
+enum class SignalQuality(val bars: Int) {
+    EXCELLENT(4), // >= -60 dBm
+    GOOD(3), // -61 .. -70
+    WEAK(2), // -71 .. -80: occasional drops
+    POOR(1); // < -80: unreliable connection
+
+    companion object {
+        fun fromRssi(rssi: Int): SignalQuality = when {
+            rssi >= -60 -> EXCELLENT
+            rssi >= -70 -> GOOD
+            rssi >= -80 -> WEAK
+            else -> POOR
+        }
+    }
+}
 
 data class NodeHealth(
     val nodeId: String,
@@ -41,7 +60,12 @@ data class NodeHealth(
     val lastSeenAtMs: Long?,
     val heartbeat: NodeHeartbeat?,
     val info: NodeInfo?,
-)
+) {
+    /** Latest known RSSI: from the last heartbeat, else from the connect-time info. */
+    val rssi: Int? get() = heartbeat?.rssi ?: info?.rssi
+
+    val signal: SignalQuality? get() = rssi?.let(SignalQuality::fromRssi)
+}
 
 /**
  * Online status of nodes with the new firmware (zhb_mqtt / zhb_heartbeat libraries, node4 and
@@ -132,7 +156,7 @@ class NodeStatusTracker(
         }
 
         private fun parseInfo(payload: String) = parseObject(payload)?.let {
-            NodeInfo(it.str("fw"), it.str("git"), it.str("ip"), it.str("host"))
+            NodeInfo(it.str("fw"), it.str("git"), it.str("ip"), it.str("host"), it.int("rssi"))
         }
     }
 }

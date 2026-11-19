@@ -84,3 +84,30 @@ class NodeStatusTrackerTest {
         assertTrue(tracker.snapshot(t0).isEmpty())
     }
 }
+
+class SignalQualityTest {
+
+    @Test
+    fun `rssi thresholds`() {
+        assertEquals(SignalQuality.EXCELLENT, SignalQuality.fromRssi(-45))
+        assertEquals(SignalQuality.EXCELLENT, SignalQuality.fromRssi(-60))
+        assertEquals(SignalQuality.GOOD, SignalQuality.fromRssi(-61))
+        assertEquals(SignalQuality.GOOD, SignalQuality.fromRssi(-70))
+        assertEquals(SignalQuality.WEAK, SignalQuality.fromRssi(-71))
+        assertEquals(SignalQuality.WEAK, SignalQuality.fromRssi(-80))
+        assertEquals(SignalQuality.POOR, SignalQuality.fromRssi(-81))
+    }
+
+    @Test
+    fun `rssi comes from the last heartbeat, else from connect-time info`() {
+        val tracker = NodeStatusTracker()
+        tracker.onMessage("bozaSub/kuca/node4/status", "online", retained = true, nowMs = 0)
+        tracker.onMessage("bozaSub/kuca/node4/info", """{"fw":"node4-2.1.1","rssi":-72}""", retained = true, nowMs = 0)
+        assertEquals(-72, tracker.snapshot(0)["node4"]?.rssi)
+        assertEquals(SignalQuality.WEAK, tracker.snapshot(0)["node4"]?.signal)
+
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"fw":"node4-2.1.1","rssi":-58}""", retained = false, nowMs = 1)
+        assertEquals(-58, tracker.snapshot(1)["node4"]?.rssi)
+        assertEquals(SignalQuality.EXCELLENT, tracker.snapshot(1)["node4"]?.signal)
+    }
+}

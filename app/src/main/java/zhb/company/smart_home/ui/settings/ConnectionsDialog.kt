@@ -1,6 +1,8 @@
 package zhb.company.smart_home.ui.settings
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.SimpleDateFormat
@@ -29,6 +37,7 @@ import org.koin.androidx.compose.koinViewModel
 import zhb.company.smart_home.R
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.OfflineReason
+import zhb.company.smart_home.data.mqtt.SignalQuality
 import zhb.company.smart_home.ui.theme.DisableRed
 import zhb.company.smart_home.ui.theme.EnableGreen
 
@@ -72,6 +81,10 @@ private fun NodeStatusRow(row: NodeRow) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        val health = row.health
+        val rssi = health?.rssi
+        val signal = health?.signal
+        if (rssi != null && signal != null) SignalIndicator(rssi, signal, live = row.status == NodeStatus.ONLINE)
         val (icon, tint, description) = when (row.status) {
             NodeStatus.ONLINE -> Triple(Icons.Filled.CheckCircle, EnableGreen, stringResource(R.string.connections_online))
             NodeStatus.OFFLINE -> Triple(Icons.Filled.Error, DisableRed, stringResource(R.string.connections_offline))
@@ -84,6 +97,50 @@ private fun NodeStatusRow(row: NodeRow) {
         Icon(icon, contentDescription = description, tint = tint)
     }
 }
+
+private val WeakSignalAmber = Color(0xFFF9A825)
+
+/** Four bars plus dBm; colored by quality while the node is online, gray (last known value) otherwise. */
+@Composable
+private fun SignalIndicator(rssi: Int, quality: SignalQuality, live: Boolean) {
+    val color = when {
+        !live -> MaterialTheme.colorScheme.outline
+        quality == SignalQuality.EXCELLENT || quality == SignalQuality.GOOD -> EnableGreen
+        quality == SignalQuality.WEAK -> WeakSignalAmber
+        else -> DisableRed
+    }
+    val empty = MaterialTheme.colorScheme.outlineVariant
+    val label = stringResource(R.string.connections_signal, signalName(quality), rssi)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(start = 8.dp, end = 10.dp).semantics(mergeDescendants = true) { contentDescription = label },
+    ) {
+        Canvas(modifier = Modifier.size(width = 22.dp, height = 16.dp)) {
+            val gap = size.width / 11f
+            val barWidth = (size.width - 3 * gap) / 4f
+            for (i in 0 until 4) {
+                val barHeight = size.height * (i + 1) / 4f
+                drawRoundRect(
+                    color = if (i < quality.bars) color else empty,
+                    topLeft = Offset(i * (barWidth + gap), size.height - barHeight),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(barWidth / 3f),
+                )
+            }
+        }
+        Text("$rssi dBm", style = MaterialTheme.typography.labelSmall, color = color)
+    }
+}
+
+@Composable
+private fun signalName(quality: SignalQuality): String = stringResource(
+    when (quality) {
+        SignalQuality.EXCELLENT -> R.string.connections_signal_excellent
+        SignalQuality.GOOD -> R.string.connections_signal_good
+        SignalQuality.WEAK -> R.string.connections_signal_weak
+        SignalQuality.POOR -> R.string.connections_signal_poor
+    },
+)
 
 /** Second line: firmware and last heartbeat for new nodes, why it is offline, or "old firmware". */
 @Composable
@@ -98,7 +155,7 @@ private fun nodeDetail(row: NodeRow): String {
     when (health.offlineReason) {
         OfflineReason.LAST_WILL -> parts += stringResource(R.string.connections_reason_last_will)
         OfflineReason.NO_HEARTBEAT -> parts += stringResource(R.string.connections_reason_no_heartbeat)
-        null -> health.heartbeat?.rssi?.let { parts += "$it dBm" }
+        null -> health.signal?.takeIf { it == SignalQuality.WEAK || it == SignalQuality.POOR }?.let { parts += signalName(it) }
     }
     health.lastSeenAtMs?.let {
         parts += stringResource(R.string.connections_last_seen, SimpleDateFormat("HH:mm:ss", Locale.US).format(Date(it)))
@@ -125,6 +182,8 @@ private fun ConnectionsDialogPreview() {
                     NodeRow("node0", "Prskalice (tajmer)", NodeStatus.ONLINE, null),
                     NodeRow("node3", "Ulazna vrata", NodeStatus.UNKNOWN, null),
                     NodeRow("node4", "Dnevni boravak (prizemlje)", NodeStatus.ONLINE, health("node4", NodeStatus.ONLINE, null, "node4-2.1.1", -58)),
+                    NodeRow("node2", "Dvorište", NodeStatus.ONLINE, health("node2", NodeStatus.ONLINE, null, "node2-2.0.0", -76)),
+                    NodeRow("node6", "Bazen", NodeStatus.ONLINE, health("node6", NodeStatus.ONLINE, null, "node6-2.0.0", -86)),
                     NodeRow("node5", "Grejanje", NodeStatus.OFFLINE, health("node5", NodeStatus.OFFLINE, OfflineReason.NO_HEARTBEAT, "node5-2.0.0", -70)),
                     NodeRow("testnode5", "Grejanje – test ploča", NodeStatus.OFFLINE, health("testnode5", NodeStatus.OFFLINE, OfflineReason.LAST_WILL, "node5-2.0.0", null)),
                 ),
