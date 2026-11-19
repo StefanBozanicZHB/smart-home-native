@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Smart Home</string>
+
+    <!-- Auth -->
+    <string name="auth_tagline">Pametna kontrola vašeg doma</string>
+    <string name="auth_welcome_back">Dobrodošli nazad</string>
+    <string name="auth_welcome_subtitle">Unesite svoje podatke za prijavu</string>
+    <string name="auth_email_hint">Email adresa</string>
+    <string name="auth_password_hint">Lozinka</string>
+    <string name="auth_submit">Prijavite se</string>
+    <string name="auth_biometric_title">Prijavljivanje pomoću otiska prsta</string>
+    <string name="auth_biometric_subtitle">Potvrdite identitet da biste se prijavili</string>
+    <string name="auth_biometric_hint">Otisak prsta je dostupan za brzu prijavu</string>
+    <string name="auth_error_generic">Došlo je do greške, pokušajte ponovo.</string>
+    <string name="auth_error_invalid_email">Unesite ispravnu email adresu.</string>
+    <string name="auth_error_invalid_password">Lozinka mora imati najmanje 5 karaktera.</string>
+
+    <!-- MQTT connect -->
+    <string name="mqtt_connecting">Povezivanje sa serverom…</string>
+    <string name="mqtt_connect_failed">Konektivnost sa serverom ne postoji!</string>
+    <string name="mqtt_reconnect">Povezi se</string>
+
+    <!-- Navigation -->
+    <string name="nav_back">Nazad</string>
+    <string name="nav_connections">Konekcije</string>
+    <string name="nav_settings">Podešavanja</string>
+
+    <!-- Home -->
+    <string name="home_subtitle">Kontrola pametne kuće</string>
+    <string name="home_greeting_morning">Dobro jutro</string>
+    <string name="home_greeting_day">Dobar dan</string>
+    <string name="home_greeting_evening">Dobro veče</string>
+    <string name="home_connected">Povezano</string>
+    <string name="home_disconnected">Nije povezano</string>
+    <string name="home_quick_glance">U ovom trenutku</string>
+    <string name="home_outdoor">Napolju</string>
+    <string name="home_devices_on_full">%1$d uređaja je upaljeno</string>
+    <string name="home_all_off_title">Sve je ugašeno</string>
+    <string name="home_all_off_subtitle">Uživajte u miru</string>
+    <string name="home_tap_to_view">Dodirni za pregled</string>
+    <string name="home_goodnight_button">Ugasi sve</string>
+    <string name="home_shortcuts">Prečice</string>
+    <string name="home_rooms">Prostorije</string>
+    <string name="home_devices_on">Uređaji upaljeni</string>
+    <string name="home_devices_on_short">upaljeno</string>
+    <string name="home_offline">OFFLINE</string>
+    <string name="home_front_door">Ulazna vrata</string>
+    <string name="home_heating">Grejanje</string>
+    <string name="home_sprinklers">Prskalice</string>
+    <string name="home_security">Sigurnost</string>
+    <string name="home_led_strip">LED traka</string>
+    <string name="home_bulb">Sijalica</string>
+    <string name="home_fountain">Fontana</string>
+    <string name="home_pool_pump">Pumpa bazena</string>
+    <string name="home_pool_heater">Grejanje bazena</string>
+    <string name="home_gate">Kapija</string>
+    <string name="room_garden">Dvorište</string>
+    <string name="room_house">Kuća</string>
+    <string name="room_pool">Bazen</string>
+    <string name="room_shed">Šupa</string>
+    <string name="room_heating">Grejanje</string>
+
+    <!-- Garden -->
+    <string name="garden_devices_section">Uređaji</string>
+    <string name="garden_sprinkler_location">Lokacija</string>
+    <string name="garden_led_strip">LED traka</string>
+    <string name="garden_bulb">Sijalica</string>
+    <string name="garden_fountain_pump">Pumpa fontane</string>
+    <string name="garden_fountain_light">Svetlo fontane</string>
+    <string name="garden_pool">Bazen</string>
+    <string name="garden_pool_pump">Pumpa</string>
+    <string name="garden_pool_heating">Grejanje</string>
+    <string name="garden_sprinklers">Prskalice</string>
+    <string name="garden_sprinkler_auto">Automatski tajmer</string>
+    <string name="garden_sprinkler_manual">Ručno upravljanje</string>
+    <string name="garden_sprinkler_active">Aktivna prskalica</string>
+    <string name="garden_sprinkler_none_active">Nijedna prskalica nije aktivna</string>
+
+    <!-- Sprinkler dialog -->
+    <string name="sprinkler_dialog_title">Ručno upravljanje prskalicama</string>
+    <string name="sprinkler_1">Prskalica 1</string>
+    <string name="sprinkler_2">Prskalica 2</string>
+    <string name="sprinkler_3">Prskalica 3</string>
+    <string name="sprinkler_4">Prskalica 4</string>
+    <string name="sprinkler_5">Prskalica 5</string>
+    <string name="sprinkler_6">Prskalica 6</string>
+
+    <!-- Heating -->
+    <string name="heating_tube_temp">Temperatura cevi</string>
+    <string name="heating_outdoor_temp">Spoljna temperatura</string>
+    <string name="heating_pellets_level">Nivo peleta</string>
+    <string name="heating_main_switch">Glavni prekidač</string>
+    <string name="heating_relay_status">Status grejanja</string>
+    <string name="heating_boiler">Peć</string>
+    <string name="heating_pick_time">Izaberite vreme</string>
+    <string name="heating_relay_running">Radi</string>
+    <string name="heating_relay_idle">Ne radi</string>
+    <string name="heating_type">Grejanje</string>
+    <string name="heating_type_pellets">Kotao</string>
+    <string name="heating_type_gas">Plin</string>
+    <string name="heating_type_electric">Struja</string>
+    <string name="heating_schedule_workday">Šema za radni dan</string>
+    <string name="heating_schedule_weekend">Šema za vikend</string>
+    <string name="heating_settings_title">Podešavanja grejanja</string>
+    <string name="heating_upper_hysteresis">Gornja granica</string>
+    <string name="heating_lower_hysteresis">Donja granica</string>
+    <string name="heating_alarm_limit">Alarm procenat</string>
+    <string name="heating_set_full_level">Postavi puno stanje</string>
+    <string name="heating_set_empty_level">Postavi prazno stanje</string>
+    <string name="heating_add_segment">Dodaj segment</string>
+    <string name="heating_save_schedule">Sačuvaj šemu</string>
+    <string name="heating_choose_temperature">Izaberite temperaturu</string>
+
+    <!-- Indoor down -->
+    <string name="indoor_down_bulb_1">Sijalica 1</string>
+    <string name="indoor_down_bulb_2">Sijalica 2</string>
+    <string name="indoor_down_bulb_3">Sijalica 3</string>
+
+    <!-- Indoor up / AC -->
+    <string name="ac_title">Klima uređaj</string>
+    <string name="ac_power_on">Uključi</string>
+    <string name="ac_power_off">Isključi</string>
+    <string name="ac_temp_decrease">Smanji temperaturu</string>
+    <string name="ac_temp_increase">Povećaj temperaturu</string>
+    <string name="ac_mode_caption">Mod rada</string>
+    <string name="ac_mode_cool">Hlađenje</string>
+    <string name="ac_mode_auto">Automatski</string>
+    <string name="ac_mode_fan">Ventilator</string>
+    <string name="ac_mode_heat">Grejanje</string>
+    <string name="ac_fan_caption">Brzina ventilatora</string>
+    <string name="ac_fan_auto">Auto</string>
+    <string name="ac_fan_min">Min</string>
+    <string name="ac_fan_med">Sred.</string>
+    <string name="ac_fan_max">Maks.</string>
+    <string name="ac_melody">Melodija</string>
+    <string name="co2_level">CO2</string>
+
+    <!-- Small home / shed -->
+    <string name="small_home_door">Vrata</string>
+    <string name="small_home_bulb_1">Sijalica 1</string>
+    <string name="small_home_bulb_2">Sijalica 2</string>
+    <string name="small_home_bulb_3">Sijalica 3</string>
+    <string name="small_home_fingerprint_section">Otisak prsta</string>
+    <string name="small_home_add_id">Dodaj novi ID</string>
+    <string name="small_home_delete_id">Obriši ID</string>
+    <string name="small_home_add">Dodaj</string>
+    <string name="small_home_delete">Obriši</string>
+    <string name="small_home_log">Status otiska prsta</string>
+    <string name="small_home_log_empty">Nema zabeleženih događaja.</string>
+
+    <!-- Settings dialog -->
+    <string name="settings_title">Podešavanja</string>
+    <string name="settings_dark_theme">Tamna tema</string>
+    <string name="settings_sprinkler_auto_enable">Automatski tajmer prskalica</string>
+    <string name="settings_sprinkler_start_time">Vreme početka</string>
+    <string name="settings_sprinkler_on_duration">Trajanje uključenosti (min)</string>
+    <string name="settings_sprinkler_off_duration">Pauza između (sek)</string>
+    <string name="settings_sprinkler_sets">Broj ponavljanja</string>
+    <string name="settings_save">Sačuvaj</string>
+
+    <!-- Connections / node status dialog -->
+    <string name="connections_title">Status konekcija</string>
+    <string name="connections_online">Onlajn</string>
+    <string name="connections_offline">Oflajn</string>
+
+    <!-- Plus menu -->
+    <string name="menu_title">Brze prečice</string>
+    <string name="menu_garden">Dvorište</string>
+    <string name="menu_first_floor">Prvi sprat</string>
+    <string name="menu_second_floor">Drugi sprat</string>
+    <string name="menu_house">Kućica</string>
+    <string name="menu_house_combined">Kuća</string>
+    <string name="menu_heating">Grejanje</string>
+
+    <!-- Generic -->
+    <string name="on">Uključeno</string>
+    <string name="off">Isključeno</string>
+    <string name="temperature_unit">°C</string>
+    <string name="humidity_unit">%</string>
+    <string name="goodnight_toast_off">Svi uređaji su ugašeni.</string>
+    <string name="goodnight_toast_already_off">Svi uređaji su već ugašeni.</string>
+</resources>

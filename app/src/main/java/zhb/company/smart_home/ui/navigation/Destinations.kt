@@ -1,0 +1,11 @@
+package zhb.company.smart_home.ui.navigation
+
+sealed class Destination(val route: String) {
+    data object Auth : Destination("auth")
+    data object MqttConnect : Destination("mqtt_connect")
+    data object Home : Destination("home")
+    data object Garden : Destination("garden")
+    data object Heating : Destination("heating")
+    data object House : Destination("house")
+    data object SmallHome : Destination("small_home")
+}

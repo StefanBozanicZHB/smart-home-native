@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary_color">#FF035D49</color>
+    <color name="light_canvas">#FFF2FCF8</color>
+    <color name="text_color">#FFFFFFFF</color>
+    <color name="enable_green">#FF216703</color>
+    <color name="disable_red">#FFC62828</color>
+    <color name="bottom_menu_item">#FF9E9E9E</color>
+    <color name="ic_mode_selected">#FF035D49</color>
+    <color name="ic_mode_unselected">#FFFFFFFF</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="layer_one_bg">#80FFFFFF</color>
+    <color name="layer_two_bg">#FFE9FFF6</color>
+    <color name="hint_text">#FFB4B4B4</color>
+    <color name="shortcut_bg_dark">#FF333333</color>
+    <color name="shortcut_bg_light">#FFE7EFDF</color>
+    <color name="panel_border_teal">#FF2EB7A9</color>
+    <color name="ic_launcher_background">#FF52B033</color>
+</resources>
