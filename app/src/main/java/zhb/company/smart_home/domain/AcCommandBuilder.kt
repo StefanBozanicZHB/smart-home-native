@@ -5,28 +5,24 @@ import zhb.company.smart_home.domain.model.AcMode
 
 /**
  * Builds the composite IR remote command string published to the AC unit
- * (node8), in the form `B2<fanCode><'F'><tempHexCode><modeCode>`.
+ * (node8), in the form `B2<fanCode>F<tempCode><modeCode>`.
  *
- * NOTE: the exact temperature->hex lookup table used by the original Flutter
- * app was not fully recovered (only its stated endpoints, 17->'0' and
- * 30->'B', were documented). This implementation uses a sequential hex-digit
- * mapping over the 17..30 range, which reproduces the documented endpoint at
- * 17 exactly; the far end lands on 'D' rather than 'B' with a strictly
- * sequential table, so treat this mapping as best-effort and verify it
- * against the real remote / original Dart source before relying on it.
+ * The temperature codes are not sequential: they follow the AC's IR protocol
+ * (Gray-code-like ordering). The table is copied from the Flutter app
+ * (`Parameters.sendCommandIcLivingRoomUp`), which is known to work with the unit.
  */
 object AcCommandBuilder {
     const val POWER_OFF_COMMAND = "B27BE0"
     const val MIN_TEMP = 17
     const val MAX_TEMP = 30
 
-    private val tempHexTable: Map<Int, Char> = (MIN_TEMP..MAX_TEMP)
-        .mapIndexed { index, temp -> temp to index.toString(16).uppercase()[0] }
-        .toMap()
+    private val tempCodes: Map<Int, Char> = mapOf(
+        17 to '0', 18 to '1', 19 to '3', 20 to '2', 21 to '6', 22 to '7', 23 to '5',
+        24 to '4', 25 to 'C', 26 to 'D', 27 to '9', 28 to '8', 29 to 'A', 30 to 'B',
+    )
 
     fun buildCommand(fanSpeed: AcFanSpeed, temp: Int, mode: AcMode): String {
-        val clampedTemp = temp.coerceIn(MIN_TEMP, MAX_TEMP)
-        val tempHex = tempHexTable[clampedTemp] ?: '0'
-        return "B2${fanSpeed.code}F$tempHex${mode.code}"
+        val tempCode = tempCodes.getValue(temp.coerceIn(MIN_TEMP, MAX_TEMP))
+        return "B2${fanSpeed.code}F$tempCode${mode.code}"
     }
 }

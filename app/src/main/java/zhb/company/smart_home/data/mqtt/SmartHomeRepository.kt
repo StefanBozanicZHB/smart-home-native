@@ -1,19 +1,14 @@
 package zhb.company.smart_home.data.mqtt
 
-import com.hivemq.client.mqtt.datatypes.MqttQos
-import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
-import com.hivemq.client.mqtt.mqtt3.Mqtt3Client
-import com.hivemq.client.mqtt.mqtt3.message.auth.Mqtt3SimpleAuth
-import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish
 import java.util.Locale
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
-import zhb.company.smart_home.data.remote.FirebaseRtdbApi
+import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.domain.HeatingScheduleCodec
 import zhb.company.smart_home.domain.SprinklerConfigCodec
 import zhb.company.smart_home.domain.computeListPowerDevice
@@ -27,7 +22,9 @@ import zhb.company.smart_home.domain.model.SmartHomeState
  * Flutter app's `Mqtt` provider + `Parameters` ChangeNotifier combined.
  */
 class SmartHomeRepository(
-    private val firebaseRtdbApi: FirebaseRtdbApi,
+    private val configSource: MqttConfigSource,
+    private val connector: MqttConnector,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val _state = MutableStateFlow(SmartHomeState())
     val state: StateFlow<SmartHomeState> = _state.asStateFlow()
@@ -35,118 +32,70 @@ class SmartHomeRepository(
     private val _connectionState = MutableStateFlow<MqttConnectionState>(MqttConnectionState.Idle)
     val connectionState: StateFlow<MqttConnectionState> = _connectionState.asStateFlow()
 
-    private var client: Mqtt3AsyncClient? = null
+    @Volatile
+    private var connection: MqttConnection? = null
 
     suspend fun connect(idToken: String) {
         _connectionState.value = MqttConnectionState.Connecting
-        val configResult = firebaseRtdbApi.fetchMqttClientConfig(idToken)
-        val config = configResult.getOrElse {
+        val config = configSource.fetchMqttClientConfig(idToken).getOrElse {
             _connectionState.value = MqttConnectionState.Failed(it.message ?: "Konfiguracija nije pronađena")
             return
         }
-        withContext(Dispatchers.IO) {
-            val connected = tryConnect(config.mqttServer, config.mqttPort, config.mqttUsername, config.mqttPassword)
-                ?: tryConnect(config.backupMqttServer, config.backupMqttPort, config.backupMqttUsername, config.backupMqttPassword)
-
+        val primary = MqttEndpoint.parse(config.mqttServer, config.mqttPort, config.mqttUsername, config.mqttPassword)
+        val backup = MqttEndpoint.parse(
+            config.backupMqttServer, config.backupMqttPort, config.backupMqttUsername, config.backupMqttPassword,
+        )
+        withContext(ioDispatcher) {
+            val connected = primary?.let(::tryConnect) ?: backup?.let(::tryConnect)
             if (connected == null) {
                 _connectionState.value = MqttConnectionState.Failed("Konektivnost sa serverom ne postoji!")
                 return@withContext
             }
-            client = connected
+            connection = connected
             _connectionState.value = MqttConnectionState.Connected
-            publishBlocking(connected, MqttTopics.NODE1_REQUEST_STATUS, "s")
+            connected.publish(MqttTopics.NODE1_REQUEST_STATUS, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
         }
     }
 
     fun disconnect() {
-        client?.disconnect()
-        client = null
+        connection?.disconnect()
+        connection = null
         _connectionState.value = MqttConnectionState.Idle
     }
 
-    private fun tryConnect(host: String, port: String, username: String, password: String): Mqtt3AsyncClient? {
-        if (host.isBlank() || port.isBlank()) return null
-        val portInt = port.trim().toIntOrNull() ?: return null
-        val tls = port.trim() == "8883"
-        return try {
-            // Captured by the listeners below to tell "this attempt's client is still the active
-            // one" apart from a stale/backup client whose late callback would otherwise stomp on
-            // a newer connection's status.
-            var attemptClient: Mqtt3AsyncClient? = null
-            val builder = Mqtt3Client.builder()
-                .identifier("native_client_${System.currentTimeMillis()}")
-                .serverHost(host.trim())
-                .serverPort(portInt)
-                .addConnectedListener {
-                    if (attemptClient != null && client === attemptClient) {
-                        _connectionState.value = MqttConnectionState.Connected
-                    }
+    private fun tryConnect(endpoint: MqttEndpoint): MqttConnection? {
+        // Set once connect() returns. The callbacks compare it with the active connection, so a
+        // stale (e.g. failed primary or replaced) attempt cannot overwrite a newer connection's
+        // status with its late connected/disconnected events.
+        var attempt: MqttConnection? = null
+        val listener = object : MqttConnectionListener {
+            override fun onMessage(topic: String, payload: String, retained: Boolean) =
+                handleMessage(topic, payload, retained)
+
+            override fun onConnected() {
+                if (attempt != null && connection === attempt) {
+                    _connectionState.value = MqttConnectionState.Connected
                 }
-                .addDisconnectedListener { context ->
-                    if (attemptClient != null && client === attemptClient) {
-                        client = null
-                        _connectionState.value = MqttConnectionState.Disconnected(
-                            context.cause?.message ?: "Veza sa serverom je prekinuta"
-                        )
-                    }
-                }
-            if (tls) builder.sslWithDefaultConfig()
-            if (username.isNotBlank()) {
-                builder.simpleAuth(
-                    Mqtt3SimpleAuth.builder()
-                        .username(username)
-                        .password(password.toByteArray(Charsets.UTF_8))
-                        .build()
-                )
             }
-            val asyncClient = builder.buildAsync()
-            attemptClient = asyncClient
-            asyncClient.connectWith()
-                .cleanSession(true)
-                .keepAlive(20)
-                .send()
-                .get(5, TimeUnit.SECONDS)
 
-            asyncClient.subscribeWith()
-                .topicFilter(MqttTopics.SUBSCRIBE_ALL)
-                .qos(MqttQos.AT_MOST_ONCE)
-                .callback { publish -> onMessage(publish) }
-                .send()
-                .get(5, TimeUnit.SECONDS)
-
-            asyncClient
-        } catch (e: Exception) {
-            null
+            override fun onDisconnected(cause: String?) {
+                if (attempt != null && connection === attempt) {
+                    connection = null
+                    _connectionState.value = MqttConnectionState.Disconnected(cause ?: "Veza sa serverom je prekinuta")
+                }
+            }
         }
+        return connector.connect(endpoint, MqttTopics.SUBSCRIBE_ALL, listener).also { attempt = it }
     }
 
     suspend fun publish(
         topic: String,
         payload: String,
         retain: Boolean = false,
-        qos: MqttQos = MqttQos.EXACTLY_ONCE,
+        qos: MqttQualityOfService = MqttQualityOfService.EXACTLY_ONCE,
     ) {
-        val currentClient = client ?: return
-        withContext(Dispatchers.IO) { publishBlocking(currentClient, topic, payload, retain, qos) }
-    }
-
-    private fun publishBlocking(
-        target: Mqtt3AsyncClient,
-        topic: String,
-        payload: String,
-        retain: Boolean = false,
-        qos: MqttQos = MqttQos.EXACTLY_ONCE,
-    ) {
-        try {
-            target.publishWith()
-                .topic(topic)
-                .qos(qos)
-                .payload(payload.toByteArray(Charsets.ISO_8859_1))
-                .retain(retain)
-                .send()
-        } catch (_: Exception) {
-            // best-effort, matches original app which does not surface publish failures to the UI
-        }
+        val current = connection ?: return
+        withContext(ioDispatcher) { current.publish(topic, payload, retain, qos) }
     }
 
     /** AC power on/off has no dedicated status topic on the wire - tracked client-side only. */
@@ -154,13 +103,12 @@ class SmartHomeRepository(
         _state.update { it.copy(acOn = on).let { s -> s.copy(listPowerDevice = computeListPowerDevice(s)) } }
     }
 
-    private fun onMessage(publish: Mqtt3Publish) {
-        val topic = publish.topic.toString()
-        val payload = String(publish.payloadAsBytes, Charsets.ISO_8859_1)
+    /** Applies one incoming MQTT message to [state]. Internal so tests can feed messages directly. */
+    internal fun handleMessage(topic: String, payload: String, retained: Boolean) {
         val nodeMatch = MqttTopics.NODE_NUMBER_REGEX.find(topic)
         _state.update { current ->
             var next = current
-            if (!publish.isRetain && nodeMatch != null) {
+            if (!retained && nodeMatch != null) {
                 val node = nodeMatch.groupValues[1].toIntOrNull()
                 if (node != null) {
                     next = next.copy(nodeOnline = next.nodeOnline + (node to true))
