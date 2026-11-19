@@ -1,5 +1,8 @@
 package zhb.company.smart_home.domain.model
 
+import zhb.company.smart_home.data.mqtt.NodeHealth
+import zhb.company.smart_home.data.mqtt.NodeStatus
+
 /**
  * Single source of truth for every sensor reading / device state in the house,
  * mirroring the Flutter app's `Parameters` ChangeNotifier. Updated exclusively
@@ -62,13 +65,27 @@ data class SmartHomeState(
     val acTemp: Int = 22,
     val acOn: Boolean = false,
 
-    // node online flags, keyed 0..8
+    // legacy rule: true once a live (non-retained) message arrived from node N since connecting
     val nodeOnline: Map<Int, Boolean> = emptyMap(),
+
+    // nodes with the new firmware (they publish <node>/status + heartbeat), keyed by node id, e.g. "node4"
+    val nodeHealth: Map<String, NodeHealth> = emptyMap(),
 
     // devices currently on, human-readable, used for the Home "devices on" count + GoodNight
     val listPowerDevice: List<String> = emptyList(),
 ) {
-    fun isNodeOnline(node: Int): Boolean = nodeOnline[node] == true
+    /** New-firmware status if the node has one, else the legacy rule. */
+    fun isNodeOnline(node: Int): Boolean = nodeStatus("node$node") == NodeStatus.ONLINE
+
+    fun nodeStatus(nodeId: String): NodeStatus {
+        nodeHealth[nodeId]?.let { return it.status }
+        val legacyNumber = LEGACY_NODE_ID.matchEntire(nodeId)?.groupValues?.get(1)?.toInt() ?: return NodeStatus.UNKNOWN
+        return if (nodeOnline[legacyNumber] == true) NodeStatus.ONLINE else NodeStatus.UNKNOWN
+    }
+
+    private companion object {
+        val LEGACY_NODE_ID = Regex("""node(\d)""")
+    }
 }
 
 enum class AcMode(val code: String) {

@@ -14,6 +14,7 @@ import zhb.company.smart_home.data.heating.CommandOutcome
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
+import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.heating.DayType
 import zhb.company.smart_home.domain.heating.Hysteresis
@@ -69,7 +70,11 @@ class HeatingViewModel(
         return HeatingState(
             nodeId = snapshot.nodeId,
             connected = connected,
-            online = snapshot.online,
+            online = when (home.nodeStatus(snapshot.nodeId)) {
+                NodeStatus.ONLINE -> true
+                NodeStatus.OFFLINE -> false
+                NodeStatus.UNKNOWN -> null
+            },
             loading = config == null || zoneSettings == null,
             outdoorTemp = home.temperatureOutdoor,
             mainSwitch = config?.mainSwitch ?: live?.mainSwitch ?: false,

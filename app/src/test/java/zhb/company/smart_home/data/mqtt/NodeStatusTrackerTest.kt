@@ -1,0 +1,86 @@
+package zhb.company.smart_home.data.mqtt
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class NodeStatusTrackerTest {
+
+    private val tracker = NodeStatusTracker(heartbeatTimeoutMs = 180_000)
+    private val t0 = 1_000_000L
+
+    private fun status(id: String, now: Long) = tracker.snapshot(now)[id]
+
+    @Test
+    fun `retained online counts as seen and stays online while heartbeats arrive`() {
+        tracker.onMessage("bozaSub/kuca/node4/status", "online", retained = true, nowMs = t0)
+        assertEquals(NodeStatus.ONLINE, status("node4", t0)?.status)
+
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"fw":"node4-2.1.1","up":60,"rssi":-58,"heap":27560,"mqtt":1}""", false, t0 + 60_000)
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"fw":"node4-2.1.1","up":120,"rssi":-60,"heap":27500,"mqtt":1}""", false, t0 + 120_000)
+
+        val health = status("node4", t0 + 290_000)!!
+        assertEquals(NodeStatus.ONLINE, health.status)
+        assertEquals(NodeHeartbeat("node4-2.1.1", 120, -60, 27500, 1), health.heartbeat)
+        assertEquals(t0 + 120_000, health.lastSeenAtMs)
+    }
+
+    @Test
+    fun `silence longer than the timeout means offline (no heartbeat)`() {
+        tracker.onMessage("bozaSub/kuca/node4/status", "online", retained = true, nowMs = t0)
+
+        assertEquals(NodeStatus.ONLINE, status("node4", t0 + 180_000)?.status)
+        val late = status("node4", t0 + 180_001)!!
+        assertEquals(NodeStatus.OFFLINE, late.status)
+        assertEquals(OfflineReason.NO_HEARTBEAT, late.offlineReason)
+    }
+
+    @Test
+    fun `any live message from a new node counts, retained ones do not`() {
+        tracker.onMessage("bozaSub/kuca/node4/status", "online", retained = true, nowMs = t0)
+        tracker.onMessage("bozaSub/kuca/node4/climate", """{"seq":1}""", retained = false, nowMs = t0 + 170_000)
+        tracker.onMessage("bozaSub/kuca/node4/info", """{"fw":"node4-2.1.1","ip":"192.168.0.38"}""", retained = true, nowMs = t0 + 175_000)
+
+        val health = status("node4", t0 + 300_000)!!
+        assertEquals(NodeStatus.ONLINE, health.status)
+        assertEquals(t0 + 170_000, health.lastSeenAtMs)
+        assertEquals("192.168.0.38", health.info?.ip)
+    }
+
+    @Test
+    fun `Last Will offline wins until the node is heard again`() {
+        tracker.onMessage("bozaSub/kuca/node5/status", "online", retained = true, nowMs = t0)
+        tracker.onMessage("bozaSub/kuca/node5/status", "offline", retained = false, nowMs = t0 + 1_000)
+
+        val offline = status("node5", t0 + 2_000)!!
+        assertEquals(NodeStatus.OFFLINE, offline.status)
+        assertEquals(OfflineReason.LAST_WILL, offline.offlineReason)
+
+        tracker.onMessage("bozaSub/kuca/node5/status", "online", retained = false, nowMs = t0 + 30_000)
+        assertEquals(NodeStatus.ONLINE, status("node5", t0 + 31_000)?.status)
+        assertNull(status("node5", t0 + 31_000)?.offlineReason)
+    }
+
+    @Test
+    fun `retained offline on connect is offline`() {
+        tracker.onMessage("bozaSub/kuca/testnode5/status", "offline", retained = true, nowMs = t0)
+        assertEquals(NodeStatus.OFFLINE, status("testnode5", t0)?.status)
+    }
+
+    @Test
+    fun `legacy nodes and unrelated topics are not tracked`() {
+        assertFalse(tracker.onMessage("bozaSub/kuca/node2/neonka", "1", retained = false, nowMs = t0))
+        assertFalse(tracker.onMessage("bozaSub/kuca/node0/sprinkler/status", "{}", retained = false, nowMs = t0))
+        assertFalse(tracker.onMessage("bozaSub/kuca/node2/heartbeat", "{}", retained = false, nowMs = t0))
+        assertTrue(tracker.snapshot(t0).isEmpty())
+    }
+
+    @Test
+    fun `clear forgets everything`() {
+        tracker.onMessage("bozaSub/kuca/node4/status", "online", retained = true, nowMs = t0)
+        tracker.clear()
+        assertTrue(tracker.snapshot(t0).isEmpty())
+    }
+}

@@ -14,7 +14,13 @@ import zhb.company.smart_home.domain.GoodNightUseCase
 
 val mqttModule = module {
     single<MqttConnector> { HiveMqConnector() }
-    single { SmartHomeRepository(configSource = get<FirebaseRtdbApi>(), connector = get()) }
+    single {
+        SmartHomeRepository(
+            configSource = get<FirebaseRtdbApi>(),
+            connector = get(),
+            healthScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+        )
+    }
     // Created at start so it is listening before the first connect delivers retained messages.
     single(createdAtStart = true) {
         Node5Repository(

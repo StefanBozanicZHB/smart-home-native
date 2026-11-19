@@ -93,7 +93,7 @@ Everything else (nodes 0–4, 6–8) matches.
 | # | Item | Why |
 |---|---|---|
 | S1 | Store the Firebase password encrypted (Android Keystore) or keep only the refresh token | Plain text in DataStore today, same as Flutter. |
-| S2 | Online state from `<node>/status` (retained Last Will) for migrated nodes (node4, node5) | Native marks a node online on any non-retained message and never marks it offline. Node 4 and 5 publish `online`/`offline` now. |
+| S2 | ~~Online state from `<node>/status` (retained Last Will) for migrated nodes~~ | Done: `NodeStatusTracker` (status + 3 min heartbeat timeout, unknown while the app is disconnected); legacy nodes keep the old rule until migrated. |
 | S3 | Hide or mark the shed screen (node7) and drop node9 references | Nodes are not in use. |
 | S4 | Node 0's daily heating report (Telegram) reads `node5/grejanjeTemp/stanje`, which `node5-2.0.0` no longer publishes | Firmware side (`smart-home-mcu`), not the app; listed so it is not forgotten when Node 5 v2 is installed. |
 | S5 | Replace deprecated Compose APIs (`Slider` in settings, `PasswordVisualTransformation` in auth) | Compiler warnings after the Compose 1.13 upgrade. |

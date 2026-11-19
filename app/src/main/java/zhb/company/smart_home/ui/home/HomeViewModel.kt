@@ -16,6 +16,7 @@ import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
+import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.R
@@ -74,7 +75,7 @@ class HomeViewModel(
         secondFloor = RoomCardState("secondFloor", home.temperatureLivingRoomUp, home.humidityLivingRoomUp, home.isNodeOnline(8)),
         pool = RoomCardState("pool", home.temperaturePool, "--", home.isNodeOnline(6)),
         shed = RoomCardState("shed", "--", "--", home.isNodeOnline(7)),
-        heating = heatingCard(heating),
+        heating = heatingCard(heating, home.nodeStatus(heating.nodeId) == NodeStatus.ONLINE),
         showDevicesOnDialog = extras.showDevicesOnDialog,
         plusMenuExpanded = extras.plusMenuExpanded,
     )
@@ -99,7 +100,7 @@ class HomeViewModel(
     }
 
     /** Home card for Node 5: flow pipe temperature, pump running, main switch. */
-    private fun heatingCard(heating: Node5Snapshot): RoomCardState {
+    private fun heatingCard(heating: Node5Snapshot, online: Boolean): RoomCardState {
         val live = heating.live
         val pump = live?.pump == true
         val mainSwitch = (heating.config?.mainSwitch ?: live?.mainSwitch) == true
@@ -107,7 +108,7 @@ class HomeViewModel(
             title = "heating",
             temperature = live?.flowTemp?.let { String.format(Locale.US, "%.1f", it) } ?: "--",
             humidity = "--",
-            online = heating.online == true,
+            online = online,
             statusBadges = listOf(
                 RoomStatusBadge(if (pump) "Pumpa radi" else "Pumpa ne radi", pump),
                 RoomStatusBadge(if (mainSwitch) "Uključeno" else "Isključeno", mainSwitch),

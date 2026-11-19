@@ -51,7 +51,6 @@ class Node5RepositoryTest {
     @Test
     fun `retained topics of the selected node fill the snapshot`() = runTest {
         val f = Fixture(this)
-        f.deliver("bozaSub/kuca/node5/status", "online")
         f.deliver("bozaSub/kuca/node5/config", config)
         f.deliver(
             "bozaSub/kuca/node5/zones/ground",
@@ -60,7 +59,6 @@ class Node5RepositoryTest {
         f.deliver("bozaSub/kuca/node5/safe_mode", """{"active":true,"reason":"no_schedule","zone":"ground","at":40}""")
 
         val s = f.node5.snapshot.value
-        assertEquals(true, s.online)
         assertEquals(9L, s.config?.rev)
         assertEquals(Hysteresis(2, 1), s.zones["ground"]?.hysteresis)
         assertEquals(listOf(ScheduleSegment(0, 195)), s.zones["ground"]?.workday)
@@ -76,14 +74,6 @@ class Node5RepositoryTest {
 
         assertNull(f.node5.snapshot.value.config)
         assertTrue(f.node5.snapshot.value.zones.isEmpty())
-    }
-
-    @Test
-    fun `Last Will offline marks the node offline`() = runTest {
-        val f = Fixture(this)
-        f.deliver("bozaSub/kuca/node5/status", "online")
-        f.deliver("bozaSub/kuca/node5/status", "offline")
-        assertEquals(false, f.node5.snapshot.value.online)
     }
 
     @Test

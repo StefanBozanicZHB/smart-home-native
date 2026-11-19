@@ -2,12 +2,16 @@ package zhb.company.smart_home.data.mqtt
 
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.domain.SprinklerConfigCodec
@@ -25,6 +29,11 @@ class SmartHomeRepository(
     private val configSource: MqttConfigSource,
     private val connector: MqttConnector,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** Background scope for the periodic node health check; null (tests) = call [refreshNodeHealth] manually. */
+    healthScope: CoroutineScope? = null,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val nodeStatus: NodeStatusTracker = NodeStatusTracker(),
+    healthCheckIntervalMs: Long = 15_000,
 ) {
     private val _state = MutableStateFlow(SmartHomeState())
     val state: StateFlow<SmartHomeState> = _state.asStateFlow()
@@ -42,8 +51,18 @@ class SmartHomeRepository(
         messageListeners += listener
     }
 
+    init {
+        healthScope?.launch {
+            while (isActive) {
+                delay(healthCheckIntervalMs)
+                refreshNodeHealth()
+            }
+        }
+    }
+
     suspend fun connect(idToken: String) {
         _connectionState.value = MqttConnectionState.Connecting
+        clearNodeStatus()
         val config = configSource.fetchMqttClientConfig(idToken).getOrElse {
             _connectionState.value = MqttConnectionState.Failed(it.message ?: "Konfiguracija nije pronađena")
             return
@@ -67,6 +86,7 @@ class SmartHomeRepository(
     fun disconnect() {
         connection?.disconnect()
         connection = null
+        clearNodeStatus()
         _connectionState.value = MqttConnectionState.Idle
     }
 
@@ -88,6 +108,7 @@ class SmartHomeRepository(
             override fun onDisconnected(cause: String?) {
                 if (attempt != null && connection === attempt) {
                     connection = null
+                    clearNodeStatus()
                     _connectionState.value = MqttConnectionState.Disconnected(cause ?: "Veza sa serverom je prekinuta")
                 }
             }
@@ -113,8 +134,13 @@ class SmartHomeRepository(
     /** Applies one incoming MQTT message to [state]. Internal so tests can feed messages directly. */
     internal fun handleMessage(topic: String, payload: String, retained: Boolean) {
         val nodeMatch = MqttTopics.NODE_NUMBER_REGEX.find(topic)
+        // The tracker is mutated outside _state.update, whose lambda may run more than once.
+        val health = synchronized(nodeStatus) {
+            if (nodeStatus.onMessage(topic, payload, retained, clock())) nodeStatus.snapshot(clock()) else null
+        }
         _state.update { current ->
             var next = current
+            if (health != null) next = next.copy(nodeHealth = health)
             if (!retained && nodeMatch != null) {
                 val node = nodeMatch.groupValues[1].toIntOrNull()
                 if (node != null) {
@@ -125,6 +151,18 @@ class SmartHomeRepository(
             next.copy(listPowerDevice = computeListPowerDevice(next))
         }
         messageListeners.forEach { it(topic, payload, retained) }
+    }
+
+    /** Re-evaluates heartbeat timeouts; called periodically, since a silent node sends nothing to react to. */
+    fun refreshNodeHealth() {
+        val health = synchronized(nodeStatus) { nodeStatus.snapshot(clock()) }
+        _state.update { if (it.nodeHealth == health) it else it.copy(nodeHealth = health) }
+    }
+
+    /** Without a broker connection nothing is known about any node (instead of keeping stale "online"). */
+    private fun clearNodeStatus() {
+        synchronized(nodeStatus) { nodeStatus.clear() }
+        _state.update { it.copy(nodeHealth = emptyMap(), nodeOnline = emptyMap()) }
     }
 
     private fun dispatch(topic: String, payload: String, state: SmartHomeState): SmartHomeState {

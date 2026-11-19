@@ -25,7 +25,6 @@ class Node5Topics(val nodeId: String) {
         const val STATE = "state"
         const val PUMP = "pump"
         const val SAFE_MODE = "safe_mode"
-        const val STATUS = "status"
         const val RESULT = "result" // not retained
         const val ZONES_PREFIX = "zones/"
     }

@@ -189,6 +189,52 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
+    fun `new-firmware nodes use status and heartbeat, legacy nodes keep the old rule`() {
+        var now = 0L
+        val repo = SmartHomeRepository(
+            MqttConfigSource { Result.success(config) }, FakeMqttConnector(), UnconfinedTestDispatcher(), clock = { now },
+        )
+
+        // node4: retained "online", then a heartbeat; offline after 3 min of silence.
+        repo.handleMessage("bozaSub/kuca/node4/status", "online", retained = true)
+        assertTrue(repo.state.value.isNodeOnline(4))
+        now = 60_000
+        repo.handleMessage("bozaSub/kuca/node4/heartbeat", """{"fw":"node4-2.1.1","up":60}""", retained = false)
+        now = 240_000
+        repo.refreshNodeHealth()
+        assertTrue(repo.state.value.isNodeOnline(4))
+        now = 240_001
+        repo.refreshNodeHealth()
+        assertFalse(repo.state.value.isNodeOnline(4))
+        assertEquals(NodeStatus.OFFLINE, repo.state.value.nodeStatus("node4"))
+
+        // node5: Last Will.
+        repo.handleMessage("bozaSub/kuca/node5/status", "offline", retained = true)
+        assertEquals(NodeStatus.OFFLINE, repo.state.value.nodeStatus("node5"))
+
+        // node2 (legacy): unknown until a live message, then online with no timeout.
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node2"))
+        repo.handleMessage(MqttTopics.NODE2_TEMPERATURE, "5", retained = false)
+        now = 10_000_000
+        repo.refreshNodeHealth()
+        assertTrue(repo.state.value.isNodeOnline(2))
+    }
+
+    @Test
+    fun `losing the broker connection makes every node unknown`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        repo.connect("token")
+        repo.handleMessage("bozaSub/kuca/node4/status", "online", retained = true)
+        repo.handleMessage(MqttTopics.NODE2_TEMPERATURE, "5", retained = false)
+
+        connector.listeners.last().onDisconnected("network lost")
+
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node4"))
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node2"))
+    }
+
+    @Test
     fun `AC state is read from the same retained topics as the Flutter app`() {
         val repo = repository(FakeMqttConnector())
 

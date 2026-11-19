@@ -29,8 +29,6 @@ import zhb.company.smart_home.domain.heating.ZoneSettings
 /** Everything the app knows about Node 5, built from its retained state topics. */
 data class Node5Snapshot(
     val nodeId: String = Node5Topics.REAL,
-    /** From `status` (Last Will): true = online, false = offline, null = not heard yet. */
-    val online: Boolean? = null,
     val config: Node5Config? = null,
     val zones: Map<String, ZoneSettings> = emptyMap(),
     val live: Node5LiveState? = null,
@@ -126,10 +124,6 @@ class Node5Repository(
         when {
             path == Node5Topics.RESULT -> Node5Json.parseResult(payload)?.let { result ->
                 result.id?.let { pending[it]?.complete(result) }
-            }
-            path == Node5Topics.STATUS -> when (payload) {
-                "online" -> _snapshot.update { it.copy(online = true) }
-                "offline" -> _snapshot.update { it.copy(online = false) }
             }
             path == Node5Topics.CONFIG -> Node5Json.parseConfig(payload)?.let { c -> _snapshot.update { it.copy(config = c) } }
             path == Node5Topics.STATE -> Node5Json.parseState(payload)?.let { s -> _snapshot.update { it.copy(live = s) } }

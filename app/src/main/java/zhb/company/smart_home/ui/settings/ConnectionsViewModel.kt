@@ -6,19 +6,36 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import zhb.company.smart_home.data.mqtt.NodeHealth
+import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.domain.model.SmartHomeState
 
-data class ConnectionsState(val nodeOnline: Map<Int, Boolean> = emptyMap())
+data class NodeRow(
+    val nodeId: String,
+    val label: String,
+    val status: NodeStatus,
+    /** Null for legacy nodes (no status topic, no heartbeat). */
+    val health: NodeHealth?,
+)
+
+data class ConnectionsState(val nodes: List<NodeRow> = emptyList())
 
 private val NODE_LABELS = mapOf(
-    0 to "Prskalice (tajmer)", 1 to "Prskalice / fontana", 2 to "Dvorište", 3 to "Ulazna vrata",
-    4 to "Dnevni boravak (prizemlje)", 5 to "Grejanje", 6 to "Bazen", 7 to "Šupa", 8 to "Dnevni boravak (sprat)",
+    "node0" to "Prskalice (tajmer)", "node1" to "Prskalice / fontana", "node2" to "Dvorište",
+    "node3" to "Ulazna vrata", "node4" to "Dnevni boravak (prizemlje)", "node5" to "Grejanje",
+    "node6" to "Bazen", "node7" to "Šupa", "node8" to "Dnevni boravak (sprat)",
+    "testnode5" to "Grejanje – test ploča",
 )
 
 class ConnectionsViewModel(repository: SmartHomeRepository) : ViewModel() {
     val state: StateFlow<ConnectionsState> = repository.state
-        .map { ConnectionsState(nodeOnline = (0..8).associateWith { n -> it.isNodeOnline(n) }) }
+        .map(::rows)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectionsState())
 
-    fun labelFor(node: Int): String = NODE_LABELS[node] ?: "Node $node"
+    private fun rows(home: SmartHomeState): ConnectionsState {
+        // node0..node8 always, plus any other node that announced itself (e.g. the bench board).
+        val ids = ((0..8).map { "node$it" } + home.nodeHealth.keys.sorted()).distinct()
+        return ConnectionsState(ids.map { id -> NodeRow(id, NODE_LABELS[id] ?: id, home.nodeStatus(id), home.nodeHealth[id]) })
+    }
 }
