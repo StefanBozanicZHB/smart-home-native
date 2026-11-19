@@ -189,6 +189,29 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
+    fun `AC state is read from the same retained topics as the Flutter app`() {
+        val repo = repository(FakeMqttConnector())
+
+        repo.handleMessage("bozaSub/kuca/node8/ac/mode", "C", retained = true)
+        repo.handleMessage("bozaSub/kuca/node8/ac/fan", "1", retained = true)
+        repo.handleMessage("bozaSub/kuca/node8/ac/temp", "24", retained = true)
+
+        val state = repo.state.value
+        assertEquals(zhb.company.smart_home.domain.model.AcMode.HEAT, state.acMode)
+        assertEquals(zhb.company.smart_home.domain.model.AcFanSpeed.MAX, state.acFanSpeed)
+        assertEquals(24, state.acTemp)
+    }
+
+    @Test
+    fun `stale node4 light states are ignored (node4 is sensor-only)`() {
+        val repo = repository(FakeMqttConnector())
+
+        repo.handleMessage("bozaSub/kuca/node4/dnevniBoravak/sijalica1/stanje", "1", retained = true)
+
+        assertTrue(repo.state.value.listPowerDevice.isEmpty())
+    }
+
+    @Test
     fun `AC power is tracked client-side and listed as a power device`() {
         val repo = repository(FakeMqttConnector())
 

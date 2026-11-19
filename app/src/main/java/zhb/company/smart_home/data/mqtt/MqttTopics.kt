@@ -36,10 +36,9 @@ object MqttTopics {
     const val NODE3_DOOR_STATUS = "$BASE/node3/vrata/stanje"
 
     // node4 - ground floor living room
+    // Sensor-only since node4-2.0.0: the light relays were removed, the node subscribes to nothing.
     const val NODE4_HUMIDITY = "$BASE/node4/dnevniBoravak/vlaznost"
     const val NODE4_TEMPERATURE = "$BASE/node4/dnevniBoravak/temperatura"
-    fun node4BulbControl(index: Int) = "$BASE/node4/dnevniBoravak/sijalica$index"
-    fun node4BulbStatus(index: Int) = "$BASE/node4/dnevniBoravak/sijalica$index/stanje"
 
     // node5 - heating: new JSON API with a switchable node id, see data/heating/Node5Topics.kt
 
@@ -65,9 +64,10 @@ object MqttTopics {
     const val NODE8_HUMIDITY = "$BASE/node8/humidity"
     const val NODE8_TEMPERATURE = "$BASE/node8/temp"
     const val NODE8_GAS = "$BASE/node8/gas"
-    const val NODE8_AC_MODE = "$BASE/node8/acMode"
-    const val NODE8_AC_FAN = "$BASE/node8/acFan"
-    const val NODE8_AC_TEMP = "$BASE/node8/acTemp"
+    // A/C state is stored retained on the broker by the apps (no node reads it); same topics as the Flutter app.
+    const val NODE8_AC_MODE = "$BASE/node8/ac/mode"
+    const val NODE8_AC_FAN = "$BASE/node8/ac/fan"
+    const val NODE8_AC_TEMP = "$BASE/node8/ac/temp"
     const val NODE8_AC_COMMAND = "$BASE/node8/aq"
     const val NODE8_MELODY = "$BASE/node8/melody"
 

@@ -38,9 +38,6 @@ data class SmartHomeState(
     // node4 - ground floor living room
     val temperatureLivingRoomDown: String = "--",
     val humidityLivingRoomDown: String = "--",
-    val bulbLivingRoomDown1: Boolean = false,
-    val bulbLivingRoomDown2: Boolean = false,
-    val bulbLivingRoomDown3: Boolean = false,
 
     // node5 - heating: see zhb.company.smart_home.data.heating.Node5Repository
 

@@ -13,8 +13,8 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 
 | # | Area | Flutter | Native | Impact | Proposed fix |
 |---|---|---|---|---|---|
-| B1 | A/C state topics (node8) | `node8/ac/temp`, `node8/ac/fan`, `node8/ac/mode` (retained, written by the app) | `node8/acTemp`, `node8/acFan`, `node8/acMode` | The two apps do not see each other's A/C settings; native ignores the retained values already on the broker. No node reads these topics, so only the apps are affected. | Use `node8/ac/{temp,fan,mode}` in native; clear the retained `node8/acTemp|acFan|acMode` on the broker (empty retained message). |
-| B2 | Ground-floor lights (node4) | `indoor_down_screen`: toggles `node4/dnevniBoravak/sijalica1…3`; also in GoodNight | No screen, but `PowerDevices` still lists the three lights, so GoodNight publishes to them and they count as "devices on" from retained `…/stanje` | Since `node4-2.0.0` Node 4 only measures: the light relays were removed and it subscribes to nothing. Stale retained `sijalicaN/stanje` can show lights as "on" forever. | Remove node4 lights from `PowerDevices`, `SmartHomeState` and `MqttTopics`; clear the retained `node4/dnevniBoravak/sijalicaN/stanje`. |
+| B1 | A/C state topics (node8) | `node8/ac/temp`, `node8/ac/fan`, `node8/ac/mode` (retained, written by the app) | `node8/acTemp`, `node8/acFan`, `node8/acMode` | The two apps do not see each other's A/C settings; native ignores the retained values already on the broker. No node reads these topics, so only the apps are affected. | Fixed in native (now `node8/ac/{temp,fan,mode}`). Still to do: clear the retained `node8/acTemp|acFan|acMode` on the broker (empty retained message). |
+| B2 | Ground-floor lights (node4) | `indoor_down_screen`: toggles `node4/dnevniBoravak/sijalica1…3`; also in GoodNight | No screen, but `PowerDevices` still lists the three lights, so GoodNight publishes to them and they count as "devices on" from retained `…/stanje` | Since `node4-2.0.0` Node 4 only measures: the light relays were removed and it subscribes to nothing. Stale retained `sijalicaN/stanje` can show lights as "on" forever. | Fixed in native (lights removed). Still to do: clear the retained `node4/dnevniBoravak/sijalicaN/stanje` on the broker. |
 | B3 | A/C temperature codes | Gray-code table 17→`0` … 30→`B` | — | Fixed in `e79c36e` (native sent wrong codes for 19–30 °C). | Done. |
 
 ## 2. Feature comparison by screen
@@ -55,7 +55,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Temperature (calibrated −6 °C), humidity, gas | ✓ | ✓ | ✅ |
-| A/C power, mode, fan, temperature (IR via `node8/aq`) | ✓ | ✓ | ⚠️ state topics differ, see B1 |
+| A/C power, mode, fan, temperature (IR via `node8/aq`) | ✓ | ✓ | ✅ (state topics aligned, B1) |
 | Play melody (`node8/melody` = `1`) | music-note button | topic constant only, no UI | ❌ |
 | Ground-floor lights 1–3 (node4) | `indoor_down_screen` | — | 🗑️ see B2 |
 
@@ -100,7 +100,7 @@ Everything else (nodes 0–4, 6–8) matches.
 
 ## 5. Before the Flutter app can be retired
 
-1. Fix B1 and B2.
+1. ~~Fix B1 and B2~~ (done in native; broker cleanup in step 6).
 2. Add the melody button (node8).
 3. Disable or warn on switches whose node is offline.
 4. Install `node5-2.0.0` on the real Node 5 (only then can native control the heating).
