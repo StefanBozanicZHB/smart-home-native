@@ -1,8 +1,8 @@
+import com.android.build.api.variant.BuildConfigField
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -34,7 +34,9 @@ val firebaseApiKey: String = localProperties.getProperty("firebase.apiKey")
 
 android {
     namespace = "zhb.company.smart_home"
-    compileSdk = 36
+    compileSdk {
+        version = release(37) { minorApiLevel = 1 }
+    }
 
     defaultConfig {
         applicationId = "zhb.company.smart_home"
@@ -44,8 +46,6 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
     }
 
     signingConfigs {
@@ -76,9 +76,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -90,6 +87,15 @@ android {
             excludes += "/META-INF/DEPENDENCIES"
             excludes += "/META-INF/io.netty.versions.properties"
         }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.buildConfigFields?.put(
+            "FIREBASE_API_KEY",
+            BuildConfigField("String", "\"$firebaseApiKey\"", "Firebase Web API key (from local.properties)"),
+        )
     }
 }
 

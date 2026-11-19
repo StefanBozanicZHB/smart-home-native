@@ -1,6 +1,6 @@
 package zhb.company.smart_home.di
 
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 import zhb.company.smart_home.ui.ThemeStateHolder
 import zhb.company.smart_home.ui.auth.AuthViewModel
