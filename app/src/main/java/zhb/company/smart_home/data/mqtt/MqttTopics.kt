@@ -41,25 +41,7 @@ object MqttTopics {
     fun node4BulbControl(index: Int) = "$BASE/node4/dnevniBoravak/sijalica$index"
     fun node4BulbStatus(index: Int) = "$BASE/node4/dnevniBoravak/sijalica$index/stanje"
 
-    // node5 - heating / boiler
-    const val NODE5_TUBE_TEMP_STATUS = "$BASE/node5/tempCevi/stanje"
-    const val NODE5_SCHEDULE_WORKDAY_STATUS = "$BASE/node5/planogram/provera/10"
-    const val NODE5_SCHEDULE_WEEKEND_STATUS = "$BASE/node5/planogram/provera/00"
-    const val NODE5_SCHEDULE_CONTROL = "$BASE/node5/planogram"
-    const val NODE5_HEATING_TYPE_STATUS = "$BASE/node5/vrstaRada/stanje"
-    const val NODE5_HEATING_TYPE_CONTROL = "$BASE/node5/vrstaRada"
-    const val NODE5_MAIN_SWITCH_STATUS = "$BASE/node5/glavniPrekidac/stanje"
-    const val NODE5_MAIN_SWITCH_CONTROL = "$BASE/node5/glavniPrekidac"
-    const val NODE5_UPPER_LIMIT_STATUS = "$BASE/node5/gornjaGranica/stanje"
-    const val NODE5_UPPER_LIMIT_CONTROL = "$BASE/node5/gornjaGranica"
-    const val NODE5_LOWER_LIMIT_STATUS = "$BASE/node5/donjaGranica/stanje"
-    const val NODE5_LOWER_LIMIT_CONTROL = "$BASE/node5/donjaGranica"
-    const val NODE5_HEATING_RELAY_STATUS = "$BASE/node5/grejanjeTemp/stanje"
-    const val NODE5_PELLET_LEVEL_STATUS = "$BASE/node5/kotao/rastojanje/leverUProcentima"
-    const val NODE5_ALARM_LEVEL_STATUS = "$BASE/node5/kotao/upozorenje/level/stanje"
-    const val NODE5_ALARM_LEVEL_CONTROL = "$BASE/node5/kotao/upozorenje/level"
-    const val NODE5_SET_FULL_LEVEL = "$BASE/node5/kotao/rastojanje/setFullLevel"
-    const val NODE5_SET_EMPTY_LEVEL = "$BASE/node5/kotao/rastojanje/setEmptyLevel"
+    // node5 - heating: new JSON API with a switchable node id, see data/heating/Node5Topics.kt
 
     // node6 - pool
     const val NODE6_POOL_PUMP_STATUS = "$BASE/node6/pool/pump/status"

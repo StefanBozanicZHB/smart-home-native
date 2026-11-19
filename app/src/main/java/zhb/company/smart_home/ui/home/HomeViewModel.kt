@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
+import zhb.company.smart_home.data.heating.Node5Repository
+import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
 import zhb.company.smart_home.data.mqtt.MqttTopics
@@ -23,6 +26,7 @@ class HomeViewModel(
     private val repository: SmartHomeRepository,
     private val preferences: AppPreferences,
     private val goodNightUseCase: GoodNightUseCase,
+    private val node5: Node5Repository,
 ) : ViewModel() {
 
     private val _uiExtras = MutableStateFlow(UiExtras())
@@ -36,11 +40,18 @@ class HomeViewModel(
         repository.connectionState,
         preferences.isDarkTheme,
         _uiExtras,
-    ) { home, connection, darkTheme, extras ->
-        mapState(home, connection is MqttConnectionState.Connected, darkTheme, extras)
+        node5.snapshot,
+    ) { home, connection, darkTheme, extras, heating ->
+        mapState(home, connection is MqttConnectionState.Connected, darkTheme, extras, heating)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
-    private fun mapState(home: SmartHomeState, connected: Boolean, darkTheme: Boolean, extras: UiExtras): HomeState = HomeState(
+    private fun mapState(
+        home: SmartHomeState,
+        connected: Boolean,
+        darkTheme: Boolean,
+        extras: UiExtras,
+        heating: Node5Snapshot,
+    ): HomeState = HomeState(
         darkTheme = darkTheme,
         connected = connected,
         mainDoorOnline = home.isNodeOnline(3),
@@ -63,16 +74,7 @@ class HomeViewModel(
         secondFloor = RoomCardState("secondFloor", home.temperatureLivingRoomUp, home.humidityLivingRoomUp, home.isNodeOnline(8)),
         pool = RoomCardState("pool", home.temperaturePool, "--", home.isNodeOnline(6)),
         shed = RoomCardState("shed", "--", "--", home.isNodeOnline(7)),
-        heating = RoomCardState(
-            title = "heating",
-            temperature = home.temperatureTubeHeating,
-            humidity = "--",
-            online = home.isNodeOnline(5),
-            statusBadges = listOf(
-                RoomStatusBadge(if (home.isTempRelay) "Radi" else "Ne radi", home.isTempRelay),
-                RoomStatusBadge(if (home.isMainSwitch) "Uključeno" else "Isključeno", home.isMainSwitch),
-            ),
-        ),
+        heating = heatingCard(heating),
         showDevicesOnDialog = extras.showDevicesOnDialog,
         plusMenuExpanded = extras.plusMenuExpanded,
     )
@@ -94,6 +96,23 @@ class HomeViewModel(
                 _effects.send(HomeEffect.ShowToast(if (turnedOff) R.string.goodnight_toast_off else R.string.goodnight_toast_already_off))
             }
         }
+    }
+
+    /** Home card for Node 5: flow pipe temperature, pump running, main switch. */
+    private fun heatingCard(heating: Node5Snapshot): RoomCardState {
+        val live = heating.live
+        val pump = live?.pump == true
+        val mainSwitch = (heating.config?.mainSwitch ?: live?.mainSwitch) == true
+        return RoomCardState(
+            title = "heating",
+            temperature = live?.flowTemp?.let { String.format(Locale.US, "%.1f", it) } ?: "--",
+            humidity = "--",
+            online = heating.online == true,
+            statusBadges = listOf(
+                RoomStatusBadge(if (pump) "Pumpa radi" else "Pumpa ne radi", pump),
+                RoomStatusBadge(if (mainSwitch) "Uključeno" else "Isključeno", mainSwitch),
+            ),
+        )
     }
 
     private fun Boolean.wire() = if (this) "1" else "0"

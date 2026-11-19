@@ -2,6 +2,7 @@ package zhb.company.smart_home.ui.heating
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -9,86 +10,196 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.mqtt.MqttTopics
+import zhb.company.smart_home.data.heating.CommandOutcome
+import zhb.company.smart_home.data.heating.Node5Repository
+import zhb.company.smart_home.data.heating.Node5Snapshot
+import zhb.company.smart_home.data.mqtt.MqttConnectionState
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
-import zhb.company.smart_home.domain.HeatingScheduleCodec
-import zhb.company.smart_home.domain.model.HeatingSegment
-import zhb.company.smart_home.domain.model.HeatingType
+import zhb.company.smart_home.domain.heating.DayType
+import zhb.company.smart_home.domain.heating.Hysteresis
+import zhb.company.smart_home.domain.heating.ScheduleRules
+import zhb.company.smart_home.domain.heating.ScheduleSegment
+import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.model.SmartHomeState
 
-class HeatingViewModel(private val repository: SmartHomeRepository) : ViewModel() {
+class HeatingViewModel(
+    private val repository: SmartHomeRepository,
+    private val node5: Node5Repository,
+) : ViewModel() {
+
+    private data class DraftKey(val nodeId: String, val zone: String, val day: DayType)
+
+    /** An unsaved day program, plus the zone revision it was started from. */
+    private data class Draft(val segments: List<ScheduleSegment>, val baseRev: Long?)
 
     private data class UiExtras(
+        val selectedZone: String? = null,
+        val selectedDay: DayType? = null,
+        val drafts: Map<DraftKey, Draft> = emptyMap(),
+        val sending: Boolean = false,
         val showSettingsDialog: Boolean = false,
-        val plusMenuExpanded: Boolean = false,
-        val pendingWorkday: List<HeatingSegment>? = null,
-        val pendingWeekend: List<HeatingSegment>? = null,
+        val showMainSwitchOffConfirm: Boolean = false,
+        val message: HeatingMessage? = null,
     )
 
-    private val _uiExtras = MutableStateFlow(UiExtras())
+    private val extras = MutableStateFlow(UiExtras())
 
-    val state: StateFlow<HeatingState> = combine(repository.state, _uiExtras) { home, extras ->
-        mapState(home, extras)
+    val state: StateFlow<HeatingState> = combine(
+        repository.state,
+        repository.connectionState,
+        node5.snapshot,
+        extras,
+    ) { home, connection, snapshot, ui ->
+        mapState(home, connection is MqttConnectionState.Connected, snapshot, ui)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HeatingState())
 
-    private fun mapState(home: SmartHomeState, extras: UiExtras): HeatingState = HeatingState(
-        online = home.isNodeOnline(5),
-        tubeTemp = home.temperatureTubeHeating,
-        outdoorTemp = home.temperatureOutdoor,
-        tempUp = home.temperatureLivingRoomUp,
-        humidityUp = home.humidityLivingRoomUp,
-        tempDown = home.temperatureLivingRoomDown,
-        humidityDown = home.humidityLivingRoomDown,
-        pelletsLevelPercent = home.percentPelletsTank,
-        isTempRelay = home.isTempRelay,
-        isMainSwitch = home.isMainSwitch,
-        heatingType = when {
-            home.isGas -> HeatingType.GAS
-            home.isElectro -> HeatingType.ELECTRIC
-            else -> HeatingType.PELLETS
-        },
-        workdaySegments = extras.pendingWorkday ?: home.workdaySegments,
-        weekendSegments = extras.pendingWeekend ?: home.weekendSegments,
-        upStep = home.upStep,
-        downStep = home.downStep,
-        alarmLimitPercent = home.percentAlarmLimit,
-        showSettingsDialog = extras.showSettingsDialog,
-        plusMenuExpanded = extras.plusMenuExpanded,
-    )
+    private fun mapState(home: SmartHomeState, connected: Boolean, snapshot: Node5Snapshot, ui: UiExtras): HeatingState {
+        val config = snapshot.config
+        val live = snapshot.live
+        val limits = config?.limits ?: HeatingState().limits
+        val zoneIds = config?.zones ?: live?.zones?.keys?.sorted().orEmpty()
+        val zone = ui.selectedZone?.takeIf { it in zoneIds } ?: zoneIds.firstOrNull()
+        // Default to the day type the node is running now, so the editor opens on today's program.
+        val day = ui.selectedDay ?: if (live?.weekend == true) DayType.WEEKEND else DayType.WORKDAY
+        val zoneSettings = zone?.let { snapshot.zones[it] }
+        val nodeDay = zoneSettings?.day(day).orEmpty()
+        val draft = zone?.let { ui.drafts[DraftKey(snapshot.nodeId, it, day)] }
+        val segments = draft?.segments ?: nodeDay.ifEmpty { ScheduleRules.defaultDay(limits) }
+
+        return HeatingState(
+            nodeId = snapshot.nodeId,
+            connected = connected,
+            online = snapshot.online,
+            loading = config == null || zoneSettings == null,
+            outdoorTemp = home.temperatureOutdoor,
+            mainSwitch = config?.mainSwitch ?: live?.mainSwitch ?: false,
+            pump = live?.pump ?: false,
+            demand = live?.demand ?: false,
+            flowTemp = live?.flowTemp?.let { String.format(Locale.US, "%.1f", it) } ?: "--",
+            nodeTime = live?.time,
+            nodeIsWeekend = live?.weekend,
+            safeMode = when {
+                snapshot.safeMode?.active == true -> SafeModeUi(snapshot.safeMode.reason, snapshot.safeMode.zone)
+                snapshot.safeMode == null && live?.safeReason != null -> SafeModeUi(live.safeReason, null)
+                else -> null
+            },
+            lastPumpChange = snapshot.pump?.let { p ->
+                val ago = live?.uptimeSeconds?.minus(p.atUptimeSeconds)?.takeIf { it >= 0 }?.div(60)
+                PumpChangeUi(on = p.pump, source = p.source, minutesAgo = ago)
+            },
+            zones = zoneIds.map { id ->
+                val z = live?.zones?.get(id)
+                ZoneUi(
+                    id = id,
+                    roomTemp = z?.roomTemp?.let { String.format(Locale.US, "%.1f", it) } ?: "--",
+                    target = z?.targetTenths?.let(::formatTenths),
+                    demand = z?.demand ?: false,
+                    fault = z?.fault,
+                )
+            },
+            limits = limits,
+            selectedZone = zone,
+            selectedDay = day,
+            editorSegments = segments,
+            dayNotSet = zoneSettings != null && nodeDay.isEmpty(),
+            scheduleDirty = draft != null && draft.segments != nodeDay,
+            scheduleProblem = ScheduleRules.validateDay(segments, limits),
+            remoteChangedWhileEditing = draft != null && draft.baseRev != zoneSettings?.rev,
+            hysteresis = zoneSettings?.hysteresis,
+            minOnSeconds = config?.minOnSeconds,
+            minOffSeconds = config?.minOffSeconds,
+            configRev = config?.rev,
+            sending = ui.sending,
+            showSettingsDialog = ui.showSettingsDialog,
+            showMainSwitchOffConfirm = ui.showMainSwitchOffConfirm,
+            message = ui.message,
+        )
+    }
 
     fun onIntent(intent: HeatingIntent) {
         when (intent) {
-            is HeatingIntent.ToggleMainSwitch -> publish(MqttTopics.NODE5_MAIN_SWITCH_CONTROL, intent.on.wire())
-            is HeatingIntent.SelectHeatingType -> publish(
-                MqttTopics.NODE5_HEATING_TYPE_CONTROL,
-                when (intent.type) { HeatingType.PELLETS -> "1"; HeatingType.GAS -> "2"; HeatingType.ELECTRIC -> "0" },
-            )
-            HeatingIntent.OpenSettingsDialog -> _uiExtras.update { it.copy(showSettingsDialog = true) }
-            HeatingIntent.DismissSettingsDialog -> _uiExtras.update { it.copy(showSettingsDialog = false) }
-            is HeatingIntent.SetUpperHysteresis -> publish(MqttTopics.NODE5_UPPER_LIMIT_CONTROL, (intent.value * 10).toInt().toString())
-            is HeatingIntent.SetLowerHysteresis -> publish(MqttTopics.NODE5_LOWER_LIMIT_CONTROL, (intent.value * 10).toInt().toString())
-            is HeatingIntent.SetAlarmLimit -> publish(MqttTopics.NODE5_ALARM_LEVEL_CONTROL, intent.percent.toString().padStart(2, '0'))
-            HeatingIntent.SetFullLevel -> publish(MqttTopics.NODE5_SET_FULL_LEVEL, "1")
-            HeatingIntent.SetEmptyLevel -> publish(MqttTopics.NODE5_SET_EMPTY_LEVEL, "1")
-            is HeatingIntent.SetWorkdaySegments -> _uiExtras.update { it.copy(pendingWorkday = intent.segments) }
-            HeatingIntent.SaveWorkdaySchedule -> {
-                val segments = _uiExtras.value.pendingWorkday ?: state.value.workdaySegments
-                publish(MqttTopics.NODE5_SCHEDULE_CONTROL, HeatingScheduleCodec.encode(isWorkday = true, segments = segments))
-                _uiExtras.update { it.copy(pendingWorkday = null) }
+            is HeatingIntent.ToggleMainSwitch ->
+                // Turning off stops the heat pump immediately (no minimum run time), so ask first.
+                if (intent.on) runCommand { node5.setMainSwitch(true) }
+                else extras.update { it.copy(showMainSwitchOffConfirm = true) }
+            HeatingIntent.ConfirmMainSwitchOff -> {
+                extras.update { it.copy(showMainSwitchOffConfirm = false) }
+                runCommand { node5.setMainSwitch(false) }
             }
-            is HeatingIntent.SetWeekendSegments -> _uiExtras.update { it.copy(pendingWeekend = intent.segments) }
-            HeatingIntent.SaveWeekendSchedule -> {
-                val segments = _uiExtras.value.pendingWeekend ?: state.value.weekendSegments
-                publish(MqttTopics.NODE5_SCHEDULE_CONTROL, HeatingScheduleCodec.encode(isWorkday = false, segments = segments))
-                _uiExtras.update { it.copy(pendingWeekend = null) }
+            HeatingIntent.DismissMainSwitchOff -> extras.update { it.copy(showMainSwitchOffConfirm = false) }
+
+            is HeatingIntent.SelectZone -> extras.update { it.copy(selectedZone = intent.zone) }
+            is HeatingIntent.SelectDay -> extras.update { it.copy(selectedDay = intent.day) }
+            is HeatingIntent.SetSegmentStart -> editDraft { day -> ScheduleRules.setStart(day, intent.index, intent.minute) }
+            is HeatingIntent.ChangeSegmentTemp -> editDraft { day ->
+                val current = day.getOrNull(intent.index)?.tempTenths ?: return@editDraft day
+                ScheduleRules.setTemp(day, intent.index, current + intent.deltaTenths, state.value.limits)
             }
-            HeatingIntent.TogglePlusMenu -> _uiExtras.update { it.copy(plusMenuExpanded = !it.plusMenuExpanded) }
+            HeatingIntent.AddSegment -> editDraft { day -> ScheduleRules.addSegment(day, state.value.limits) }
+            is HeatingIntent.RemoveSegment -> editDraft { day -> ScheduleRules.removeSegment(day, intent.index) }
+            HeatingIntent.SaveSchedule -> saveSchedule()
+            HeatingIntent.DiscardSchedule -> currentDraftKey()?.let { key -> extras.update { it.copy(drafts = it.drafts - key) } }
+
+            HeatingIntent.OpenSettingsDialog -> extras.update { it.copy(showSettingsDialog = true) }
+            HeatingIntent.DismissSettingsDialog -> extras.update { it.copy(showSettingsDialog = false) }
+            is HeatingIntent.SaveHysteresis -> {
+                val zone = state.value.selectedZone ?: return
+                extras.update { it.copy(showSettingsDialog = false) }
+                runCommand { node5.updateZone(zone, hysteresis = intent.hysteresis) }
+            }
+            HeatingIntent.Refresh -> viewModelScope.launch { node5.requestState() }
+            HeatingIntent.MessageShown -> extras.update { it.copy(message = null) }
         }
     }
 
-    private fun Boolean.wire() = if (this) "1" else "0"
+    private fun currentDraftKey(): DraftKey? {
+        val s = state.value
+        val zone = s.selectedZone ?: return null
+        return DraftKey(s.nodeId, zone, s.selectedDay)
+    }
 
-    private fun publish(topic: String, payload: String) {
-        viewModelScope.launch { repository.publish(topic, payload) }
+    /** Applies [change] to the selected day, starting a draft from what the editor shows now. */
+    private fun editDraft(change: (List<ScheduleSegment>) -> List<ScheduleSegment>) {
+        val s = state.value
+        if (s.loading) return
+        val key = currentDraftKey() ?: return
+        val baseRev = node5.snapshot.value.zones[key.zone]?.rev
+        extras.update { ui ->
+            val existing = ui.drafts[key]
+            val updated = change(existing?.segments ?: s.editorSegments)
+            ui.copy(drafts = ui.drafts + (key to Draft(updated, existing?.baseRev ?: baseRev)))
+        }
+    }
+
+    private fun saveSchedule() {
+        val s = state.value
+        val key = currentDraftKey() ?: return
+        if (s.scheduleProblem != null || s.loading) return
+        val segments = s.editorSegments
+        runCommand(onAccepted = { extras.update { it.copy(drafts = it.drafts - key) } }) {
+            when (key.day) {
+                DayType.WORKDAY -> node5.updateZone(key.zone, workday = segments)
+                DayType.WEEKEND -> node5.updateZone(key.zone, weekend = segments)
+            }
+        }
+    }
+
+    private fun runCommand(onAccepted: () -> Unit = {}, command: suspend () -> CommandOutcome) {
+        if (extras.value.sending) return
+        extras.update { it.copy(sending = true) }
+        viewModelScope.launch {
+            val outcome = command()
+            if (outcome is CommandOutcome.Accepted) onAccepted()
+            val message = when (outcome) {
+                is CommandOutcome.Accepted -> HeatingMessage.Saved
+                is CommandOutcome.Rejected -> HeatingMessage.Rejected(outcome.error)
+                CommandOutcome.Timeout -> HeatingMessage.Timeout
+                CommandOutcome.NotConnected -> HeatingMessage.NotConnected
+            }
+            extras.update { it.copy(sending = false, message = message) }
+        }
     }
 }
+
+/** Hysteresis values the settings dialog starts from when the node has not sent them yet. */
+internal val DefaultHysteresis = Hysteresis(lowerTenths = 1, upperTenths = 1)

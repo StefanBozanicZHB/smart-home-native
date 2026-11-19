@@ -35,6 +35,10 @@ fun SettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinVie
                     Switch(checked = state.darkTheme, onCheckedChange = { viewModel.onIntent(SettingsIntent.ToggleDarkTheme(it)) })
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_node5_test_board), modifier = Modifier.weight(1f))
+                    Switch(checked = state.node5TestBoard, onCheckedChange = { viewModel.onIntent(SettingsIntent.ToggleNode5TestBoard(it)) })
+                }
+                Row(modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.settings_sprinkler_auto_enable), modifier = Modifier.weight(1f))
                     Switch(checked = state.sprinklerAuto, onCheckedChange = { viewModel.onIntent(SettingsIntent.ToggleSprinklerAuto(it)) })
                 }

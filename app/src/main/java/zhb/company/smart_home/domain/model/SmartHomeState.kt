@@ -42,21 +42,7 @@ data class SmartHomeState(
     val bulbLivingRoomDown2: Boolean = false,
     val bulbLivingRoomDown3: Boolean = false,
 
-    // node5 - heating / boiler
-    val temperatureTubeHeating: String = "--",
-    val isPellets: Boolean = false,
-    val isGas: Boolean = false,
-    val isElectro: Boolean = false,
-    val isMainSwitch: Boolean = false,
-    val isTempRelay: Boolean = false,
-    val upStep: Double = 0.0,
-    val downStep: Double = 0.0,
-    val percentPelletsTank: Double = 0.0,
-    val percentAlarmLimit: Int = 0,
-    val numberOfSegmentsWorking: Int = 0,
-    val workdaySegments: List<HeatingSegment> = emptyList(),
-    val numberOfSegmentsWeekend: Int = 0,
-    val weekendSegments: List<HeatingSegment> = emptyList(),
+    // node5 - heating: see zhb.company.smart_home.data.heating.Node5Repository
 
     // node6 - pool
     val poolPump: Boolean = false,
@@ -88,11 +74,6 @@ data class SmartHomeState(
     fun isNodeOnline(node: Int): Boolean = nodeOnline[node] == true
 }
 
-data class HeatingSegment(
-    val time: String = "00:00",
-    val temp: Int = 20,
-)
-
 enum class AcMode(val code: String) {
     COOL("0"),
     AUTO("8"),
@@ -113,10 +94,4 @@ enum class AcFanSpeed(val code: String) {
     companion object {
         fun fromCode(code: String): AcFanSpeed = entries.firstOrNull { it.code == code } ?: AUTO
     }
-}
-
-enum class HeatingType {
-    PELLETS,
-    GAS,
-    ELECTRIC,
 }

@@ -1,6 +1,7 @@
 package zhb.company.smart_home.data.mqtt
 
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,7 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
-import zhb.company.smart_home.domain.HeatingScheduleCodec
 import zhb.company.smart_home.domain.SprinklerConfigCodec
 import zhb.company.smart_home.domain.computeListPowerDevice
 import zhb.company.smart_home.domain.model.AcFanSpeed
@@ -34,6 +34,13 @@ class SmartHomeRepository(
 
     @Volatile
     private var connection: MqttConnection? = null
+
+    private val messageListeners = CopyOnWriteArrayList<(topic: String, payload: String, retained: Boolean) -> Unit>()
+
+    /** Extra consumers of raw messages (e.g. the Node 5 repository). Called on the MQTT client thread. */
+    fun addMessageListener(listener: (topic: String, payload: String, retained: Boolean) -> Unit) {
+        messageListeners += listener
+    }
 
     suspend fun connect(idToken: String) {
         _connectionState.value = MqttConnectionState.Connecting
@@ -117,6 +124,7 @@ class SmartHomeRepository(
             next = dispatch(topic, payload, next)
             next.copy(listPowerDevice = computeListPowerDevice(next))
         }
+        messageListeners.forEach { it(topic, payload, retained) }
     }
 
     private fun dispatch(topic: String, payload: String, state: SmartHomeState): SmartHomeState {
@@ -161,26 +169,6 @@ class SmartHomeRepository(
             topic == MqttTopics.node4BulbStatus(2) -> state.copy(bulbLivingRoomDown2 = onOff)
             topic == MqttTopics.node4BulbStatus(3) -> state.copy(bulbLivingRoomDown3 = onOff)
 
-            topic == MqttTopics.NODE5_TUBE_TEMP_STATUS -> state.copy(temperatureTubeHeating = formatTemperature(payload))
-            topic == MqttTopics.NODE5_SCHEDULE_WORKDAY_STATUS -> {
-                val segments = HeatingScheduleCodec.decode(payload)
-                state.copy(workdaySegments = segments, numberOfSegmentsWorking = segments.size)
-            }
-            topic == MqttTopics.NODE5_SCHEDULE_WEEKEND_STATUS -> {
-                val segments = HeatingScheduleCodec.decode(payload)
-                state.copy(weekendSegments = segments, numberOfSegmentsWeekend = segments.size)
-            }
-            topic == MqttTopics.NODE5_HEATING_TYPE_STATUS -> when (payload) {
-                "1" -> state.copy(isPellets = true, isGas = false, isElectro = false)
-                "2" -> state.copy(isPellets = false, isGas = true, isElectro = false)
-                else -> state.copy(isPellets = false, isGas = false, isElectro = true)
-            }
-            topic == MqttTopics.NODE5_MAIN_SWITCH_STATUS -> state.copy(isMainSwitch = onOff)
-            topic == MqttTopics.NODE5_UPPER_LIMIT_STATUS -> state.copy(upStep = (payload.toDoubleOrNull() ?: 0.0) / 10.0)
-            topic == MqttTopics.NODE5_LOWER_LIMIT_STATUS -> state.copy(downStep = (payload.toDoubleOrNull() ?: 0.0) / 10.0)
-            topic == MqttTopics.NODE5_HEATING_RELAY_STATUS -> state.copy(isTempRelay = onOff)
-            topic == MqttTopics.NODE5_PELLET_LEVEL_STATUS -> state.copy(percentPelletsTank = payload.toDoubleOrNull() ?: 0.0)
-            topic == MqttTopics.NODE5_ALARM_LEVEL_STATUS -> state.copy(percentAlarmLimit = payload.toIntOrNull() ?: 0)
 
             topic == MqttTopics.NODE6_POOL_PUMP_STATUS -> state.copy(poolPump = onOff)
             topic == MqttTopics.NODE6_POOL_HEATING_STATUS -> state.copy(poolHeating = onOff)
