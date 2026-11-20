@@ -10,6 +10,7 @@ import zhb.company.smart_home.data.mqtt.NodeHealth
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.model.SmartHomeState
+import zhb.company.smart_home.ui.system.NodeLabels
 
 data class NodeRow(
     val nodeId: String,
@@ -21,13 +22,6 @@ data class NodeRow(
 
 data class ConnectionsState(val nodes: List<NodeRow> = emptyList())
 
-private val NODE_LABELS = mapOf(
-    "node0" to "Prskalice (tajmer)", "node1" to "Prskalice / fontana", "node2" to "Dvorište",
-    "node3" to "Ulazna vrata", "node4" to "Dnevni boravak (prizemlje)", "node5" to "Grejanje",
-    "node6" to "Bazen", "node7" to "Šupa", "node8" to "Dnevni boravak (sprat)",
-    "testnode5" to "Grejanje – test ploča",
-)
-
 class ConnectionsViewModel(repository: SmartHomeRepository) : ViewModel() {
     val state: StateFlow<ConnectionsState> = repository.state
         .map(::rows)
@@ -36,6 +30,6 @@ class ConnectionsViewModel(repository: SmartHomeRepository) : ViewModel() {
     private fun rows(home: SmartHomeState): ConnectionsState {
         // node0..node8 always, plus any other node that announced itself (e.g. the bench board).
         val ids = ((0..8).map { "node$it" } + home.nodeHealth.keys.sorted()).distinct()
-        return ConnectionsState(ids.map { id -> NodeRow(id, NODE_LABELS[id] ?: id, home.nodeStatus(id), home.nodeHealth[id]) })
+        return ConnectionsState(ids.map { id -> NodeRow(id, NodeLabels.of(id), home.nodeStatus(id), home.nodeHealth[id]) })
     }
 }

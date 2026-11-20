@@ -8,4 +8,5 @@ sealed class Destination(val route: String) {
     data object Heating : Destination("heating")
     data object House : Destination("house")
     data object SmallHome : Destination("small_home")
+    data object System : Destination("system")
 }

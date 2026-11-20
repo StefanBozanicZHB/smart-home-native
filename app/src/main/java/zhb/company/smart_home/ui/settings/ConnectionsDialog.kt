@@ -38,28 +38,12 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.OfflineReason
 import zhb.company.smart_home.data.mqtt.SignalQuality
-import zhb.company.smart_home.ui.theme.DisableRed
-import zhb.company.smart_home.ui.theme.EnableGreen
+import zhb.company.smart_home.ui.theme.AppTheme
 
+/** Node list with status, signal and firmware; used on the system screen. */
 @Composable
-fun ConnectionsDialog(onDismiss: () -> Unit, viewModel: ConnectionsViewModel = koinViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    ConnectionsDialogContent(state, onDismiss)
-}
-
-@Composable
-private fun ConnectionsDialogContent(state: ConnectionsState, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
-        title = { Text(stringResource(R.string.connections_title)) },
-        text = { ConnectionsList(state) },
-    )
-}
-
-@Composable
-private fun ConnectionsList(state: ConnectionsState) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+internal fun ConnectionsList(state: ConnectionsState) {
+    Column {
         state.nodes.forEach { NodeStatusRow(it) }
         Text(
             stringResource(R.string.connections_legend),
@@ -86,8 +70,8 @@ private fun NodeStatusRow(row: NodeRow) {
         val signal = health?.signal
         if (rssi != null && signal != null) SignalIndicator(rssi, signal, live = row.status == NodeStatus.ONLINE)
         val (icon, tint, description) = when (row.status) {
-            NodeStatus.ONLINE -> Triple(Icons.Filled.CheckCircle, EnableGreen, stringResource(R.string.connections_online))
-            NodeStatus.OFFLINE -> Triple(Icons.Filled.Error, DisableRed, stringResource(R.string.connections_offline))
+            NodeStatus.ONLINE -> Triple(Icons.Filled.CheckCircle, AppTheme.status.active, stringResource(R.string.connections_online))
+            NodeStatus.OFFLINE -> Triple(Icons.Filled.Error, AppTheme.status.danger, stringResource(R.string.connections_offline))
             NodeStatus.UNKNOWN -> Triple(
                 Icons.AutoMirrored.Filled.HelpOutline,
                 MaterialTheme.colorScheme.outline,
@@ -98,16 +82,15 @@ private fun NodeStatusRow(row: NodeRow) {
     }
 }
 
-private val WeakSignalAmber = Color(0xFFF9A825)
 
 /** Four bars plus dBm; colored by quality while the node is online, gray (last known value) otherwise. */
 @Composable
 private fun SignalIndicator(rssi: Int, quality: SignalQuality, live: Boolean) {
     val color = when {
         !live -> MaterialTheme.colorScheme.outline
-        quality == SignalQuality.EXCELLENT || quality == SignalQuality.GOOD -> EnableGreen
-        quality == SignalQuality.WEAK -> WeakSignalAmber
-        else -> DisableRed
+        quality == SignalQuality.EXCELLENT || quality == SignalQuality.GOOD -> AppTheme.status.active
+        quality == SignalQuality.WEAK -> AppTheme.status.warning
+        else -> AppTheme.status.danger
     }
     val empty = MaterialTheme.colorScheme.outlineVariant
     val label = stringResource(R.string.connections_signal, signalName(quality), rssi)

@@ -1,57 +1,84 @@
 package zhb.company.smart_home.ui.home
 
-/** A small colored on/off status line shown under a room card's reading, e.g. "Radi" / "Uključeno". */
-data class RoomStatusBadge(val label: String, val active: Boolean)
+import zhb.company.smart_home.domain.model.AcMode
+import zhb.company.smart_home.ui.format.NO_VALUE
 
-data class RoomCardState(
-    val title: String,
-    val temperature: String,
-    val humidity: String,
-    val online: Boolean,
-    // Extra on/off status lines (e.g. heating's relay/main-switch state). Empty for plain rooms.
-    val statusBadges: List<RoomStatusBadge> = emptyList(),
+/** Something wrong right now; shown at the top of the home screen until it is resolved. */
+sealed interface HomeAlert {
+    data object NotConnected : HomeAlert
+    data class NodeOffline(val label: String, val lastWill: Boolean) : HomeAlert
+
+    /** Heating is in safe mode (pump off); [reason] is the firmware reason code. */
+    data class HeatingSafeMode(val reason: String?) : HomeAlert
+}
+
+data class ZoneSummary(
+    val id: String,
+    val roomTemp: String,
+    val target: String?,
+    val demand: Boolean,
+)
+
+data class HeatingSummary(
+    val online: Boolean = false,
+    val mainSwitch: Boolean = false,
+    val pump: Boolean = false,
+    val flowTemp: String = NO_VALUE,
+    val zones: List<ZoneSummary> = emptyList(),
 )
 
 data class HomeState(
-    val darkTheme: Boolean = false,
     val connected: Boolean = false,
-    val mainDoorOnline: Boolean = false,
-    val mainDoorLocked: Boolean = true,
-    val tempUp: String = "--",
-    val tempDown: String = "--",
-    val tempOutdoor: String = "--",
+    val alerts: List<HomeAlert> = emptyList(),
+    val sections: List<HomeSection> = HomeLayout.sections(
+        HomeSignals(false, false, false, false, false, false),
+    ),
+    val heating: HeatingSummary = HeatingSummary(),
+
+    val outdoorTemp: String = NO_VALUE,
+    val outdoorHumidity: String = NO_VALUE,
+    val groundTemp: String = NO_VALUE,
+    val groundHumidity: String = NO_VALUE,
+    val upperTemp: String = NO_VALUE,
+    val upperHumidity: String = NO_VALUE,
+    val poolTemp: String = NO_VALUE,
+
     val sprinklerAuto: Boolean = false,
     val sprinklerStartTime: String = "--:--",
-    val devicesOnCount: Int = 0,
-    val devicesOnList: List<String> = emptyList(),
+    /** Sprinkler zone running now (1-6), null if none. */
+    val sprinklerRunningZone: Int? = null,
+
     val ledStripOn: Boolean = false,
-    val sprinklersOn: Boolean = false,
     val fountainOn: Boolean = false,
     val poolPumpOn: Boolean = false,
     val poolHeaterOn: Boolean = false,
-    val gateOn: Boolean = false,
-    val garden: RoomCardState = RoomCardState("", "--", "--", false),
-    val firstFloor: RoomCardState = RoomCardState("", "--", "--", false),
-    val secondFloor: RoomCardState = RoomCardState("", "--", "--", false),
-    val pool: RoomCardState = RoomCardState("", "--", "--", false),
-    val shed: RoomCardState = RoomCardState("", "--", "--", false),
-    val heating: RoomCardState = RoomCardState("", "--", "--", false),
+    val acOn: Boolean = false,
+    val acTemp: Int = 22,
+    val acMode: AcMode = AcMode.COOL,
+
+    /** Online state of the nodes behind the home tiles; an offline node's tile is disabled. */
+    val yardNodeOnline: Boolean = false,
+    val fountainNodeOnline: Boolean = false,
+    val poolNodeOnline: Boolean = false,
+    val doorNodeOnline: Boolean = false,
+
+    val devicesOnList: List<String> = emptyList(),
     val showDevicesOnDialog: Boolean = false,
-    val plusMenuExpanded: Boolean = false,
+    val showUnlockConfirm: Boolean = false,
 )
 
 sealed interface HomeIntent {
-    data object UnlockFrontDoor : HomeIntent
+    data object RequestUnlockFrontDoor : HomeIntent
+    data object ConfirmUnlockFrontDoor : HomeIntent
+    data object DismissUnlockFrontDoor : HomeIntent
     data class ToggleLedStrip(val on: Boolean) : HomeIntent
-    data class ToggleSprinklers(val on: Boolean) : HomeIntent
     data class ToggleFountain(val on: Boolean) : HomeIntent
     data class TogglePoolPump(val on: Boolean) : HomeIntent
     data class TogglePoolHeater(val on: Boolean) : HomeIntent
-    data class ToggleGate(val on: Boolean) : HomeIntent
+    data object TurnHeatingOn : HomeIntent
     data object ShowDevicesOnDialog : HomeIntent
     data object DismissDevicesOnDialog : HomeIntent
     data object Goodnight : HomeIntent
-    data object TogglePlusMenu : HomeIntent
 }
 
 sealed interface HomeEffect {
