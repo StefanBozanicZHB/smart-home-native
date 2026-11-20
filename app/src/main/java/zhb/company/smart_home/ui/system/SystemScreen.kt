@@ -137,7 +137,6 @@ private fun SystemPreview() {
             SystemContent(
                 ConnectionsState(
                     listOf(
-                        NodeRow("node0", NodeLabels.of("node0"), NodeStatus.ONLINE, null),
                         NodeRow("node1", NodeLabels.of("node1"), NodeStatus.ONLINE, null),
                         NodeRow("node2", NodeLabels.of("node2"), NodeStatus.ONLINE, null),
                         NodeRow("node3", NodeLabels.of("node3"), NodeStatus.UNKNOWN, null),

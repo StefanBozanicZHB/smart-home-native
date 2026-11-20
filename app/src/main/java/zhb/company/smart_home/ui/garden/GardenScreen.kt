@@ -13,6 +13,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,18 +33,27 @@ import androidx.compose.material.icons.outlined.Grass
 import androidx.compose.material.icons.outlined.Light
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Pool
+import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Water
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.WbIncandescent
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -63,6 +75,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import zhb.company.smart_home.R
+import zhb.company.smart_home.domain.garden.ActiveRun
+import zhb.company.smart_home.domain.garden.NextStart
+import zhb.company.smart_home.domain.garden.RunEvent
+import zhb.company.smart_home.domain.garden.RunEventType
+import zhb.company.smart_home.domain.garden.RunPhase
+import zhb.company.smart_home.domain.garden.RunSource
+import zhb.company.smart_home.domain.garden.SkipReason
+import zhb.company.smart_home.domain.garden.Weekday
+import zhb.company.smart_home.ui.components.AlertBanner
 import zhb.company.smart_home.ui.components.BigValue
 import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.DashboardCard
@@ -70,26 +91,61 @@ import zhb.company.smart_home.ui.components.DeviceTile
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatusChip
+import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
-import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.adaptiveColumns
-import zhb.company.smart_home.ui.settings.SprinklerSettingsDialog
+import zhb.company.smart_home.ui.components.isLargeFont
+import zhb.company.smart_home.ui.format.Durations
 import zhb.company.smart_home.ui.theme.AppTheme
 
 @Composable
-fun GardenScreen(viewModel: GardenViewModel = koinViewModel()) {
+fun GardenScreen(onOpenPlan: () -> Unit, viewModel: GardenViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var showSettings by remember { mutableStateOf(false) }
-    GardenContent(state, viewModel::onIntent, onOpenSettings = { showSettings = true })
-    if (state.showLocationDialog) {
-        LocationDialog(activeIndex = state.sprinklerActiveIndex, onDismiss = { viewModel.onIntent(GardenIntent.DismissLocationDialog) })
+    val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(state.message) {
+        val message = state.message ?: return@LaunchedEffect
+        val text = when (message) {
+            GardenMessage.Started -> context.getString(R.string.garden_msg_started)
+            GardenMessage.Stopped -> context.getString(R.string.garden_msg_stopped)
+            GardenMessage.NoZones -> context.getString(R.string.garden_msg_no_zones)
+            GardenMessage.NotSaved -> context.getString(R.string.garden_msg_not_saved)
+            is GardenMessage.Rejected -> context.getString(R.string.heating_msg_rejected, message.error)
+            GardenMessage.Timeout -> context.getString(R.string.heating_msg_timeout)
+            GardenMessage.NotConnected -> context.getString(R.string.heating_msg_not_connected)
+        }
+        viewModel.onIntent(GardenIntent.MessageShown)
+        snackbar.showSnackbar(text)
     }
-    if (showSettings) SprinklerSettingsDialog(onDismiss = { showSettings = false })
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        GardenContent(state, viewModel::onIntent, onOpenPlan)
+        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+    }
+    if (state.showLocationDialog) {
+        LocationDialog(activeIndex = state.irrigation.run?.zone ?: -1, onDismiss = { viewModel.onIntent(GardenIntent.DismissLocationDialog) })
+    }
+    when (val dialog = state.dialog) {
+        is GardenDialog.ConfirmReplace -> AlertDialog(
+            onDismissRequest = { viewModel.onIntent(GardenIntent.DismissDialog) },
+            title = { Text(stringResource(R.string.garden_replace_title)) },
+            text = { Text(stringResource(R.string.garden_replace_text)) },
+            confirmButton = { TextButton(onClick = { viewModel.onIntent(GardenIntent.ConfirmReplace) }) { Text(stringResource(R.string.garden_replace_confirm)) } },
+            dismissButton = { TextButton(onClick = { viewModel.onIntent(GardenIntent.DismissDialog) }) { Text(stringResource(R.string.heating_cancel)) } },
+        )
+        is GardenDialog.AskMinutes -> MinutesDialog(
+            zone = dialog.zone,
+            onConfirm = { viewModel.onIntent(GardenIntent.StartZoneFor(dialog.zone, it)) },
+            onDismiss = { viewModel.onIntent(GardenIntent.DismissDialog) },
+        )
+        null -> Unit
+    }
 }
 
 @Composable
-private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenSettings: () -> Unit) {
+private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenPlan: () -> Unit) {
     val offline = stringResource(R.string.home_node_offline_tile)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -103,78 +159,217 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                 horizontalPadding = 0.dp,
             )
         }
-        item { SprinklerCard(state, onIntent, onOpenSettings) }
+        item { SprinklerCard(state, onIntent, onOpenPlan) }
         item { SoilMoistureCard() }
         item { SectionLabel(stringResource(R.string.garden_fountain_and_lights)) }
         item {
             TileGrid(
                 columns = adaptiveColumns(2),
                 tiles = listOf(
-                    { m -> DeviceTile(Icons.Outlined.Water, stringResource(R.string.garden_fountain_pump), state.fountainPumpOn, { onIntent(GardenIntent.ToggleFountainPump(it)) }, m, enabled = state.fountainOnline, disabledReason = offline) },
-                    { m -> DeviceTile(Icons.Outlined.Light, stringResource(R.string.garden_fountain_light), state.fountainLightOn, { onIntent(GardenIntent.ToggleFountainLight(it)) }, m, enabled = state.fountainOnline, disabledReason = offline) },
+                    { m ->
+                        DeviceTile(
+                            Icons.Outlined.Water, stringResource(R.string.garden_fountain_pump), state.fountainPumpOn,
+                            { onIntent(GardenIntent.SetFountainPump(it)) }, m,
+                            detail = state.fountainPumpLeftSeconds?.let { stringResource(R.string.garden_off_in, leftText(it)) },
+                            enabled = state.node1Online && !state.busy, disabledReason = if (state.node1Online) null else offline,
+                        )
+                    },
+                    { m ->
+                        DeviceTile(
+                            Icons.Outlined.Light, stringResource(R.string.garden_fountain_light), state.fountainLightOn,
+                            { onIntent(GardenIntent.SetFountainLight(it)) }, m,
+                            detail = state.fountainLightLeftSeconds?.let { stringResource(R.string.garden_off_in, leftText(it)) },
+                            enabled = state.node1Online && !state.busy, disabledReason = if (state.node1Online) null else offline,
+                        )
+                    },
                     { m -> DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.garden_led_strip), state.ledStripOn, { onIntent(GardenIntent.ToggleLedStrip(it)) }, m, enabled = state.yardOnline, disabledReason = offline) },
                     { m -> DeviceTile(Icons.Outlined.WbIncandescent, stringResource(R.string.garden_bulb), state.bulbOn, { onIntent(GardenIntent.ToggleBulb(it)) }, m, enabled = state.yardOnline, disabledReason = offline) },
                 ),
             )
         }
+        item { FountainTimers(state, onIntent) }
         item { PoolCard(state, onIntent) }
     }
 }
 
-/** Six zones in a row; the running one is highlighted. Tapping a zone switches it (one zone at a time). */
+/** "Uključi na…" for the fountain pump and light: the node switches them off by itself. */
 @Composable
-private fun SprinklerCard(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenSettings: () -> Unit) {
-    val running = state.sprinklerActiveIndex.takeIf { it in 1..6 }
+private fun FountainTimers(state: GardenState, onIntent: (GardenIntent) -> Unit) {
+    val enabled = state.node1Online && !state.busy
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            stringResource(R.string.garden_fountain_timer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        TimerMenu(stringResource(R.string.garden_fountain_pump_short), enabled) { onIntent(GardenIntent.SetFountainPump(true, it)) }
+        TimerMenu(stringResource(R.string.garden_fountain_light_short), enabled) { onIntent(GardenIntent.SetFountainLight(true, it)) }
+    }
+}
+
+private val FOUNTAIN_TIMER_MINUTES = listOf(30, 60, 120, 240)
+
+@Composable
+private fun TimerMenu(label: String, enabled: Boolean, onPick: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }, enabled = enabled) { Text(label) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            FOUNTAIN_TIMER_MINUTES.forEach { minutes ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.garden_on_for, Durations.compact(minutes * 60L))) },
+                    onClick = {
+                        open = false
+                        onPick(minutes)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Sprinklers on Node 1: what is watering now (zone, phase, time left), the six zones with their
+ * planned minutes (tap = water that zone now), the next scheduled start and the last run event.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SprinklerCard(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenPlan: () -> Unit) {
+    val irrigation = state.irrigation
+    val run = irrigation.run
+    val canCommand = state.node1Online && state.node1Ready && !state.busy
     DashboardCard {
         CardHeader(Icons.Outlined.WaterDrop, stringResource(R.string.garden_sprinklers)) {
             when {
-                running != null -> StatusChip(stringResource(R.string.home_sprinklers_running, running), Tone.ACTIVE)
-                state.sprinklerAuto -> StatusChip(stringResource(R.string.home_sprinklers_auto), Tone.ACTIVE)
+                !state.node1Online -> StatusChip(stringResource(R.string.home_node_offline_tile), Tone.DANGER)
+                run != null -> StatusChip(stringResource(R.string.home_sprinklers_running, run.zone), Tone.ACTIVE)
+                irrigation.pausedUntil != null -> StatusChip(stringResource(R.string.irrigation_paused_chip, shortDate(irrigation.pausedUntil)), Tone.WARNING)
+                irrigation.auto -> StatusChip(stringResource(R.string.home_sprinklers_auto), Tone.ACTIVE)
                 else -> StatusChip(stringResource(R.string.home_sprinklers_manual), Tone.NEUTRAL)
             }
         }
+        irrigation.storage?.let { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.irrigation_storage_problem), Tone.DANGER, detail = it) }
+        if (run != null) RunPanel(run, canCommand, onIntent)
+        ZoneButtons(irrigation, canCommand, onIntent)
+        Text(
+            when {
+                !state.node1Ready -> stringResource(R.string.irrigation_waiting)
+                !irrigation.auto -> stringResource(R.string.irrigation_auto_off)
+                !irrigation.clockKnown -> stringResource(R.string.irrigation_no_clock)
+                irrigation.next != null -> stringResource(R.string.irrigation_next, nextStartText(irrigation.next))
+                else -> stringResource(R.string.irrigation_nothing_scheduled)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        irrigation.lastRun?.let {
+            Text(
+                stringResource(R.string.irrigation_last, lastRunText(it)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.Center) {
+            if (run == null) {
+                FilledTonalButton(onClick = { onIntent(GardenIntent.StartAll) }, enabled = canCommand) { Text(stringResource(R.string.garden_water_all)) }
+            }
+            TextButton(onClick = onOpenPlan) { Text(stringResource(R.string.garden_plan)) }
+            TextButton(onClick = { onIntent(GardenIntent.OpenLocationDialog) }) { Text(stringResource(R.string.garden_map)) }
+        }
+    }
+}
+
+/** The active run: zone and phase, time left in the phase and in the whole run, and Stop. */
+@Composable
+private fun RunPanel(run: ActiveRun, enabled: Boolean, onIntent: (GardenIntent) -> Unit) {
+    Surface(shape = TileShape, color = AppTheme.status.activeContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
+                val phase = when (run.phase) {
+                    RunPhase.SOAK -> stringResource(R.string.irrigation_phase_soak)
+                    else -> stringResource(R.string.irrigation_phase_on)
+                }
+                Text(
+                    stringResource(R.string.irrigation_run_zone, run.zone, phase),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppTheme.status.onActiveContainer,
+                )
+                val parts = listOfNotNull(
+                    run.phaseLeftSeconds?.let { stringResource(R.string.irrigation_phase_left, leftText(it)) },
+                    stringResource(R.string.irrigation_total_left, leftText(run.totalLeftSeconds)),
+                )
+                Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = AppTheme.status.onActiveContainer)
+            }
+            FilledTonalButton(onClick = { onIntent(GardenIntent.StopRun) }, enabled = enabled) {
+                Icon(Icons.Outlined.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.garden_stop), modifier = Modifier.padding(start = 4.dp))
+            }
+        }
+    }
+}
+
+/** Six zones: number and planned minutes; the running zone is highlighted, queued zones outlined. */
+@Composable
+private fun ZoneButtons(irrigation: IrrigationUi, enabled: Boolean, onIntent: (GardenIntent) -> Unit) {
+    val run = irrigation.run
+    val columns = if (isLargeFont()) 3 else 6
+    irrigation.zoneMinutes.indices.chunked(columns).forEach { row ->
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            state.sprinklers.forEachIndexed { i, on ->
+            row.forEach { i ->
                 val zone = i + 1
-                val active = on || zone == running
+                val minutes = irrigation.zoneMinutes[i]
+                val running = run?.zone == zone
+                val queued = run != null && !running && run.zones.indexOf(zone).let { it >= 0 && run.leftSeconds.getOrNull(it)?.let { left -> left > 0 } == true }
                 val description = stringResource(R.string.garden_zone_desc, zone)
+                val stateText = when {
+                    running -> stringResource(R.string.garden_zone_running)
+                    queued -> stringResource(R.string.garden_zone_queued)
+                    else -> stringResource(R.string.garden_zone_minutes, minutes)
+                }
                 Surface(
-                    onClick = { onIntent(GardenIntent.ToggleSprinkler(zone, !active)) },
-                    enabled = state.sprinklerTimerOnline,
+                    onClick = { onIntent(GardenIntent.StartZone(zone)) },
+                    enabled = enabled,
                     shape = TileShape,
-                    color = if (active) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    modifier = Modifier.weight(1f).heightIn(min = 44.dp).semantics {
+                    color = if (running) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    border = if (queued) BorderStroke(1.5.dp, AppTheme.status.active) else null,
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp).semantics {
                         contentDescription = description
-                        stateDescription = if (active) "uključeno" else "isključeno"
+                        stateDescription = stateText
                     },
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, modifier = Modifier.padding(vertical = 6.dp)) {
+                        val fg = if (running) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface
+                        Text("$zone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fg)
                         Text(
-                            "$zone",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (active) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface,
+                            if (minutes > 0) stringResource(R.string.garden_minutes_short, minutes) else "–",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (running) fg else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
-        }
-        if (running != null) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (state.sprinklerAuto) {
-                    stringResource(R.string.garden_plan_auto, state.sprinklerStartTime, state.sprinklerOnMinutes, state.sprinklerSets)
-                } else {
-                    stringResource(R.string.garden_plan_manual)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = { onIntent(GardenIntent.OpenLocationDialog) }) { Text(stringResource(R.string.garden_map)) }
-            TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.garden_settings)) }
+            repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
         }
     }
+}
+
+/** How long to water a zone that has no minutes in the plan. */
+@Composable
+private fun MinutesDialog(zone: Int, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
+    var minutes by remember { mutableIntStateOf(5) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.garden_minutes_title, zone)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.garden_minutes_text), style = MaterialTheme.typography.bodyMedium)
+                MinuteStepper(minutes, 1..60, onChange = { minutes = it }, modifier = Modifier.padding(top = 12.dp))
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(minutes) }) { Text(stringResource(R.string.garden_water_now)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.heating_cancel)) } },
+    )
 }
 
 /** Placeholder until the soil moisture sensor exists (planned next year). */
@@ -302,21 +497,48 @@ private fun LocationDialog(activeIndex: Int, onDismiss: () -> Unit) {
 
 // ---- previews ------------------------------------------------------------------------------------
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Garden - summer evening", heightDp = 1100)
-@androidx.compose.ui.tooling.preview.Preview(name = "Garden - font 200%", heightDp = 2300, fontScale = 2f)
+private val PreviewIrrigation = IrrigationUi(
+    auto = true,
+    zoneMinutes = listOf(10, 10, 0, 15, 10, 10),
+    next = NextStart(Weekday.MON, "20:30", 0),
+    run = ActiveRun(RunSource.SCHEDULE, 2, RunPhase.ON, 95, listOf(1, 2, 4, 5, 6), listOf(0, 95, 900, 600, 600)),
+    lastRun = RunEvent(7, 86412, RunEventType.STARTED, RunSource.SCHEDULE, "06:00", listOf(1, 2, 4, 5, 6), listOf(10, 10, 15, 10, 10), null),
+)
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Garden - watering", heightDp = 1250)
+@androidx.compose.ui.tooling.preview.Preview(name = "Garden - font 200%", heightDp = 2600, fontScale = 2f)
 @Composable
 private fun GardenPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
         Surface {
             GardenContent(
                 GardenState(
-                    yardOnline = true, fountainOnline = true, sprinklerTimerOnline = true, poolOnline = true,
+                    yardOnline = true, node1Online = true, node1Ready = true, poolOnline = true,
                     temperature = "28.4", humidity = "41", ledStripOn = true, poolPumpOn = true, poolTemperature = "26.4",
-                    sprinklerActiveIndex = 3, sprinklerAuto = true, sprinklerStartTime = "05:30", sprinklerOnMinutes = 5, sprinklerSets = 2,
-                    sprinklers = listOf(false, false, true, false, false, false),
+                    fountainLightOn = true, fountainLightLeftSeconds = 5400, irrigation = PreviewIrrigation,
                 ),
                 onIntent = {},
-                onOpenSettings = {},
+                onOpenPlan = {},
+            )
+        }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Garden - paused, idle", heightDp = 700)
+@Composable
+private fun GardenPausedPreview() {
+    zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
+        Surface {
+            GardenContent(
+                GardenState(
+                    yardOnline = true, node1Online = true, node1Ready = true,
+                    irrigation = PreviewIrrigation.copy(
+                        run = null, pausedUntil = "2026-11-22", next = NextStart(Weekday.MON, "06:00", 3),
+                        lastRun = RunEvent(8, 90000, RunEventType.SKIPPED, RunSource.SCHEDULE, "20:30", emptyList(), emptyList(), SkipReason.PAUSED),
+                    ),
+                ),
+                onIntent = {},
+                onOpenPlan = {},
             )
         }
     }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.heating.CommandOutcome
+import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.mqtt.MqttConnectionState

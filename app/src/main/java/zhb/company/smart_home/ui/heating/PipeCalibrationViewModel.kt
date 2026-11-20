@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.heating.CommandOutcome
+import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.domain.heating.BusSensor
 import zhb.company.smart_home.domain.heating.PipeCalibration

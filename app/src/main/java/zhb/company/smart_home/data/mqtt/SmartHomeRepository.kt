@@ -15,7 +15,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
-import zhb.company.smart_home.domain.SprinklerConfigCodec
 import zhb.company.smart_home.domain.computeListPowerDevice
 import zhb.company.smart_home.domain.model.AcFanSpeed
 import zhb.company.smart_home.domain.model.AcMode
@@ -284,32 +283,6 @@ class SmartHomeRepository(
     private fun dispatch(topic: String, payload: String, state: SmartHomeState): SmartHomeState {
         val onOff = payload == "1"
         return when {
-            // node0/sprinkler/status ('auto' field) is the single source of truth for
-            // sprinklerTimerAuto - it's also mirrored on node0/timer and node1/stanje/stanje
-            // (bit 8), but those two can carry stale retained values that race with this one on
-            // connect (arrival order across topics isn't guaranteed), which showed up as the
-            // auto-timer toggle randomly flipping between app runs with no real change on the
-            // device side. node1/stanje/stanje's other bits (sprinklers/fountain) are unaffected
-            // and still read from parseNode1Bitmask below.
-            topic == MqttTopics.NODE0_SPRINKLER_CONFIG_STATUS -> {
-                val dto = SprinklerConfigCodec.decode(payload) ?: return state
-                state.copy(
-                    sprinklerStartTime = dto.start,
-                    sprinklerDurationOnMinutes = dto.on / 60,
-                    sprinklerDurationOffSeconds = dto.off,
-                    sprinklerSets = dto.sets,
-                    sprinklerTimerAuto = dto.auto == 1,
-                )
-            }
-            topic == MqttTopics.NODE1_ALL_STATUS -> parseNode1Bitmask(payload, state)
-            topic == MqttTopics.NODE1_ALL_SPRINKLERS_STATUS -> state.copy(sprinklerAll = onOff)
-            topic.matches(Regex("""bozaSub/kuca/node1/prskalica(\d)/stanje""")) -> {
-                val index = Regex("""prskalica(\d)""").find(topic)?.groupValues?.get(1)?.toIntOrNull() ?: return state
-                updateSprinkler(state, index, onOff)
-            }
-            topic == MqttTopics.NODE1_FOUNTAIN_PUMP_STATUS -> state.copy(fountainPump = onOff)
-            topic == MqttTopics.NODE1_FOUNTAIN_LIGHT_STATUS -> state.copy(fountainLight = onOff)
-
             topic == MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload))
             topic == MqttTopics.NODE2_HUMIDITY -> state.copy(humidityOutdoor = payload)
             topic == MqttTopics.NODE2_LED_STRIP_STATUS -> state.copy(ledStripTerrace = onOff)
@@ -352,40 +325,6 @@ class SmartHomeRepository(
     private fun formatTemperature(raw: String): String {
         val value = raw.toDoubleOrNull() ?: return raw
         return String.format(Locale.US, "%.2f", value)
-    }
-
-    private fun updateSprinkler(state: SmartHomeState, index: Int, on: Boolean): SmartHomeState {
-        val updated = when (index) {
-            1 -> state.copy(sprinkler1 = on)
-            2 -> state.copy(sprinkler2 = on)
-            3 -> state.copy(sprinkler3 = on)
-            4 -> state.copy(sprinkler4 = on)
-            5 -> state.copy(sprinkler5 = on)
-            6 -> state.copy(sprinkler6 = on)
-            else -> state
-        }
-        val activeIndex = listOf(
-            1 to updated.sprinkler1, 2 to updated.sprinkler2, 3 to updated.sprinkler3,
-            4 to updated.sprinkler4, 5 to updated.sprinkler5, 6 to updated.sprinkler6,
-        ).firstOrNull { it.second }?.first ?: -1
-        return updated.copy(sprinklerPower = activeIndex)
-    }
-
-    private fun parseNode1Bitmask(payload: String, state: SmartHomeState): SmartHomeState {
-        if (payload.length < 9) return state
-        fun bit(i: Int) = payload[i] == '1'
-        // bit(8) (auto-timer) is intentionally not read here - node0/sprinkler/status is the
-        // single source of truth for sprinklerTimerAuto, see dispatch()'s comment above.
-        val withSprinklers = state.copy(
-            sprinkler1 = bit(0), sprinkler2 = bit(1), sprinkler3 = bit(2),
-            sprinkler4 = bit(3), sprinkler5 = bit(4), sprinkler6 = bit(5),
-            fountainPump = bit(6), fountainLight = bit(7),
-        )
-        val activeIndex = listOf(
-            1 to withSprinklers.sprinkler1, 2 to withSprinklers.sprinkler2, 3 to withSprinklers.sprinkler3,
-            4 to withSprinklers.sprinkler4, 5 to withSprinklers.sprinkler5, 6 to withSprinklers.sprinkler6,
-        ).firstOrNull { it.second }?.first ?: -1
-        return withSprinklers.copy(sprinklerPower = activeIndex)
     }
 }
 

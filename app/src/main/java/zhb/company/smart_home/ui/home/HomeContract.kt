@@ -49,6 +49,7 @@ data class HomeState(
     val poolTemp: String = NO_VALUE,
 
     val sprinklerAuto: Boolean = false,
+    /** Next scheduled start ("HH:MM", node time), "--:--" if none. */
     val sprinklerStartTime: String = "--:--",
     /** Sprinkler zone running now (1-6), null if none. */
     val sprinklerRunningZone: Int? = null,

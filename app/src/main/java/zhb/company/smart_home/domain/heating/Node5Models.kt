@@ -140,13 +140,8 @@ data class SafeModeState(
 )
 
 /** `node5/result`: the answer to one command. [command] is relative, e.g. `zones/ground/set`. */
-data class Node5CommandResult(
-    val command: String,
-    val id: String?,
-    val ok: Boolean,
-    val rev: Long?,
-    val error: String?,
-)
+/** Answer on `node5/result`; the same format as every node with the new API. */
+typealias Node5CommandResult = zhb.company.smart_home.domain.node.NodeCommandResult
 
 /** A sensor assigned to a pipe; the offset (°C × 100, −500…500) is added to its raw reading. */
 data class PipeAssignment(val address: String, val offsetHundredths: Int = 0)

@@ -3,8 +3,7 @@ package zhb.company.smart_home.ui.system
 /** Human names for MQTT node ids, shared by the home alerts and the system screen. */
 object NodeLabels {
     private val LABELS = mapOf(
-        "node0" to "Prskalice (tajmer)",
-        "node1" to "Prskalice / fontana",
+        "node1" to "Fontana i prskalice",
         "node2" to "Dvorište",
         "node3" to "Ulazna vrata",
         "node4" to "Dnevni boravak (prizemlje)",

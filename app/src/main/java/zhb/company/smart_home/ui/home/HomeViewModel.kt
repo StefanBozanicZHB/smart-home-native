@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zhb.company.smart_home.R
-import zhb.company.smart_home.data.heating.CommandOutcome
+import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.data.garden.Node1Repository
+import zhb.company.smart_home.data.garden.Node1Snapshot
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
@@ -21,6 +23,7 @@ import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.OfflineReason
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.GoodNightUseCase
+import zhb.company.smart_home.domain.garden.Node1Devices
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.model.SmartHomeState
@@ -31,6 +34,7 @@ class HomeViewModel(
     private val repository: SmartHomeRepository,
     private val goodNightUseCase: GoodNightUseCase,
     private val node5: Node5Repository,
+    private val node1: Node1Repository,
 ) : ViewModel() {
 
     private data class UiExtras(val showDevicesOnDialog: Boolean = false, val showUnlockConfirm: Boolean = false)
@@ -44,22 +48,25 @@ class HomeViewModel(
         repository.state,
         repository.connectionState,
         node5.snapshot,
+        node1.snapshot,
         extras,
-    ) { home, connection, heating, ui ->
-        mapState(home, connection, heating, ui)
+    ) { home, connection, heating, yard, ui ->
+        mapState(home, connection, heating, yard, ui)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
-    private fun mapState(home: SmartHomeState, connection: MqttConnectionState, heating: Node5Snapshot, ui: UiExtras): HomeState {
+    private fun mapState(home: SmartHomeState, connection: MqttConnectionState, heating: Node5Snapshot, yard: Node1Snapshot, ui: UiExtras): HomeState {
         val connected = connection is MqttConnectionState.Connected
         val heatingSummary = heatingSummary(home, connected, heating)
-        val sprinklerRunning = home.sprinklerAll || home.sprinklerPower != -1
+        val yardState = yard.state
+        val sprinklerAuto = yard.config?.auto ?: yardState?.auto ?: false
+        val sprinklerRunning = yardState?.run != null
         return HomeState(
             connected = connected,
             alerts = alerts(home, connection, heating),
             sections = HomeLayout.sections(
                 HomeSignals(
                     heatingMainSwitch = heatingSummary.mainSwitch,
-                    sprinklerAuto = home.sprinklerTimerAuto,
+                    sprinklerAuto = sprinklerAuto,
                     sprinklerRunning = sprinklerRunning,
                     poolPumpOn = home.poolPump,
                     poolHeaterOn = home.poolHeating,
@@ -74,11 +81,11 @@ class HomeViewModel(
             upperTemp = Readings.temperature(home.temperatureLivingRoomUp),
             upperHumidity = Readings.percent(home.humidityLivingRoomUp),
             poolTemp = Readings.temperature(home.temperaturePool),
-            sprinklerAuto = home.sprinklerTimerAuto,
-            sprinklerStartTime = home.sprinklerStartTime,
-            sprinklerRunningZone = home.sprinklerPower.takeIf { it in 1..6 },
+            sprinklerAuto = sprinklerAuto,
+            sprinklerStartTime = yardState?.next?.time ?: "--:--",
+            sprinklerRunningZone = yardState?.run?.zone,
             ledStripOn = home.ledStripTerrace,
-            fountainOn = home.fountainPump,
+            fountainOn = yardState?.fountain?.pump ?: false,
             poolPumpOn = home.poolPump,
             poolHeaterOn = home.poolHeating,
             acOn = home.acOn,
@@ -88,7 +95,7 @@ class HomeViewModel(
             fountainNodeOnline = home.isNodeOnline(1),
             poolNodeOnline = home.isNodeOnline(6),
             doorNodeOnline = home.isNodeOnline(3),
-            devicesOnList = home.listPowerDevice,
+            devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState),
             showDevicesOnDialog = ui.showDevicesOnDialog,
             showUnlockConfirm = ui.showUnlockConfirm,
         )
@@ -142,7 +149,10 @@ class HomeViewModel(
                 publish(MqttTopics.NODE3_DOOR_CONTROL, "1")
             }
             is HomeIntent.ToggleLedStrip -> publish(MqttTopics.NODE2_LED_STRIP_CONTROL, intent.on.wire())
-            is HomeIntent.ToggleFountain -> publish(MqttTopics.NODE1_FOUNTAIN_PUMP_CONTROL, intent.on.wire())
+            is HomeIntent.ToggleFountain -> viewModelScope.launch {
+                val outcome = node1.setPump(intent.on)
+                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
+            }
             is HomeIntent.TogglePoolPump -> publish(MqttTopics.NODE6_POOL_PUMP_CONTROL, intent.on.wire())
             is HomeIntent.TogglePoolHeater -> publish(MqttTopics.NODE6_POOL_HEATING_CONTROL, intent.on.wire())
             HomeIntent.TurnHeatingOn -> viewModelScope.launch {

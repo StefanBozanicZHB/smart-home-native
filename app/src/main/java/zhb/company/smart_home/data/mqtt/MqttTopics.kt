@@ -5,23 +5,14 @@ object MqttTopics {
     const val SUBSCRIBE_ALL = "bozaSub/#"
     private const val BASE = "bozaSub/kuca"
 
-    // node0 - sprinkler auto-timer config
-    const val NODE0_SPRINKLER_CONFIG_CONTROL = "$BASE/node0/sprinkler/config"
-    const val NODE0_SPRINKLER_CONFIG_STATUS = "$BASE/node0/sprinkler/status"
-    const val NODE0_SPRINKLER_TIMER_STATUS = "$BASE/node0/timer"
+    // node0 retired with node1-2.0.0 (its sprinkler schedule runs on Node 1).
+    // node1 - fountain and sprinklers: new JSON API, see data/garden/Node1Repository.kt.
 
-    // node1 - sprinklers / fountain / status hub
+    /**
+     * `s` = legacy nodes (2, 3, 6, 8) publish their state. Migrated nodes ignore it and publish
+     * retained states instead; sent on every connect until every node is migrated.
+     */
     const val NODE1_REQUEST_STATUS = "$BASE/node1/stanje"
-    const val NODE1_ALL_STATUS = "$BASE/node1/stanje/stanje"
-    const val NODE1_ALL_SPRINKLERS_CONTROL = "$BASE/node0/sprinkler/manual/all"
-    const val NODE1_ALL_SPRINKLERS_STATUS = "$BASE/node0/sprinkler/manual/status"
-    const val NODE1_SPRINKLER_ALL_STOP = "$BASE/node1/prskalicaAll"
-    fun node0SprinklerControl(index: Int) = "$BASE/node0/sprinkler/manual/sprinkler$index"
-    fun node1SprinklerStatus(index: Int) = "$BASE/node1/prskalica$index/stanje"
-    const val NODE1_FOUNTAIN_PUMP_CONTROL = "$BASE/node1/fontanaPumpa"
-    const val NODE1_FOUNTAIN_PUMP_STATUS = "$BASE/node1/fontanaPumpa/stanje"
-    const val NODE1_FOUNTAIN_LIGHT_CONTROL = "$BASE/node1/fontanaSvetlo"
-    const val NODE1_FOUNTAIN_LIGHT_STATUS = "$BASE/node1/fontanaSvetlo/stanje"
 
     // node2 - terrace / garden
     const val NODE2_HUMIDITY = "$BASE/node2/dvoriste/vlaznost"

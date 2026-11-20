@@ -124,16 +124,7 @@ object Node5Json {
         )
     }
 
-    fun parseResult(payload: String): Node5CommandResult? = parseObject(payload)?.let { o ->
-        Node5CommandResult(
-            command = o.string("cmd") ?: return null,
-            // The node echoes the id as sent; it may be a string or a number.
-            id = (o["id"] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content,
-            ok = o.bool("ok") ?: return null,
-            rev = o.long("rev"),
-            error = o.string("error"),
-        )
-    }
+    fun parseResult(payload: String): Node5CommandResult? = zhb.company.smart_home.domain.node.NodeCommandResult.parse(payload)
 
     /**
      * `pipes` (firmware with pipe sensors). A build that still sends the single `flow_t` (the

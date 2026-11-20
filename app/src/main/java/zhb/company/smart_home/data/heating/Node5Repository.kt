@@ -1,8 +1,5 @@
 package zhb.company.smart_home.data.heating
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,12 +8,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
 import zhb.company.smart_home.data.mqtt.MqttQualityOfService
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.data.node.NodeCommandClient
 import zhb.company.smart_home.domain.heating.Hysteresis
-import zhb.company.smart_home.domain.heating.Node5CommandResult
 import zhb.company.smart_home.domain.heating.Node5Config
 import zhb.company.smart_home.domain.heating.Node5Json
 import zhb.company.smart_home.domain.heating.Node5LiveState
@@ -40,13 +37,6 @@ data class Node5Snapshot(
     val sensors: PipeSensors? = null,
 )
 
-sealed interface CommandOutcome {
-    data class Accepted(val rev: Long?) : CommandOutcome
-    data class Rejected(val error: String) : CommandOutcome
-    data object Timeout : CommandOutcome
-    data object NotConnected : CommandOutcome
-}
-
 /**
  * Node 5 heating API on top of the shared MQTT connection: keeps [snapshot] up to date from
  * the node's retained topics and sends commands, matching each answer on `result` by `id`.
@@ -54,15 +44,15 @@ sealed interface CommandOutcome {
 class Node5Repository(
     private val mqtt: SmartHomeRepository,
     scope: CoroutineScope,
-    private val commandTimeoutMs: Long = 10_000,
-    private val newId: () -> String = defaultIdGenerator(),
+    commandTimeoutMs: Long = 10_000,
+    newId: () -> String = NodeCommandClient.defaultIdGenerator(),
 ) {
     private val _snapshot = MutableStateFlow(Node5Snapshot())
     val snapshot: StateFlow<Node5Snapshot> = _snapshot.asStateFlow()
 
     private val topics = Node5Topics()
 
-    private val pending = ConcurrentHashMap<String, CompletableDeferred<Node5CommandResult>>()
+    private val commands = NodeCommandClient(mqtt, commandTimeoutMs, newId)
 
     init {
         mqtt.addMessageListener(::onMessage)
@@ -97,31 +87,13 @@ class Node5Repository(
     suspend fun updateSensors(changes: Map<Pipe, PipeAssignment?>): CommandOutcome =
         send(topics.sensorsSet) { id -> Node5Json.sensorsSetCommand(id, changes) }
 
-    private suspend fun send(topic: String, payload: (id: String) -> String): CommandOutcome {
-        if (mqtt.connectionState.value !is MqttConnectionState.Connected) return CommandOutcome.NotConnected
-        val id = newId()
-        val answer = CompletableDeferred<Node5CommandResult>()
-        pending[id] = answer
-        return try {
-            mqtt.publish(topic, payload(id), qos = MqttQualityOfService.AT_LEAST_ONCE)
-            val result = withTimeoutOrNull(commandTimeoutMs) { answer.await() }
-            when {
-                result == null -> CommandOutcome.Timeout
-                result.ok -> CommandOutcome.Accepted(result.rev)
-                else -> CommandOutcome.Rejected(result.error.orEmpty())
-            }
-        } finally {
-            pending.remove(id)
-        }
-    }
+    private suspend fun send(topic: String, payload: (id: String) -> String): CommandOutcome = commands.send(topic, payload)
 
     /** Called on the MQTT client's thread for every message on the shared subscription. */
     private fun onMessage(topic: String, payload: String, @Suppress("UNUSED_PARAMETER") retained: Boolean) {
         val path = topics.relative(topic) ?: return
         when {
-            path == Node5Topics.RESULT -> Node5Json.parseResult(payload)?.let { result ->
-                result.id?.let { pending[it]?.complete(result) }
-            }
+            path == Node5Topics.RESULT -> commands.onResult(payload)
             path == Node5Topics.CONFIG -> Node5Json.parseConfig(payload)?.let { c -> _snapshot.update { it.copy(config = c) } }
             path == Node5Topics.STATE -> Node5Json.parseState(payload)?.let { s -> _snapshot.update { it.copy(live = s) } }
             path == Node5Topics.PUMP -> Node5Json.parsePump(payload)?.let { p -> _snapshot.update { it.copy(pump = p) } }
@@ -133,15 +105,6 @@ class Node5Repository(
                     Node5Json.parseZone(payload)?.let { z -> _snapshot.update { it.copy(zones = it.zones + (zone to z)) } }
                 }
             }
-        }
-    }
-
-    companion object {
-        /** Ids unique per app run and readable in broker logs: `app-<start time>-<counter>`. */
-        fun defaultIdGenerator(): () -> String {
-            val session = System.currentTimeMillis() % 1_000_000
-            val counter = AtomicLong()
-            return { "app-$session-${counter.incrementAndGet()}" }
         }
     }
 }

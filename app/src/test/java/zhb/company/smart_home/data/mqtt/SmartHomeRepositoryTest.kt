@@ -156,39 +156,6 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
-    fun `node1 bitmask sets sprinklers and fountain, active sprinkler and power list`() {
-        val repo = repository(FakeMqttConnector())
-
-        repo.handleMessage(MqttTopics.NODE1_ALL_STATUS, "001000011", retained = false)
-
-        val state = repo.state.value
-        assertTrue(state.sprinkler3)
-        assertFalse(state.sprinkler1)
-        assertEquals(3, state.sprinklerPower)
-        assertFalse(state.fountainPump)
-        assertTrue(state.fountainLight)
-        assertFalse("bit 8 must not drive the auto timer", state.sprinklerTimerAuto)
-        assertTrue("Svetlo fontane" in state.listPowerDevice)
-        assertTrue("Prskalice" in state.listPowerDevice)
-    }
-
-    @Test
-    fun `sprinkler config status is the source of the auto timer`() {
-        val repo = repository(FakeMqttConnector())
-
-        repo.handleMessage(
-            MqttTopics.NODE0_SPRINKLER_CONFIG_STATUS,
-            """{"start":"05:30","on":600,"off":30,"sets":2,"auto":1}""",
-            retained = true,
-        )
-
-        val state = repo.state.value
-        assertTrue(state.sprinklerTimerAuto)
-        assertEquals("05:30", state.sprinklerStartTime)
-        assertEquals(10, state.sprinklerDurationOnMinutes)
-    }
-
-    @Test
     fun `new-firmware nodes use status and heartbeat, legacy nodes keep the old rule`() {
         var now = 0L
         val repo = SmartHomeRepository(

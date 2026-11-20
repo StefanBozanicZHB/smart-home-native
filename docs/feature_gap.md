@@ -40,14 +40,14 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | GoodNight | turns off everything incl. `node3/vrata` and heating | doors/gate excluded on purpose; heating excluded since `18ce72e` | ⚠️ intentional difference |
 | Heating card | tube temp, relay, main switch (old API) | flow temp, pump, main switch (Node 5 v2 API) | ✅ (new API) |
 
-### Garden / yard (node0, node1, node2, node6)
+### Garden / yard (node1, node2, node6; node0 retired)
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Yard temperature and humidity | ✓ | ✓ | ✅ |
 | LED strip, lamp (`neonka`, `sijalica`) | ✓ | ✓ | ✅ |
-| Fountain pump and light | ✓ | ✓ | ✅ |
-| Sprinklers 1–6 manual, all on/off, "currently running" | ✓ | ✓ | ✅ |
-| Sprinkler auto timer config (start, on, off, sets, auto) | settings dialog | settings dialog | ✅ |
+| Fountain pump and light | ✓ | ✓, plus automatic switch-off after 30 min – 4 h (Node 1 v2 API) | ✅ (new API) |
+| Sprinklers 1–6 manual, all on/off, "currently running" | ✓ (old API) | manual run of one zone or all, stop, zone/phase/time left, queued zones, last run event (Node 1 v2 API) | ✅ (new API) |
+| Sprinkler schedule | Node 0 timer: start, on, off, sets, auto | "Plan zalivanja" on Node 1: days, up to 4 start times, minutes per zone, soak cycles, rain pause | ✅ (new API, Node 0 retired) |
 | Pool pump, pool heating, pool temperature | ✓ | ✓ | ✅ |
 | Sprinkler location map ("Pregled prskalica") | ✓ | ✓ (location dialog) | ✅ |
 
@@ -77,15 +77,15 @@ Flutter app can control the real heating.
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Light/dark theme | ✓ | ✓ | ✅ |
-| Microcontroller overview (node0–8 online) | ✓ | ✓ | ✅ |
+| Microcontroller overview (node0–8 online) | ✓ | node1–8 (node0 retired) | ✅ |
 | Warning instead of a switch when the device's node is offline ("Mikrokontroler … nije povezan") | ✓ (switch replaced by a warning icon, toast) | online dot only; switches stay active and publish into the void | ❌ |
 
 ## 3. Topic diff summary
 
-Only in Flutter: all old Node 5 topics (intentionally removed), `node0/sprinkler/auto/enable` (constant
-defined but never used in Flutter either), `node8/ac/{temp,fan,mode}` (B1).
-Only in native: `node8/acTemp|acFan|acMode` (B1), Node 5 v2 topics under `node5/`.
-Everything else (nodes 0–4, 6–8) matches.
+Only in Flutter: all old Node 5 and Node 1 topics and every `node0/*` topic (intentionally removed:
+`node1-2.0.0` and `node5-2.0.0` replaced them, Node 0 is retired), `node8/ac/{temp,fan,mode}` (B1).
+Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1 v2 topics under `node1/`, Node 5 v2 topics under `node5/`.
+Everything else (nodes 2–4, 6–8) matches.
 
 ## 4. Improvements that are not Flutter parity
 

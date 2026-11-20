@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.mqtt.FakeMqttConnector
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
@@ -30,10 +31,10 @@ class GoodNightUseCaseTest {
         repo.handleMessage(MqttTopics.NODE6_POOL_PUMP_STATUS, "1", retained = false)
         repo.setAcPower(true)
 
-        val changed = GoodNightUseCase(repo)()
+        val changed = GoodNightUseCase(repo, Node1Repository(repo, backgroundScope))()
 
         assertTrue(changed)
-        val sent = connector.lastConnection!!.published.drop(1).map { it.topic to it.payload } // drop "s" request
+        val sent = connector.lastConnection!!.published.drop(1).filterNot { it.topic.endsWith("node1/config/get") }.map { it.topic to it.payload } // drop "s" request
         assertEquals(
             listOf(
                 MqttTopics.NODE2_BULB_CONTROL to "0",
@@ -50,7 +51,26 @@ class GoodNightUseCaseTest {
         val connector = FakeMqttConnector()
         val repo = connectedRepository(connector)
 
-        assertFalse(GoodNightUseCase(repo)())
-        assertEquals(1, connector.lastConnection!!.published.size) // only the "s" request
+        assertFalse(GoodNightUseCase(repo, Node1Repository(repo, backgroundScope))())
+        assertEquals(1, connector.lastConnection!!.published.count { !it.topic.endsWith("node1/config/get") }) // only the "s" request
+    }
+
+    @Test
+    fun `stops watering and switches the fountain off with Node 1 commands`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = connectedRepository(connector)
+        val node1 = Node1Repository(repo, backgroundScope, commandTimeoutMs = 1_000, newId = { "g" })
+        repo.handleMessage(
+            "bozaSub/kuca/node1/state",
+            """{"seq":1,"up":1,"auto":true,"valve":2,"run":{"src":"app","zone":2,"phase":"on","phase_left":60,"zones":[2],"left":[60]},""" +
+                """"next":null,"paused":false,"fountain":{"pump":true,"light":false},"cfg_rev":1,"storage":null}""",
+            retained = true,
+        )
+
+        assertTrue(GoodNightUseCase(repo, node1)())
+        val topics = connector.lastConnection!!.published.map { it.topic }
+        assertTrue("bozaSub/kuca/node1/fountain/pump/set" in topics)
+        assertTrue("bozaSub/kuca/node1/run/stop" in topics)
+        assertFalse("bozaSub/kuca/node1/fountain/light/set" in topics)
     }
 }

@@ -21,9 +21,6 @@ object PowerDevices {
     val ALL: List<PowerDevice> = listOf(
         PowerDevice("LED traka (dvorište)", MqttTopics.NODE2_LED_STRIP_CONTROL) { it.ledStripTerrace },
         PowerDevice("Sijalica (dvorište)", MqttTopics.NODE2_BULB_CONTROL) { it.bulbTerrace },
-        PowerDevice("Pumpa fontane", MqttTopics.NODE1_FOUNTAIN_PUMP_CONTROL) { it.fountainPump },
-        PowerDevice("Svetlo fontane", MqttTopics.NODE1_FOUNTAIN_LIGHT_CONTROL) { it.fountainLight },
-        PowerDevice("Prskalice", MqttTopics.NODE1_SPRINKLER_ALL_STOP) { it.sprinklerAll || it.sprinklerPower != -1 },
         PowerDevice("Sijalica 1 (šupa)", MqttTopics.node7BulbControl(1)) { it.bulbSmallHome1 },
         PowerDevice("Sijalica 2 (šupa)", MqttTopics.node7BulbControl(2)) { it.bulbSmallHome2 },
         PowerDevice("Sijalica 3 (šupa)", MqttTopics.node7BulbControl(3)) { it.bulbSmallHome3 },

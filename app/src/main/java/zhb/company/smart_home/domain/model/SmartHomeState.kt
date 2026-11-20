@@ -10,24 +10,7 @@ import zhb.company.smart_home.data.mqtt.NodeStatus
  * arrive, and read by every screen ViewModel.
  */
 data class SmartHomeState(
-    // node0 - sprinkler auto-timer config
-    val sprinklerStartTime: String = "00:00",
-    val sprinklerDurationOnMinutes: Int = 1,
-    val sprinklerDurationOffSeconds: Int = 0,
-    val sprinklerSets: Int = 1,
-    val sprinklerTimerAuto: Boolean = false,
-
-    // node1 - sprinklers / fountain / status hub
-    val sprinklerAll: Boolean = false,
-    val sprinkler1: Boolean = false,
-    val sprinkler2: Boolean = false,
-    val sprinkler3: Boolean = false,
-    val sprinkler4: Boolean = false,
-    val sprinkler5: Boolean = false,
-    val sprinkler6: Boolean = false,
-    val sprinklerPower: Int = -1,
-    val fountainPump: Boolean = false,
-    val fountainLight: Boolean = false,
+    // node1 (fountain, sprinklers): data/garden/Node1Repository; node5 (heating): data/heating/Node5Repository.
 
     // node2 - terrace / garden
     val ledStripTerrace: Boolean = false,

@@ -13,6 +13,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import zhb.company.smart_home.data.mqtt.FakeMqttConnector
+import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto

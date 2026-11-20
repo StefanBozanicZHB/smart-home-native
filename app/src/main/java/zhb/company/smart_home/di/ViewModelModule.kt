@@ -1,6 +1,7 @@
 package zhb.company.smart_home.di
 
 import org.koin.core.module.dsl.viewModel
+import zhb.company.smart_home.ui.garden.IrrigationPlanViewModel
 import zhb.company.smart_home.ui.history.HistoryViewModel
 import zhb.company.smart_home.ui.notifications.NotificationsViewModel
 import org.koin.android.ext.koin.androidContext
@@ -24,14 +25,15 @@ import zhb.company.smart_home.ui.smallhome.SmallHomeViewModel
 val viewModelModule = module {
     viewModel { AuthViewModel(get()) }
     viewModel { MqttConnectViewModel(get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get()) }
-    viewModel { GardenViewModel(get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get()) }
+    viewModel { GardenViewModel(get(), get()) }
+    viewModel { IrrigationPlanViewModel(get(), get()) }
     viewModel { HeatingViewModel(get(), get()) }
     viewModel { PipeSensorsViewModel(get(), get()) }
     viewModel { PipeCalibrationViewModel(get()) }
     viewModel { HouseViewModel(get()) }
     viewModel { SmallHomeViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get()) }
     viewModel { ConnectionsViewModel(get()) }
     viewModel { params -> NodeDetailViewModel(params.get(), get()) }
     viewModel { ThemeStateHolder(get()) }

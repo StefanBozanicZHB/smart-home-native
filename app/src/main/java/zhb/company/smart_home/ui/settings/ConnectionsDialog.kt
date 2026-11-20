@@ -172,7 +172,7 @@ private fun ConnectionsDialogPreview() {
         ConnectionsList(
             ConnectionsState(
                 listOf(
-                    NodeRow("node0", "Prskalice (tajmer)", NodeStatus.ONLINE, null),
+                    NodeRow("node1", "Fontana i prskalice", NodeStatus.ONLINE, health("node1", NodeStatus.ONLINE, null, "node1-2.0.0", -64)),
                     NodeRow("node3", "Ulazna vrata", NodeStatus.UNKNOWN, null),
                     NodeRow("node4", "Dnevni boravak (prizemlje)", NodeStatus.ONLINE, health("node4", NodeStatus.ONLINE, null, "node4-2.1.1", -58)),
                     NodeRow("node2", "Dvorište", NodeStatus.ONLINE, health("node2", NodeStatus.ONLINE, null, "node2-2.0.0", -76)),
