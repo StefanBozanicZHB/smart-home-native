@@ -124,7 +124,8 @@ class HeatingViewModel(
             hasUnsavedDrafts = ui.drafts.any { (key, d) -> key.nodeId == snapshot.nodeId && d.segments != snapshot.zones[key.zone]?.day(key.day).orEmpty() },
             showDiscardDraftsConfirm = ui.showDiscardDraftsConfirm,
             scheduleProblem = ScheduleRules.validateDay(segments, limits),
-            remoteChangedWhileEditing = draft != null && draft.baseRev != zoneSettings?.rev,
+            // Only a draft that really differs can conflict; our own saves move baseRev forward (rebaseDrafts).
+            remoteChangedWhileEditing = draft != null && draft.segments != nodeDay && draft.baseRev != zoneSettings?.rev,
             hysteresis = zoneSettings?.hysteresis,
             minOnSeconds = config?.minOnSeconds,
             minOffSeconds = config?.minOffSeconds,
@@ -179,7 +180,7 @@ class HeatingViewModel(
             is HeatingIntent.SaveHysteresis -> {
                 val zone = state.value.selectedZone ?: return
                 extras.update { it.copy(showSettingsDialog = false) }
-                runCommand { node5.updateZone(zone, hysteresis = intent.hysteresis) }
+                runCommand(onAccepted = { accepted -> rebaseDrafts(zone, accepted.rev) }) { node5.updateZone(zone, hysteresis = intent.hysteresis) }
             }
             HeatingIntent.Refresh -> viewModelScope.launch { node5.requestState() }
             HeatingIntent.MessageShown -> extras.update { it.copy(message = null) }
@@ -213,7 +214,10 @@ class HeatingViewModel(
         val key = currentDraftKey() ?: return
         if (s.scheduleProblem != null || s.loading) return
         val segments = s.editorSegments
-        runCommand(onAccepted = { extras.update { it.copy(drafts = it.drafts - key) } }) {
+        runCommand(onAccepted = { accepted ->
+            extras.update { it.copy(drafts = it.drafts - key) }
+            rebaseDrafts(key.zone, accepted.rev)
+        }) {
             when (key.day) {
                 DayType.WORKDAY -> node5.updateZone(key.zone, workday = segments)
                 DayType.WEEKEND -> node5.updateZone(key.zone, weekend = segments)
@@ -221,12 +225,23 @@ class HeatingViewModel(
         }
     }
 
-    private fun runCommand(onAccepted: () -> Unit = {}, command: suspend () -> CommandOutcome) {
+    /**
+     * Our own accepted change raised the zone revision; other open drafts of that zone were started
+     * from the same program, so they must not be reported as "changed on the node".
+     */
+    private fun rebaseDrafts(zone: String, rev: Long?) {
+        if (rev == null) return
+        extras.update { ui ->
+            ui.copy(drafts = ui.drafts.mapValues { (key, draft) -> if (key.zone == zone) draft.copy(baseRev = rev) else draft })
+        }
+    }
+
+    private fun runCommand(onAccepted: (CommandOutcome.Accepted) -> Unit = {}, command: suspend () -> CommandOutcome) {
         if (extras.value.sending) return
         extras.update { it.copy(sending = true) }
         viewModelScope.launch {
             val outcome = command()
-            if (outcome is CommandOutcome.Accepted) onAccepted()
+            if (outcome is CommandOutcome.Accepted) onAccepted(outcome)
             val message = when (outcome) {
                 is CommandOutcome.Accepted -> HeatingMessage.Saved
                 is CommandOutcome.Rejected -> HeatingMessage.Rejected(outcome.error)
