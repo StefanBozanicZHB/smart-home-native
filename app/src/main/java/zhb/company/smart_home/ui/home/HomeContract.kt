@@ -1,5 +1,6 @@
 package zhb.company.smart_home.ui.home
 
+import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.model.AcMode
 import zhb.company.smart_home.ui.format.NO_VALUE
 
@@ -24,6 +25,7 @@ data class ZoneSummary(
 
 data class HeatingSummary(
     val online: Boolean = false,
+    val status: HeatPumpStatus = HeatPumpStatus.Unknown,
     val mainSwitch: Boolean = false,
     val pump: Boolean = false,
     val flowTemp: String = NO_VALUE,

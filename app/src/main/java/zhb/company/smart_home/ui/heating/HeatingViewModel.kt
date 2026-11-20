@@ -16,6 +16,7 @@ import zhb.company.smart_home.data.mqtt.MqttConnectionState
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.heating.DayType
+import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.Hysteresis
 import zhb.company.smart_home.domain.heating.ScheduleRules
 import zhb.company.smart_home.domain.heating.ScheduleSegment
@@ -99,6 +100,7 @@ class HeatingViewModel(
                 snapshot.safeMode == null && live?.safeReason != null -> SafeModeUi(live.safeReason, null)
                 else -> null
             },
+            pumpStatus = HeatPumpStatus.from(connected, config, live, snapshot.pump, snapshot.safeMode),
             lastPumpChange = snapshot.pump?.let { p ->
                 val ago = live?.uptimeSeconds?.minus(p.atUptimeSeconds)?.takeIf { it >= 0 }?.div(60)
                 PumpChangeUi(on = p.pump, source = p.source, minutesAgo = ago)

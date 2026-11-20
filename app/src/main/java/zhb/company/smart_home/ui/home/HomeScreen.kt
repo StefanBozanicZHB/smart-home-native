@@ -57,6 +57,7 @@ import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.format.NO_VALUE
+import zhb.company.smart_home.ui.heating.HeatPumpStatusLine
 
 @Composable
 fun HomeScreen(
@@ -189,12 +190,8 @@ private fun zoneLabel(id: String): String = when (id) {
 @Composable
 private fun HeatingHeroCard(heating: HeatingSummary, onOpen: () -> Unit) {
     DashboardCard(onClick = onOpen) {
-        CardHeader(Icons.Outlined.LocalFireDepartment, stringResource(R.string.home_heating)) {
-            StatusChip(
-                text = stringResource(if (heating.pump) R.string.heating_pump_running else R.string.heating_pump_idle),
-                tone = if (heating.pump) Tone.ACTIVE else Tone.NEUTRAL,
-            )
-        }
+        CardHeader(Icons.Outlined.LocalFireDepartment, stringResource(R.string.home_heating))
+        HeatPumpStatusLine(heating.status)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             heating.zones.ifEmpty { listOf(ZoneSummary("ground", NO_VALUE, null, false)) }.forEach { zone ->
                 Column(modifier = Modifier.weight(1f)) {
@@ -371,6 +368,7 @@ private val PreviewWinter = HomeState(
     sections = HomeLayout.sections(HomeSignals(true, false, false, false, false, false)),
     heating = HeatingSummary(
         online = true, mainSwitch = true, pump = true, flowTemp = "34.3",
+        status = zhb.company.smart_home.domain.heating.HeatPumpStatus.Running(minutes = 12, demand = true, minRunLeftMinutes = null),
         zones = listOf(ZoneSummary("ground", "21.5", "21.5", true)),
     ),
     outdoorTemp = "3.5", outdoorHumidity = "81", groundTemp = "21.5", groundHumidity = "45", upperTemp = "22.4", upperHumidity = "40",

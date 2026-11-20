@@ -21,6 +21,7 @@ import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.OfflineReason
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.GoodNightUseCase
+import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.model.SmartHomeState
 import zhb.company.smart_home.ui.format.Readings
@@ -50,7 +51,7 @@ class HomeViewModel(
 
     private fun mapState(home: SmartHomeState, connection: MqttConnectionState, heating: Node5Snapshot, ui: UiExtras): HomeState {
         val connected = connection is MqttConnectionState.Connected
-        val heatingSummary = heatingSummary(home, heating)
+        val heatingSummary = heatingSummary(home, connected, heating)
         val sprinklerRunning = home.sprinklerAll || home.sprinklerPower != -1
         return HomeState(
             connected = connected,
@@ -93,11 +94,12 @@ class HomeViewModel(
         )
     }
 
-    private fun heatingSummary(home: SmartHomeState, heating: Node5Snapshot): HeatingSummary {
+    private fun heatingSummary(home: SmartHomeState, connected: Boolean, heating: Node5Snapshot): HeatingSummary {
         val live = heating.live
         val zoneIds = heating.config?.zones ?: live?.zones?.keys?.sorted().orEmpty()
         return HeatingSummary(
             online = home.nodeStatus(heating.nodeId) == NodeStatus.ONLINE,
+            status = HeatPumpStatus.from(connected, heating.config, live, heating.pump, heating.safeMode),
             mainSwitch = heating.config?.mainSwitch ?: live?.mainSwitch ?: false,
             pump = live?.pump ?: false,
             flowTemp = Readings.temperature(live?.pipes?.supply),

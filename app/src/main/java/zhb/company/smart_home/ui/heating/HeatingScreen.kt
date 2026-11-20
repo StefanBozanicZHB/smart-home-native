@@ -73,6 +73,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.heating.DayType
+import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.Hysteresis
 import zhb.company.smart_home.domain.heating.MINUTES_PER_DAY
 import zhb.company.smart_home.domain.heating.Node5Limits
@@ -153,6 +154,7 @@ private fun HeatingContent(
         item { HeatingHeader(state, onIntent) }
         if (state.sending) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         item { StatusBanners(state, onIntent) }
+        item { HeatPumpStatusCard(state.pumpStatus, onTurnOn = { onIntent(HeatingIntent.ToggleMainSwitch(true)) }.takeIf { state.connected && !state.sending }) }
         if (!state.loading) {
             if (state.zones.size > 1) item { ZoneSelector(state, onIntent) }
             item { ZoneCard(state) }
@@ -208,9 +210,6 @@ private fun StatusBanners(state: HeatingState, onIntent: (HeatingIntent) -> Unit
                 )
                 TextButton(onClick = { onIntent(HeatingIntent.Refresh) }) { Text(stringResource(R.string.heating_refresh)) }
             }
-        }
-        state.safeMode?.let { safe ->
-            AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_safe_mode_title), Tone.WARNING, detail = safeModeText(safe.reason))
         }
     }
 }
@@ -310,11 +309,8 @@ private fun RoomVsTargetRing(room: Double?, targetTenths: Int?, roomText: String
 private fun HeatPumpCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit, onOpenSensors: () -> Unit) {
     DashboardCard {
         CardHeader(Icons.Outlined.SwapVert, stringResource(R.string.heating_heat_pump)) {
+            // Running or not is the status card at the top of the screen; no second chip here.
             TextButton(onClick = onOpenSensors) { Text(stringResource(R.string.sensors_open)) }
-            StatusChip(
-                stringResource(if (state.pump) R.string.heating_pump_running else R.string.heating_pump_idle),
-                if (state.pump) Tone.ACTIVE else Tone.NEUTRAL,
-            )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.heating_main_switch), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -545,7 +541,7 @@ private fun ScheduleTimeline(segments: List<ScheduleSegment>, limits: Node5Limit
 }
 
 @Composable
-private fun safeModeText(reason: String?): String = when (reason) {
+internal fun safeModeText(reason: String?): String = when (reason) {
     "startup" -> stringResource(R.string.heating_safe_startup)
     "no_time" -> stringResource(R.string.heating_safe_no_time)
     "mqtt_down" -> stringResource(R.string.heating_safe_mqtt_down)
@@ -779,6 +775,7 @@ private val PreviewToday = HeatingState(
     nodeTime = "21:35", nodeIsWeekend = false,
     lastPumpChange = PumpChangeUi(on = true, source = "thermostat", minutesAgo = 12),
     pipes = PipeTemps(supply = "34.3"),
+    pumpStatus = HeatPumpStatus.Running(minutes = 12, demand = true, minRunLeftMinutes = null),
     nextChange = NextChangeUi("22:30", "19.5"),
     zones = listOf(ZoneUi("ground", roomTemp = "21.2", target = "21.5", roomTempValue = 21.2, targetTenths = 215, demand = true, fault = null)),
     limits = PreviewLimits, selectedZone = "ground", selectedDay = DayType.WORKDAY,
@@ -821,6 +818,7 @@ private fun HeatingSafeModePreview() {
                     nodeId = "testnode5", pump = false, demand = false, flowTemp = "--", pipes = PipeTemps(),
                     nodeIsWeekend = true, selectedDay = DayType.WEEKEND, nextChange = null,
                     safeMode = SafeModeUi("no_schedule", "ground"),
+                    pumpStatus = HeatPumpStatus.SafeMode("no_schedule"),
                     lastPumpChange = PumpChangeUi(on = false, source = "safe_mode", minutesAgo = 3),
                     zones = listOf(ZoneUi("ground", "20.9", null, 20.9, null, demand = false, fault = "no_schedule")),
                     editorSegments = ScheduleRules.defaultDay(PreviewLimits), dayNotSet = true,

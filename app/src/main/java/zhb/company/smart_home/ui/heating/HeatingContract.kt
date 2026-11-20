@@ -1,6 +1,7 @@
 package zhb.company.smart_home.ui.heating
 
 import zhb.company.smart_home.domain.heating.DayType
+import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.Hysteresis
 import zhb.company.smart_home.domain.heating.Node5Limits
 import zhb.company.smart_home.domain.heating.ScheduleProblem
@@ -25,6 +26,8 @@ data class HeatingState(
     val nodeIsWeekend: Boolean? = null,
     val safeMode: SafeModeUi? = null,
     val lastPumpChange: PumpChangeUi? = null,
+    /** Running / waiting / idle / off / safe mode, for the status card at the top. */
+    val pumpStatus: HeatPumpStatus = HeatPumpStatus.Unknown,
     /** Heat pump pipe temperatures; only the flow pipe is published today (node5-2.0.0). */
     val pipes: PipeTemps = PipeTemps(),
     /** Next scheduled change today for the selected zone, from the program the node runs now. */
