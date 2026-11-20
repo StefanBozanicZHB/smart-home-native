@@ -32,9 +32,22 @@ Project settings → Your apps → Android). The Android API key is different fr
 | Settings dialog → "Obaveštenja iz kućnog sistema" | on/off (default on); asks for `POST_NOTIFICATIONS` on Android 13+, links to system settings if denied |
 | `MainActivity` | asks for the permission once, on the first start |
 
-Messages carry a `notification` part (title, body, `android.notification.channel_id`, `tag`) and a
-`data` part (`type` = `node_status`, `heating` or `system`, `event`, `node`, `state`, `since_ms`, `at_ms`). The tag is
-`node-<id>`, so "back online" replaces the "offline" notification of the same node.
+Since notifier 1.4.0 messages are **data-only**: `title`, `body`, `channel_id`, `tag`, `id`
+(stable event id), `feedback` (`1` = show the buttons), `sent_ms`, plus `type` (`node_status`,
+`heating`, `system`, `report`), `event`, `node`/`room`, `state`, `since_ms`, `at_ms`. They reach
+`HomeAlertMessagingService` in the foreground and the background, and the app builds every
+notification (`AlertPayload`). The same tag replaces the previous notification, so "back online"
+replaces "offline" for that node. Older messages with a `notification` part still work.
+
+## Feedback buttons and receipt log
+
+Problem notifications get "U redu je" / "Pravi problem". `FeedbackReceiver` replaces the
+notification with a short silent confirmation and writes `feedback` (`ok`/`problem`) and
+`feedback_ms`; the service writes `received_ms` and the event fields on every arrival. Both go to
+`notification_log/<id>` with PATCH through `NotificationLog`, a persistent queue (SharedPreferences)
+flushed after each write and on app start, so labels survive missing network. The database rules
+must allow authenticated writes to `notification_log/$id`. The RPi exports them to CSV
+(`notification_log_export.py`) for the thesis (implicit labels, RQ4; RPi → phone latency).
 
 Channel ids and the topic name must match the notifier config (`[fcm] topic`) and
 `CHANNEL_NODES` / `CHANNEL_HEATING` / `CHANNEL_SYSTEM` in `das_notifier.py`.

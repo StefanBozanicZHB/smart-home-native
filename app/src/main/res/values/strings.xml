@@ -427,6 +427,12 @@
     <string name="settings_notifications_no_permission">Android ne dozvoljava obaveštenja ovoj aplikaciji.</string>
     <string name="settings_notifications_open_system">Otvori podešavanja</string>
 
+    <!-- Feedback buttons on problem notifications (implicit labels) -->
+    <string name="feedback_ok">U redu je</string>
+    <string name="feedback_problem">Pravi problem</string>
+    <string name="feedback_done_ok">Označeno: u redu je. Hvala!</string>
+    <string name="feedback_done_problem">Označeno: pravi problem. Hvala!</string>
+
     <!-- Daily heating reports (RPi -> Firebase) -->
     <string name="reports_title">Izveštaji o grejanju</string>
     <string name="reports_refresh">Osveži</string>

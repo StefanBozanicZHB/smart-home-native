@@ -24,10 +24,13 @@ class PushNotifications(
     private val context: Context,
     private val preferences: AppPreferences,
     private val scope: CoroutineScope,
+    private val log: NotificationLog,
 ) {
     /** Creates the channels and follows the on/off setting (subscribe / unsubscribe the topic). */
     fun start() {
         createChannels()
+        // Receipts and labels that could not be sent earlier (no network).
+        scope.launch { log.flush() }
         scope.launch {
             preferences.notificationsEnabled.distinctUntilChanged().collect(::applySubscription)
         }
