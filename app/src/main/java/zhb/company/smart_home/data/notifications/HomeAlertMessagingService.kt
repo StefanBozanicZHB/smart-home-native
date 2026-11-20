@@ -8,12 +8,14 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.android.ext.android.inject
 import zhb.company.smart_home.BuildConfig
 import zhb.company.smart_home.MainActivity
 import zhb.company.smart_home.R
+import zhb.company.smart_home.data.local.AppPreferences
 
 /**
  * Receives the notifier's FCM messages. They are data-only, so they arrive here in the
@@ -25,12 +27,17 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
 
     private val push: PushNotifications by inject()
     private val log: NotificationLog by inject()
+    private val preferences: AppPreferences by inject()
 
     override fun onMessageReceived(message: RemoteMessage) {
         val receivedMs = System.currentTimeMillis()
         val n = message.notification
         val payload = AlertPayload.parse(message.data, n?.title, n?.body, n?.channelId, n?.tag) ?: return
-        if (push.hasPermission()) show(this, payload)
+        if (push.hasPermission()) {
+            val quiet = runBlocking { preferences.quietHours.first() }
+            val now = java.time.LocalTime.now()
+            show(this, payload, silent = quiet.silence(payload, now.hour * 60 + now.minute))
+        }
         // This runs on a worker thread FCM gives the app for a short while; a write that does not
         // make it in time stays queued and goes out with the next one.
         runBlocking { withTimeoutOrNull(RECEIPT_TIMEOUT_MS) { log.recordReceipt(payload, receivedMs, BuildConfig.VERSION_NAME) } }
@@ -44,7 +51,7 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
         private const val RECEIPT_TIMEOUT_MS = 8_000L
 
         @SuppressLint("MissingPermission") // callers check PushNotifications.hasPermission()
-        fun show(context: Context, p: AlertPayload) {
+        fun show(context: Context, p: AlertPayload, silent: Boolean = false) {
             val base = (p.tag ?: p.title).hashCode()
             val open = PendingIntent.getActivity(
                 context,
@@ -64,6 +71,7 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
                 .setContentIntent(open)
                 .setWhen(p.atMs ?: System.currentTimeMillis())
                 .setShowWhen(true)
+                .setSilent(silent)
             if (p.feedback && p.id != null) {
                 builder.addAction(0, context.getString(R.string.feedback_ok), feedbackIntent(context, p, AlertPayload.LABEL_OK, base + 1))
                 builder.addAction(0, context.getString(R.string.feedback_problem), feedbackIntent(context, p, AlertPayload.LABEL_PROBLEM, base + 2))

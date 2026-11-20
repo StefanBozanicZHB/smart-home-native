@@ -65,3 +65,11 @@ Reading uses the signed-in user's ID token (`AuthRepository.freshIdToken`, re-si
 one-hour expiry), so the database rules must allow `reports` reads for authenticated users.
 `HeatingReportJsonTest` decodes a report produced by the Python generator.
 
+## Quiet hours
+
+Settings → "Tihi sati" (on by default, 22:00-07:00, editable). Inside the window every notification
+that is not urgent is posted with `setSilent(true)`: it is in the shade, without sound, vibration
+or heads-up. Urgent = a problem with feedback buttons on the `node_status` or `heating_alerts`
+channel (node down, safe mode, too cold); those always alert. Rule in `QuietHours`, applied in
+`HomeAlertMessagingService`; nothing is dropped, and receipts are logged as usual.
+

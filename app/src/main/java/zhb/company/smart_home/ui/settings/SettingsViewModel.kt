@@ -13,6 +13,7 @@ import zhb.company.smart_home.data.heating.Node5Topics
 import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.data.notifications.QuietHours
 import zhb.company.smart_home.domain.SprinklerConfigCodec
 
 class SettingsViewModel(
@@ -49,10 +50,16 @@ class SettingsViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsState())
 
+    val quietHours: StateFlow<QuietHours?> = preferences.quietHours
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     fun onIntent(intent: SettingsIntent) {
         when (intent) {
             is SettingsIntent.ToggleDarkTheme -> viewModelScope.launch { preferences.setDarkTheme(intent.enabled) }
             is SettingsIntent.ToggleNotifications -> viewModelScope.launch { preferences.setNotificationsEnabled(intent.enabled) }
+            is SettingsIntent.SetQuietHours -> viewModelScope.launch {
+                runCatching { preferences.setQuietHours(intent.enabled, intent.start, intent.end) }
+            }
             is SettingsIntent.ToggleNode5TestBoard -> viewModelScope.launch {
                 preferences.setNode5Id(if (intent.enabled) Node5Topics.BENCH else Node5Topics.REAL)
             }

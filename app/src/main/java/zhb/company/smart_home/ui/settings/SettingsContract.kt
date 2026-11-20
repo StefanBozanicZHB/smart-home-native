@@ -16,6 +16,8 @@ data class SettingsState(
 sealed interface SettingsIntent {
     data class ToggleDarkTheme(val enabled: Boolean) : SettingsIntent
     data class ToggleNotifications(val enabled: Boolean) : SettingsIntent
+    /** Applied right away; [start]/[end] are "HH:MM" and already validated. */
+    data class SetQuietHours(val enabled: Boolean, val start: String, val end: String) : SettingsIntent
     data class ToggleNode5TestBoard(val enabled: Boolean) : SettingsIntent
     data class ToggleSprinklerAuto(val enabled: Boolean) : SettingsIntent
     data class SetStartTime(val time: String) : SettingsIntent

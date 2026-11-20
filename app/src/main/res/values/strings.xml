@@ -426,6 +426,10 @@
     <string name="settings_notifications">Obaveštenja iz kućnog sistema</string>
     <string name="settings_notifications_no_permission">Android ne dozvoljava obaveštenja ovoj aplikaciji.</string>
     <string name="settings_notifications_open_system">Otvori podešavanja</string>
+    <string name="settings_quiet_hours">Tihi sati</string>
+    <string name="settings_quiet_from">Od</string>
+    <string name="settings_quiet_to">Do</string>
+    <string name="settings_quiet_hint">U tom periodu stižu bez zvuka sva obaveštenja osim hitnih (čvor nije dostupan, bezbedni režim, prehladno).</string>
 
     <!-- Feedback buttons on problem notifications (implicit labels) -->
     <string name="feedback_ok">U redu je</string>

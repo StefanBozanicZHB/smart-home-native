@@ -30,6 +30,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import zhb.company.smart_home.R
 import zhb.company.smart_home.data.notifications.PushNotifications
+import zhb.company.smart_home.data.notifications.QuietHours
 
 @Composable
 fun SettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
@@ -52,6 +53,8 @@ fun SettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinVie
                     enabled = state.notifications,
                     onToggle = { viewModel.onIntent(SettingsIntent.ToggleNotifications(it)) },
                 )
+                val quiet by viewModel.quietHours.collectAsState()
+                if (state.notifications) quiet?.let { q -> QuietHoursSetting(q) { viewModel.onIntent(it) } }
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.settings_node5_test_board), modifier = Modifier.weight(1f))
                     Switch(checked = state.node5TestBoard, onCheckedChange = { viewModel.onIntent(SettingsIntent.ToggleNode5TestBoard(it)) })
@@ -117,5 +120,47 @@ private fun NotificationsSetting(
                     .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
             )
         }) { Text(stringResource(R.string.settings_notifications_open_system)) }
+    }
+}
+
+/** Quiet hours: switch plus from/to times, each saved as soon as it is a valid HH:MM. */
+@Composable
+private fun QuietHoursSetting(quiet: QuietHours, onIntent: (SettingsIntent) -> Unit) {
+    fun hhmm(minutes: Int) = "%02d:%02d".format(minutes / 60, minutes % 60)
+    var start by remember(quiet.startMinute) { mutableStateOf(hhmm(quiet.startMinute)) }
+    var end by remember(quiet.endMinute) { mutableStateOf(hhmm(quiet.endMinute)) }
+    fun save(enabled: Boolean = quiet.enabled, s: String = start, e: String = end) {
+        if (QuietHours.parseTime(s) != null && QuietHours.parseTime(e) != null) {
+            onIntent(SettingsIntent.SetQuietHours(enabled, s, e))
+        }
+    }
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.settings_quiet_hours), modifier = Modifier.weight(1f))
+        Switch(checked = quiet.enabled, onCheckedChange = { save(enabled = it) })
+    }
+    if (quiet.enabled) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = start,
+                onValueChange = { start = it; save(s = it) },
+                label = { Text(stringResource(R.string.settings_quiet_from)) },
+                isError = QuietHours.parseTime(start) == null,
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = end,
+                onValueChange = { end = it; save(e = it) },
+                label = { Text(stringResource(R.string.settings_quiet_to)) },
+                isError = QuietHours.parseTime(end) == null,
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Text(
+            stringResource(R.string.settings_quiet_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

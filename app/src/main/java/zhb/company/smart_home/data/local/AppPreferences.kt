@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import zhb.company.smart_home.data.heating.Node5Topics
+import zhb.company.smart_home.data.notifications.QuietHours
 
 private val Context.dataStore by preferencesDataStore(name = "smart_home_prefs")
 
@@ -22,6 +23,9 @@ class AppPreferences(private val context: Context) {
         val NODE5_ID = stringPreferencesKey("node5_id")
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
         val NOTIFICATION_PERMISSION_ASKED = booleanPreferencesKey("notification_permission_asked")
+        val QUIET_ENABLED = booleanPreferencesKey("quiet_hours_enabled")
+        val QUIET_START = stringPreferencesKey("quiet_hours_start")
+        val QUIET_END = stringPreferencesKey("quiet_hours_end")
     }
 
     val username: Flow<String?> = context.dataStore.data.map { it[Keys.USERNAME] }
@@ -38,6 +42,24 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.NOTIFICATIONS] = enabled }
+    }
+
+    /** Quiet hours for notifications that are not urgent; on by default, 22:00-07:00. */
+    val quietHours: Flow<QuietHours> = context.dataStore.data.map {
+        QuietHours.of(
+            enabled = it[Keys.QUIET_ENABLED] ?: true,
+            start = it[Keys.QUIET_START] ?: QuietHours.DEFAULT_START,
+            end = it[Keys.QUIET_END] ?: QuietHours.DEFAULT_END,
+        )
+    }
+
+    suspend fun setQuietHours(enabled: Boolean, start: String, end: String) {
+        require(QuietHours.parseTime(start) != null && QuietHours.parseTime(end) != null) { "Time must be HH:MM" }
+        context.dataStore.edit {
+            it[Keys.QUIET_ENABLED] = enabled
+            it[Keys.QUIET_START] = start.trim()
+            it[Keys.QUIET_END] = end.trim()
+        }
     }
 
     /** True once the app has asked for the notification permission on its own (first start). */
