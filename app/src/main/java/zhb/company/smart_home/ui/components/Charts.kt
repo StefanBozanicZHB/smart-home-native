@@ -3,6 +3,7 @@ package zhb.company.smart_home.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -117,13 +118,17 @@ fun LineChart(
     onSelect: ((Int?) -> Unit)? = null,
     height: Dp = 150.dp,
     description: String? = null,
+    /** Hard limits for the left axis, e.g. 0..100 for humidity. */
+    leftBounds: ClosedFloatingPointRange<Float>? = null,
 ) {
     val n = lines.maxOfOrNull { it.values.size } ?: 0
     val hasRight = lines.any { it.axis == ChartAxis.RIGHT && it.values.any { v -> v != null } }
     ChartFrame(n, xTicks, hasRight, selected, onSelect, height, modifier, description) { plot, labels ->
         val left = lines.filter { it.axis == ChartAxis.LEFT }.flatMap { l -> l.values.filterNotNull() + l.low.orEmpty().filterNotNull() + l.high.orEmpty().filterNotNull() }
         val right = lines.filter { it.axis == ChartAxis.RIGHT }.flatMap { l -> l.values.filterNotNull() + l.low.orEmpty().filterNotNull() + l.high.orEmpty().filterNotNull() }
-        val leftRange = if (left.isEmpty()) null else paddedRange(left.min(), left.max(), minSpan = 2f)
+        val leftRange = if (left.isEmpty()) null else paddedRange(left.min(), left.max(), minSpan = 2f).let { r ->
+            if (leftBounds == null) r else r.first.coerceIn(leftBounds) to r.second.coerceIn(leftBounds)
+        }
         val rightRange = if (right.isEmpty()) null else paddedRange(right.min(), right.max(), minSpan = 10f)
         leftRange?.let { labels.axis(it, ChartAxis.LEFT, leftFormat) }
         if (hasRight) rightRange?.let { labels.axis(it, ChartAxis.RIGHT, rightFormat) }
@@ -274,6 +279,39 @@ fun Legend(items: List<Triple<Color, String, LegendStyle>>, modifier: Modifier =
 }
 
 enum class LegendStyle { SOLID, DASHED, BAR }
+
+/** One series in a [ToggleLegend]. */
+data class LegendToggle(val color: Color, val label: String, val visible: Boolean, val onToggle: () -> Unit)
+
+/**
+ * Legend whose entries turn their line on and off. A hidden entry keeps its place, with a gray
+ * mark and a crossed-out label, so it can be turned back on.
+ */
+@Composable
+fun ToggleLegend(items: List<LegendToggle>, modifier: Modifier = Modifier) {
+    val off = MaterialTheme.colorScheme.outline
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        items.forEach { item ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .toggleable(value = item.visible, role = Role.Checkbox, onValueChange = { item.onToggle() })
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                LegendMark(if (item.visible) item.color else off)
+                Text(
+                    item.label,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        textDecoration = if (item.visible) null else androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                    ),
+                    color = if (item.visible) MaterialTheme.colorScheme.onSurfaceVariant else off,
+                )
+            }
+        }
+    }
+}
 
 // --- frame, scales, drawing ---------------------------------------------------------------
 

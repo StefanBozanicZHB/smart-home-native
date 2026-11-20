@@ -16,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.ZoneId
@@ -40,6 +42,8 @@ import zhb.company.smart_home.ui.components.ChartReadout
 import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.Legend
 import zhb.company.smart_home.ui.components.LegendStyle
+import zhb.company.smart_home.ui.components.LegendToggle
+import zhb.company.smart_home.ui.components.ToggleLegend
 import zhb.company.smart_home.ui.components.LineChart
 import zhb.company.smart_home.ui.components.PeriodTabs
 import zhb.company.smart_home.ui.components.Sparkline
@@ -135,6 +139,8 @@ fun PumpRunCard(state: HistoryState) {
 fun ClimateHistoryCard(state: HistoryState) {
     var period by rememberSaveable { mutableStateOf(HistoryPeriod.DAY) }
     var selected by remember(period) { mutableStateOf<Int?>(null) }
+    // Names of hidden places; a saveable list, so it survives rotation and leaving the screen.
+    var hidden by rememberSaveable { mutableStateOf(setOf<String>()) }
     val doc = state.doc(period)
     val colors = mapOf(Place.GROUND to AppTheme.status.warm, Place.UPPER to AppTheme.status.active, Place.OUTDOOR to AppTheme.status.cold)
     DashboardCard {
@@ -150,13 +156,20 @@ fun ClimateHistoryCard(state: HistoryState) {
         val ticks = xTicks(doc.times, doc.endMs)
         val i = selected?.takeIf { it in doc.times.indices }
         val labels = Place.entries.associateWith { stringResource(it.label) }
-        Legend(Place.entries.filter { p -> temps.any { it.first == p } || hums.any { it.first == p } }
-            .map { Triple(colors.getValue(it), labels.getValue(it), LegendStyle.SOLID) })
+        // Tap a place in the legend to hide its lines (e.g. outdoor, which squeezes the indoor ones).
+        ToggleLegend(
+            Place.entries.filter { p -> temps.any { it.first == p } || hums.any { it.first == p } }.map { p ->
+                LegendToggle(colors.getValue(p), labels.getValue(p), p.name !in hidden) {
+                    hidden = if (p.name in hidden) hidden - p.name else hidden + p.name
+                }
+            },
+            modifier = Modifier.offset(x = (-8).dp),
+        )
         if (i != null) ChartReadout(pointLabel(doc.times[i], granularity(period)), emphasized = true)
         if (temps.isNotEmpty()) {
             SectionCaption(stringResource(R.string.history_temperature_title))
             LineChart(
-                lines = temps.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
+                lines = temps.filter { it.first.name !in hidden }.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
                 xTicks = ticks,
                 leftFormat = { "${it.toInt()}°" },
                 selected = i,
@@ -164,20 +177,21 @@ fun ClimateHistoryCard(state: HistoryState) {
                 height = 140.dp,
                 description = stringResource(R.string.history_temperature_title),
             )
-            if (i != null) ChartReadout(temps.joinToString(" · ") { pair -> labels.getValue(pair.first) + " " + (pair.second.avg.getOrNull(i)?.let(::temp) ?: "–") })
+            if (i != null) ChartReadout(temps.filter { it.first.name !in hidden }.joinToString(" · ") { pair -> labels.getValue(pair.first) + " " + (pair.second.avg.getOrNull(i)?.let(::temp) ?: "–") })
         }
         if (hums.isNotEmpty()) {
             SectionCaption(stringResource(R.string.history_humidity_title))
             LineChart(
-                lines = hums.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
+                lines = hums.filter { it.first.name !in hidden }.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
                 xTicks = ticks,
                 leftFormat = { "${it.toInt()} %" },
+                leftBounds = 0f..100f,
                 selected = i,
                 onSelect = { selected = it },
                 height = 140.dp,
                 description = stringResource(R.string.history_humidity_title),
             )
-            if (i != null) ChartReadout(hums.joinToString(" · ") { pair -> labels.getValue(pair.first) + " " + humidityText(pair.second.avg.getOrNull(i)) })
+            if (i != null) ChartReadout(hums.filter { it.first.name !in hidden }.joinToString(" · ") { pair -> labels.getValue(pair.first) + " " + humidityText(pair.second.avg.getOrNull(i)) })
         }
         if (period != HistoryPeriod.DAY && i == null) ChartReadout(stringResource(R.string.history_average_hint))
     }
