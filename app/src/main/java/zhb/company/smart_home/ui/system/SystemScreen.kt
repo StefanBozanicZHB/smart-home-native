@@ -36,7 +36,7 @@ import zhb.company.smart_home.ui.settings.ConnectionsList
 import zhb.company.smart_home.ui.settings.ConnectionsState
 import zhb.company.smart_home.ui.settings.ConnectionsViewModel
 import zhb.company.smart_home.ui.settings.NodeRow
-import zhb.company.smart_home.ui.settings.SettingsDialog
+import zhb.company.smart_home.ui.settings.SystemSettingsDialog
 
 /** Nodes (status, signal, firmware), broker connection and the entry to settings. */
 @Composable
@@ -57,7 +57,7 @@ fun SystemScreen(
         onOpenShed = onOpenShed,
         onOpenNode = onOpenNode,
     )
-    if (showSettings) SettingsDialog(onDismiss = { showSettings = false })
+    if (showSettings) SystemSettingsDialog(onDismiss = { showSettings = false })
 }
 
 @Composable

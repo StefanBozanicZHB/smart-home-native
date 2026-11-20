@@ -74,7 +74,7 @@ import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.adaptiveColumns
-import zhb.company.smart_home.ui.settings.SettingsDialog
+import zhb.company.smart_home.ui.settings.SprinklerSettingsDialog
 import zhb.company.smart_home.ui.theme.AppTheme
 
 @Composable
@@ -85,7 +85,7 @@ fun GardenScreen(viewModel: GardenViewModel = koinViewModel()) {
     if (state.showLocationDialog) {
         LocationDialog(activeIndex = state.sprinklerActiveIndex, onDismiss = { viewModel.onIntent(GardenIntent.DismissLocationDialog) })
     }
-    if (showSettings) SettingsDialog(onDismiss = { showSettings = false })
+    if (showSettings) SprinklerSettingsDialog(onDismiss = { showSettings = false })
 }
 
 @Composable

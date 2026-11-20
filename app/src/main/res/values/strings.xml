@@ -339,6 +339,8 @@
     <string name="settings_sprinkler_off_duration">Pauza između (sek)</string>
     <string name="settings_sprinkler_sets">Broj ponavljanja</string>
     <string name="settings_save">Sačuvaj</string>
+    <string name="settings_close">Zatvori</string>
+    <string name="settings_sprinkler_title">Tajmer prskalica</string>
 
     <!-- Connections / node status dialog -->
     <string name="connections_title">Status konekcija</string>

@@ -7,6 +7,12 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -32,32 +38,47 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.data.notifications.PushNotifications
 import zhb.company.smart_home.data.notifications.QuietHours
 
+/** System settings (opened from the system tab): theme, notifications, quiet hours. Applied right away. */
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
+fun SystemSettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsState()
+    val quiet by viewModel.quietHours.collectAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_title)) },
-        confirmButton = {
-            TextButton(onClick = { viewModel.onIntent(SettingsIntent.Save); onDismiss() }) { Text(stringResource(R.string.settings_save)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Zatvori") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_close)) } },
         text = {
-            Column {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.settings_dark_theme), modifier = Modifier.weight(1f))
-                    Switch(checked = state.darkTheme, onCheckedChange = { viewModel.onIntent(SettingsIntent.ToggleDarkTheme(it)) })
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                SwitchRow(stringResource(R.string.settings_dark_theme), state.darkTheme) {
+                    viewModel.onIntent(SettingsIntent.ToggleDarkTheme(it))
                 }
                 NotificationsSetting(
                     enabled = state.notifications,
                     onToggle = { viewModel.onIntent(SettingsIntent.ToggleNotifications(it)) },
                 )
-                val quiet by viewModel.quietHours.collectAsState()
                 if (state.notifications) quiet?.let { q -> QuietHoursSetting(q) { viewModel.onIntent(it) } }
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.settings_sprinkler_auto_enable), modifier = Modifier.weight(1f))
-                    Switch(checked = state.sprinklerAuto, onCheckedChange = { viewModel.onIntent(SettingsIntent.ToggleSprinklerAuto(it)) })
+            }
+        },
+    )
+}
+
+/** Sprinkler auto-timer settings (opened from the garden tab); sent to Node 0 on "Sačuvaj". */
+@Composable
+fun SprinklerSettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
+    val state by viewModel.state.collectAsState()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_sprinkler_title)) },
+        confirmButton = {
+            TextButton(onClick = { viewModel.onIntent(SettingsIntent.Save); onDismiss() }) { Text(stringResource(R.string.settings_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_close)) } },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                SwitchRow(stringResource(R.string.settings_sprinkler_auto_enable), state.sprinklerAuto) {
+                    viewModel.onIntent(SettingsIntent.ToggleSprinklerAuto(it))
                 }
                 OutlinedTextField(
                     value = state.sprinklerStartTime,
@@ -76,6 +97,15 @@ fun SettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinVie
     )
 }
 
+/** A label and a switch on one line, the label vertically centered on the switch. */
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(label, modifier = Modifier.weight(1f).padding(end = 8.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
 /** On/off switch for push notifications; asks for the Android 13+ permission when turned on. */
 @Composable
 private fun NotificationsSetting(
@@ -92,17 +122,11 @@ private fun NotificationsSetting(
     }
     val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
 
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.settings_notifications), modifier = Modifier.weight(1f))
-        Switch(
-            checked = enabled,
-            onCheckedChange = {
-                onToggle(it)
-                if (it && !granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            },
-        )
+    SwitchRow(stringResource(R.string.settings_notifications), enabled) {
+        onToggle(it)
+        if (it && !granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
     if (enabled && !granted) {
         Text(
@@ -130,12 +154,9 @@ private fun QuietHoursSetting(quiet: QuietHours, onIntent: (SettingsIntent) -> U
             onIntent(SettingsIntent.SetQuietHours(enabled, s, e))
         }
     }
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.settings_quiet_hours), modifier = Modifier.weight(1f))
-        Switch(checked = quiet.enabled, onCheckedChange = { save(enabled = it) })
-    }
+    SwitchRow(stringResource(R.string.settings_quiet_hours), quiet.enabled) { save(enabled = it) }
     if (quiet.enabled) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = start,
                 onValueChange = { start = it; save(s = it) },
