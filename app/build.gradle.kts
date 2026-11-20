@@ -1,4 +1,5 @@
 import com.android.build.api.variant.BuildConfigField
+import com.android.build.api.variant.ResValue
 import java.util.Properties
 
 plugins {
@@ -79,6 +80,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
     packaging {
         resources {
@@ -90,8 +92,23 @@ android {
     }
 }
 
+// Firebase Android app values for FCM push notifications (also in local.properties, copied from
+// the Firebase console's google-services.json). They become the same string resources the
+// google-services plugin would generate, so FirebaseApp initializes itself at startup.
+fun requiredLocal(key: String): String = localProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+    ?: throw GradleException("Missing $key in local.properties (Firebase Android app, see docs/push_notifications.md).")
+val firebaseResources = mapOf(
+    "google_app_id" to requiredLocal("firebase.android.appId"),
+    "google_api_key" to requiredLocal("firebase.android.apiKey"),
+    "gcm_defaultSenderId" to requiredLocal("firebase.senderId"),
+    "project_id" to requiredLocal("firebase.projectId"),
+)
+
 androidComponents {
     onVariants { variant ->
+        firebaseResources.forEach { (name, value) ->
+            variant.resValues.put(variant.makeResValueKey("string", name), ResValue(value, "Firebase (local.properties)"))
+        }
         variant.buildConfigFields?.put(
             "FIREBASE_API_KEY",
             BuildConfigField("String", "\"$firebaseApiKey\"", "Firebase Web API key (from local.properties)"),
@@ -128,6 +145,9 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

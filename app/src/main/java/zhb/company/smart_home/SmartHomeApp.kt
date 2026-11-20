@@ -11,6 +11,7 @@ import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import zhb.company.smart_home.data.mqtt.ConnectionLifecycle
+import zhb.company.smart_home.data.notifications.PushNotifications
 import zhb.company.smart_home.di.appModule
 import zhb.company.smart_home.di.mqttModule
 import zhb.company.smart_home.di.networkModule
@@ -24,6 +25,7 @@ class SmartHomeApp : Application() {
             modules(appModule, networkModule, mqttModule, viewModelModule)
         }
         watchVisibilityAndNetwork(get())
+        get<PushNotifications>().start()
     }
 
     /** Feeds app foreground/background and "network is back" events to the MQTT connection. */

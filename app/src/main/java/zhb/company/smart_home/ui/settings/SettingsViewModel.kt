@@ -30,9 +30,16 @@ class SettingsViewModel(
 
     private val _pending = MutableStateFlow(Pending())
 
-    val state: StateFlow<SettingsState> = combine(repository.state, preferences.isDarkTheme, preferences.node5Id, _pending) { home, darkTheme, node5Id, pending ->
+    val state: StateFlow<SettingsState> = combine(
+        repository.state,
+        preferences.isDarkTheme,
+        preferences.node5Id,
+        preferences.notificationsEnabled,
+        _pending,
+    ) { home, darkTheme, node5Id, notifications, pending ->
         SettingsState(
             darkTheme = darkTheme,
+            notifications = notifications,
             node5TestBoard = node5Id == Node5Topics.BENCH,
             sprinklerAuto = pending.auto ?: home.sprinklerTimerAuto,
             sprinklerStartTime = pending.startTime ?: home.sprinklerStartTime,
@@ -45,6 +52,7 @@ class SettingsViewModel(
     fun onIntent(intent: SettingsIntent) {
         when (intent) {
             is SettingsIntent.ToggleDarkTheme -> viewModelScope.launch { preferences.setDarkTheme(intent.enabled) }
+            is SettingsIntent.ToggleNotifications -> viewModelScope.launch { preferences.setNotificationsEnabled(intent.enabled) }
             is SettingsIntent.ToggleNode5TestBoard -> viewModelScope.launch {
                 preferences.setNode5Id(if (intent.enabled) Node5Topics.BENCH else Node5Topics.REAL)
             }

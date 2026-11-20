@@ -20,6 +20,8 @@ class AppPreferences(private val context: Context) {
         val PASSWORD = stringPreferencesKey("password")
         val DARK_THEME = booleanPreferencesKey("dark_theme")
         val NODE5_ID = stringPreferencesKey("node5_id")
+        val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
+        val NOTIFICATION_PERMISSION_ASKED = booleanPreferencesKey("notification_permission_asked")
     }
 
     val username: Flow<String?> = context.dataStore.data.map { it[Keys.USERNAME] }
@@ -29,6 +31,23 @@ class AppPreferences(private val context: Context) {
     /** Node 5 MQTT node id: "node5" (real heat pump) or "testnode5" (bench-test board). */
     val node5Id: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[Keys.NODE5_ID]?.takeIf { it in Node5Topics.ALLOWED } ?: Node5Topics.REAL
+    }
+
+    /** Push notifications from the house system (FCM topic); on by default. */
+    val notificationsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.NOTIFICATIONS] ?: true }
+
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.NOTIFICATIONS] = enabled }
+    }
+
+    /** True once the app has asked for the notification permission on its own (first start). */
+    suspend fun markNotificationPermissionAsked(): Boolean {
+        var wasAsked = false
+        context.dataStore.edit {
+            wasAsked = it[Keys.NOTIFICATION_PERMISSION_ASKED] ?: false
+            it[Keys.NOTIFICATION_PERMISSION_ASKED] = true
+        }
+        return wasAsked
     }
 
     suspend fun savedUsername(): String? = username.first()

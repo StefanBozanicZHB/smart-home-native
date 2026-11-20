@@ -3,6 +3,7 @@ package zhb.company.smart_home.di
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import zhb.company.smart_home.data.heating.Node5Repository
@@ -11,6 +12,7 @@ import zhb.company.smart_home.data.mqtt.ConnectionLifecycle
 import zhb.company.smart_home.data.mqtt.HiveMqConnector
 import zhb.company.smart_home.data.mqtt.MqttConnector
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.data.notifications.PushNotifications
 import zhb.company.smart_home.data.remote.FirebaseRtdbApi
 import zhb.company.smart_home.domain.GoodNightUseCase
 
@@ -37,4 +39,5 @@ val mqttModule = module {
         )
     }
     single { GoodNightUseCase(get()) }
+    single { PushNotifications(context = androidContext(), preferences = get(), scope = get(named(APP_SCOPE))) }
 }
