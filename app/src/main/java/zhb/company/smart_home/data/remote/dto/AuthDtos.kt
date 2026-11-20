@@ -6,7 +6,10 @@ import kotlinx.serialization.Serializable
 data class SignInRequest(
     val email: String,
     val password: String,
-    val returnSecureToken: Boolean = true,
+    // No default value on purpose: kotlinx.serialization leaves fields equal to their default out
+    // of the JSON, and without returnSecureToken=true the API returns a legacy Identity Toolkit
+    // token that Realtime Database rules treat as "not signed in" (401 Permission denied).
+    val returnSecureToken: Boolean,
 )
 
 @Serializable

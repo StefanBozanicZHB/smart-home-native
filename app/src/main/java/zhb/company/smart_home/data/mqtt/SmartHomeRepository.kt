@@ -95,6 +95,7 @@ class SmartHomeRepository(
         _connectionState.value = MqttConnectionState.Connecting
         clearNodeStatus()
         val config = configSource.fetchMqttClientConfig(idToken).getOrElse {
+            logWarning("MQTT config from Firebase failed: ${it.message}")
             _connectionState.value = MqttConnectionState.Failed(it.message ?: "Konfiguracija nije pronađena")
             return
         }
@@ -192,7 +193,10 @@ class SmartHomeRepository(
 
     private fun connectOnce(): Boolean {
         for (endpoint in endpoints) {
-            val connected = tryConnect(endpoint) ?: continue
+            val connected = tryConnect(endpoint) ?: run {
+                logWarning("Broker ${endpoint.host}:${endpoint.port} not reachable")
+                null
+            } ?: continue
             if (paused) {
                 connected.disconnect()
                 return false
@@ -390,3 +394,8 @@ internal val RECONNECT_DELAYS_MS = longArrayOf(1_000, 2_000, 5_000, 10_000, 30_0
 
 /** Network-change events closer together than this do not trigger another immediate reconnect. */
 internal const val NETWORK_RETRY_MIN_INTERVAL_MS = 5_000L
+
+/** Logcat warning; a no-op in JVM unit tests, where android.util.Log is not available. */
+private fun logWarning(message: String) {
+    runCatching { android.util.Log.w("SmartHomeRepository", message) }
+}

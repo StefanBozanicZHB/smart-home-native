@@ -24,7 +24,7 @@ class FirebaseAuthApi(private val httpClient: HttpClient) {
             "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$apiKey"
         ) {
             contentType(ContentType.Application.Json)
-            setBody(SignInRequest(email = email, password = password))
+            setBody(SignInRequest(email = email, password = password, returnSecureToken = true))
         }
         return if (response.status.isSuccess()) {
             Result.success(response.body<SignInResponse>())
