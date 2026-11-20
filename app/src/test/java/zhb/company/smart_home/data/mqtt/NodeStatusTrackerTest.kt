@@ -70,6 +70,20 @@ class NodeStatusTrackerTest {
     }
 
     @Test
+    fun `a heartbeat without a retained status still marks the node as new firmware`() {
+        // e.g. the retained status was not forwarded by a bridge or lost in a broker restart
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"fw":"node4-2.1.1","up":600,"rssi":-60,"heap":27000,"mqtt":1}""", retained = false, nowMs = t0)
+        val h = status("node4", t0 + 1_000)!!
+        assertEquals(NodeStatus.ONLINE, h.status)
+        assertEquals("node4-2.1.1", h.firmware)
+
+        // a retained info alone: known as new firmware, not seen live yet
+        tracker.onMessage("bozaSub/kuca/node1/info", """{"fw":"node1-2.0.0","ip":"192.168.1.51"}""", retained = true, nowMs = t0)
+        assertEquals(NodeStatus.UNKNOWN, status("node1", t0)?.status)
+        assertEquals("192.168.1.51", status("node1", t0)?.info?.ip)
+    }
+
+    @Test
     fun `legacy nodes and unrelated topics are not tracked`() {
         assertFalse(tracker.onMessage("bozaSub/kuca/node2/neonka", "1", retained = false, nowMs = t0))
         assertFalse(tracker.onMessage("bozaSub/kuca/node0/sprinkler/status", "{}", retained = false, nowMs = t0))

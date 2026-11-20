@@ -116,9 +116,12 @@ data class NodeHealth(
 }
 
 /**
- * Online status of nodes with the new firmware (zhb_mqtt / zhb_heartbeat libraries, node4 and
- * node5 today). A node counts as "new" once it has published `<node>/status`, so a migrated node
- * is picked up without changes here. Legacy nodes keep the old rule in [SmartHomeRepository].
+ * Online status of nodes with the new firmware (zhb_mqtt / zhb_heartbeat libraries: node1, node4,
+ * node5 today). A node counts as "new" once it has published `<node>/status`, `heartbeat`, `info`
+ * or `boot`, so a migrated node is picked up without changes here. The retained `status` alone is
+ * not enough: it can be missing (e.g. a bridge that does not forward retained messages, or a
+ * broker restarted without persistence) while heartbeats keep arriving. Legacy nodes keep the
+ * old rule in [SmartHomeRepository].
  *
  * Rules:
  * - `status` = `offline` (sent by the broker as Last Will) → OFFLINE;
@@ -161,9 +164,10 @@ class NodeStatusTracker(
             }
             return true
         }
-        // Everything else only matters for nodes that have announced themselves with `status`.
-        current ?: return false
-        var next = current
+        // Other topics only matter for nodes that have announced themselves (`status` above, or
+        // one of the common new-firmware topics); legacy topics are left to the old rule.
+        if (current == null && !(leaf in NEW_FIRMWARE_LEAVES && parseObject(payload)?.str("fw") != null)) return false
+        var next = current ?: Entry()
         val heartbeat = if (leaf == "heartbeat") parseHeartbeat(payload) else null
         if (heartbeat != null) next = next.copy(heartbeat = heartbeat, heartbeatAtMs = nowMs)
         if (leaf == "info") next = next.copy(info = parseInfo(payload) ?: next.info)
@@ -190,6 +194,9 @@ class NodeStatusTracker(
     }
 
     companion object {
+        /** Topics only the new firmware publishes; any of them with a `fw` field marks a node as new. */
+        private val NEW_FIRMWARE_LEAVES = setOf("heartbeat", "info", "boot")
+
         /** Three missed 60 s heartbeats. */
         const val DEFAULT_HEARTBEAT_TIMEOUT_MS = 180_000L
 
