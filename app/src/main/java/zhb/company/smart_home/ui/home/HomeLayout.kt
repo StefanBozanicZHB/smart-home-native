@@ -27,7 +27,6 @@ data class HomeSignals(
     val sprinklerAuto: Boolean,
     val sprinklerRunning: Boolean,
     val poolPumpOn: Boolean,
-    val poolHeaterOn: Boolean,
     val acOn: Boolean,
 )
 
@@ -40,11 +39,11 @@ data class HomeSignals(
  */
 object HomeLayout {
     fun sections(s: HomeSignals): List<HomeSection> {
-        val outdoorSeason = s.sprinklerAuto || s.sprinklerRunning || s.poolPumpOn || s.poolHeaterOn || s.acOn
+        val outdoorSeason = s.sprinklerAuto || s.sprinklerRunning || s.poolPumpOn || s.acOn
         return buildList {
             if (s.heatingMainSwitch) add(HomeSection.HEATING_HERO)
             if (outdoorSeason) add(HomeSection.GARDEN_HERO)
-            if (s.poolPumpOn || s.poolHeaterOn || s.acOn) add(HomeSection.SUMMER_TILES)
+            if (s.poolPumpOn || s.acOn) add(HomeSection.SUMMER_TILES)
             add(HomeSection.ROOM_TEMPS)
             add(HomeSection.DEVICES)
             if (!s.heatingMainSwitch) add(HomeSection.HEATING_ROW)

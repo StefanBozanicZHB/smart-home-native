@@ -233,19 +233,22 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
 private fun TimerRow(title: String, enabled: Boolean, items: List<Pair<String, (Int) -> Unit>>) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        items.forEach { (label, onPick) -> TimerMenu(label, enabled, onPick) }
+        items.forEach { (label, onPick) -> TimerMenu(label, enabled, onPick = onPick) }
     }
 }
 
 private val FOUNTAIN_TIMER_MINUTES = listOf(30, 60, 120, 240)
 
+/** The pool pump usually runs for hours (filtering). */
+private val POOL_TIMER_MINUTES = listOf(60, 120, 240, 480)
+
 @Composable
-private fun TimerMenu(label: String, enabled: Boolean, onPick: (Int) -> Unit) {
+private fun TimerMenu(label: String, enabled: Boolean, choices: List<Int> = FOUNTAIN_TIMER_MINUTES, onPick: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { open = true }, enabled = enabled) { Text(label) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            FOUNTAIN_TIMER_MINUTES.forEach { minutes ->
+            choices.forEach { minutes ->
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.garden_on_for, Durations.compact(minutes * 60L))) },
                     onClick = {
@@ -419,8 +422,18 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
             if (!state.poolOnline) StatusChip(stringResource(R.string.home_node_offline_tile), Tone.DANGER)
         }
         BigValue("${state.poolTemperature}°")
-        SwitchRow(stringResource(R.string.garden_pool_pump), state.poolPumpOn, state.poolOnline) { onIntent(GardenIntent.TogglePoolPump(it)) }
-        SwitchRow(stringResource(R.string.garden_pool_heating), state.poolHeatingOn, state.poolOnline) { onIntent(GardenIntent.TogglePoolHeating(it)) }
+        if (state.poolOnline && !state.poolSensorOk) {
+            Text(stringResource(R.string.garden_pool_sensor_missing), style = MaterialTheme.typography.bodySmall, color = AppTheme.status.warning)
+        }
+        val enabled = state.poolOnline && !state.busy
+        SwitchRow(stringResource(R.string.garden_pool_pump), state.poolPumpOn, enabled) { onIntent(GardenIntent.SetPoolPump(it)) }
+        state.poolPumpLeftSeconds?.takeIf { state.poolPumpOn }?.let {
+            Text(stringResource(R.string.garden_off_in, leftText(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.garden_pool_timer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            TimerMenu(stringResource(R.string.garden_pool_pump_short), enabled, POOL_TIMER_MINUTES) { onIntent(GardenIntent.SetPoolPump(true, it)) }
+        }
     }
 }
 
@@ -543,7 +556,7 @@ private fun GardenPreview() {
             GardenContent(
                 GardenState(
                     yardOnline = true, node1Online = true, node1Ready = true, poolOnline = true,
-                    temperature = "28.4", ledStripOn = true, ledStripLeftSeconds = 3600, poolPumpOn = true, poolTemperature = "26.4",
+                    temperature = "28.4", ledStripOn = true, ledStripLeftSeconds = 3600, poolPumpOn = true, poolPumpLeftSeconds = 7140, poolTemperature = "26.4",
                     fountainLightOn = true, fountainLightLeftSeconds = 5400, irrigation = PreviewIrrigation,
                 ),
                 onIntent = {},

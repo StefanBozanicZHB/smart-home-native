@@ -18,6 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node2Repository
+import zhb.company.smart_home.data.garden.Node6Repository
 import zhb.company.smart_home.data.mqtt.FakeMqttConnector
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.remote.MqttConfigSource
@@ -45,7 +46,8 @@ class GardenViewModelsTest {
         private var ids = 0
         val node1 = Node1Repository(mqtt, scope.backgroundScope, newId = { "id-${++ids}" })
         val node2 = Node2Repository(mqtt, scope.backgroundScope, newId = { "n2-${++ids}" })
-        val garden = GardenViewModel(mqtt, node1, node2, today = { LocalDate.of(2026, 11, 20) })
+        val node6 = Node6Repository(mqtt, scope.backgroundScope, newId = { "n6-${++ids}" })
+        val garden = GardenViewModel(mqtt, node1, node2, node6, today = { LocalDate.of(2026, 11, 20) })
         val plan = IrrigationPlanViewModel(mqtt, node1, today = { LocalDate.of(2026, 11, 20) })
 
         fun deliver(path: String, payload: String, retained: Boolean = true) = mqtt.handleMessage("bozaSub/kuca/node1/$path", payload, retained)

@@ -57,7 +57,6 @@
     <string name="home_bulb">Sijalica</string>
     <string name="home_fountain">Fontana</string>
     <string name="home_pool_pump">Pumpa bazena</string>
-    <string name="home_pool_heater">Grejanje bazena</string>
     <string name="home_gate">Kapija</string>
     <string name="home_alert_not_connected">Nema veze sa serverom</string>
     <string name="home_alert_not_connected_detail">Prikazani podaci možda nisu tačni.</string>
@@ -90,7 +89,6 @@
     <string name="home_devices">Uređaji</string>
     <string name="home_all_devices">Svi uređaji</string>
     <string name="home_pool_running">pumpa radi</string>
-    <string name="home_pool_heating_on">grejanje radi</string>
     <string name="home_node_offline_tile">čvor oflajn</string>
     <string name="home_unlock">otključaj</string>
     <string name="home_unlock_title">Otključati ulazna vrata?</string>
@@ -126,7 +124,6 @@
     <string name="garden_fountain_light">Svetlo fontane</string>
     <string name="garden_pool">Bazen</string>
     <string name="garden_pool_pump">Pumpa</string>
-    <string name="garden_pool_heating">Grejanje</string>
     <string name="garden_sprinklers">Prskalice</string>
     <string name="garden_sprinkler_active">Aktivna prskalica</string>
     <string name="garden_sprinkler_none_active">Nijedna prskalica nije aktivna</string>
@@ -141,6 +138,9 @@
     <string name="garden_fountain_and_lights">Fontana i svetla</string>
     <string name="garden_fountain_timer">Fontana sa automatskim gašenjem</string>
     <string name="garden_lights_timer">Svetla sa automatskim gašenjem</string>
+    <string name="garden_pool_timer">Pumpa sa automatskim gašenjem</string>
+    <string name="garden_pool_pump_short">Uključi na…</string>
+    <string name="garden_pool_sensor_missing">Senzor temperature vode ne odgovara; temperatura se ne prikazuje dok se ne javi.</string>
     <string name="garden_led_strip_short">LED traka…</string>
     <string name="garden_bulb_short">Sijalica…</string>
     <string name="garden_sensor_missing">Senzor spoljne temperature ne odgovara. Temperatura se ne prikazuje dok se ne javi.</string>

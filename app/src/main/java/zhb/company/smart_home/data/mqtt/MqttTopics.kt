@@ -27,12 +27,9 @@ object MqttTopics {
 
     // node5 - heating: new JSON API with a switchable node id, see data/heating/Node5Topics.kt
 
-    // node6 - pool
-    const val NODE6_POOL_PUMP_STATUS = "$BASE/node6/pool/pump/status"
-    const val NODE6_POOL_PUMP_CONTROL = "$BASE/node6/pool/pump"
-    const val NODE6_POOL_HEATING_STATUS = "$BASE/node6/pool/heating/status"
-    const val NODE6_POOL_HEATING_CONTROL = "$BASE/node6/pool/heating"
-    const val NODE6_POOL_TEMPERATURE = "$BASE/node6/pool/temperature"
+    // node6 - pool (node6-2.0.0): water temperature, °C; deleted (empty retained message) after
+    // 5 min without a valid reading. The pump uses the JSON API, see data/garden/Node6Repository.kt.
+    const val NODE6_TEMPERATURE = "$BASE/node6/temperature"
 
     // node7 - shed / fingerprint access
     const val NODE7_FINGER_ALL_STATUS = "$BASE/node7/all/fid/stanje"

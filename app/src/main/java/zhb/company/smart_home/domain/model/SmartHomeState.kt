@@ -21,9 +21,7 @@ data class SmartHomeState(
 
     // node5 - heating: see zhb.company.smart_home.data.heating.Node5Repository
 
-    // node6 - pool
-    val poolPump: Boolean = false,
-    val poolHeating: Boolean = false,
+    // node6 - pool: water temperature ("" while withdrawn); the pump in data/garden/Node6Repository
     val temperaturePool: String = "--",
 
     // node7 - shed

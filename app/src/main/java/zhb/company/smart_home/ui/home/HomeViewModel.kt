@@ -18,10 +18,10 @@ import zhb.company.smart_home.data.door.Node3Snapshot
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
 import zhb.company.smart_home.data.garden.Node2Repository
+import zhb.company.smart_home.data.garden.Node6Repository
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
-import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.OfflineReason
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
@@ -29,6 +29,8 @@ import zhb.company.smart_home.domain.GoodNightUseCase
 import zhb.company.smart_home.domain.garden.Node1Devices
 import zhb.company.smart_home.domain.garden.Node2Devices
 import zhb.company.smart_home.domain.garden.Node2State
+import zhb.company.smart_home.domain.garden.Node6Json
+import zhb.company.smart_home.domain.garden.Node6State
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.model.SmartHomeState
@@ -42,6 +44,7 @@ class HomeViewModel(
     private val node1: Node1Repository,
     private val node2: Node2Repository,
     private val node3: Node3Repository,
+    private val node6: Node6Repository,
 ) : ViewModel() {
 
     private data class UiExtras(val showDevicesOnDialog: Boolean = false, val showUnlockConfirm: Boolean = false)
@@ -58,6 +61,7 @@ class HomeViewModel(
         node1.snapshot,
         node2.state,
         node3.snapshot,
+        node6.state,
         extras,
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -68,7 +72,8 @@ class HomeViewModel(
             values[3] as Node1Snapshot,
             values[4] as Node2State?,
             values[5] as Node3Snapshot,
-            values[6] as UiExtras,
+            values[6] as Node6State?,
+            values[7] as UiExtras,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
@@ -79,6 +84,7 @@ class HomeViewModel(
         yard: Node1Snapshot,
         lights: Node2State?,
         door: Node3Snapshot,
+        pool: Node6State?,
         ui: UiExtras,
     ): HomeState {
         val connected = connection is MqttConnectionState.Connected
@@ -94,8 +100,7 @@ class HomeViewModel(
                     heatingMainSwitch = heatingSummary.mainSwitch,
                     sprinklerAuto = sprinklerAuto,
                     sprinklerRunning = sprinklerRunning,
-                    poolPumpOn = home.poolPump,
-                    poolHeaterOn = home.poolHeating,
+                    poolPumpOn = pool?.pump ?: false,
                     acOn = home.acOn,
                 ),
             ),
@@ -111,8 +116,7 @@ class HomeViewModel(
             sprinklerRunningZone = yardState?.run?.zone,
             ledStripOn = lights?.neon ?: false,
             fountainOn = yardState?.fountain?.pump ?: false,
-            poolPumpOn = home.poolPump,
-            poolHeaterOn = home.poolHeating,
+            poolPumpOn = pool?.pump ?: false,
             acOn = home.acOn,
             acTemp = home.acTemp,
             acMode = home.acMode,
@@ -126,7 +130,7 @@ class HomeViewModel(
                 lastAccess = door.lastAccess,
                 lastAccessSecondsAgo = door.lastAccess?.secondsBefore(door.state),
             ),
-            devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState) + Node2Devices.onLabels(lights),
+            devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState) + Node2Devices.onLabels(lights) + Node6Json.onLabels(pool),
             showDevicesOnDialog = ui.showDevicesOnDialog,
             showUnlockConfirm = ui.showUnlockConfirm,
         )
@@ -195,8 +199,10 @@ class HomeViewModel(
                 val outcome = node1.setPump(intent.on)
                 if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
             }
-            is HomeIntent.TogglePoolPump -> publish(MqttTopics.NODE6_POOL_PUMP_CONTROL, intent.on.wire())
-            is HomeIntent.TogglePoolHeater -> publish(MqttTopics.NODE6_POOL_HEATING_CONTROL, intent.on.wire())
+            is HomeIntent.TogglePoolPump -> viewModelScope.launch {
+                val outcome = node6.setPump(intent.on)
+                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
+            }
             HomeIntent.TurnHeatingOn -> viewModelScope.launch {
                 val message = when (node5.setMainSwitch(true)) {
                     is CommandOutcome.Accepted -> R.string.home_heating_turned_on
@@ -213,11 +219,5 @@ class HomeViewModel(
                 _effects.send(HomeEffect.ShowToast(if (turnedOff) R.string.goodnight_toast_off else R.string.goodnight_toast_already_off))
             }
         }
-    }
-
-    private fun Boolean.wire() = if (this) "1" else "0"
-
-    private fun publish(topic: String, payload: String) {
-        viewModelScope.launch { repository.publish(topic, payload) }
     }
 }

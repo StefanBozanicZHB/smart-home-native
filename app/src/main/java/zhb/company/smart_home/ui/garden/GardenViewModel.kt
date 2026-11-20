@@ -13,11 +13,12 @@ import kotlinx.coroutines.launch
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
 import zhb.company.smart_home.data.garden.Node2Repository
-import zhb.company.smart_home.data.mqtt.MqttTopics
+import zhb.company.smart_home.data.garden.Node6Repository
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.domain.garden.IrrigationRules
 import zhb.company.smart_home.domain.garden.Node2State
+import zhb.company.smart_home.domain.garden.Node6State
 import zhb.company.smart_home.domain.model.SmartHomeState
 import zhb.company.smart_home.ui.format.Readings
 
@@ -25,6 +26,7 @@ class GardenViewModel(
     private val repository: SmartHomeRepository,
     private val node1: Node1Repository,
     private val node2: Node2Repository,
+    private val node6: Node6Repository,
     private val today: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
 
@@ -37,11 +39,11 @@ class GardenViewModel(
 
     private val extras = MutableStateFlow(UiExtras())
 
-    val state: StateFlow<GardenState> = combine(repository.state, node1.snapshot, node2.state, extras) { home, yard, lights, ui ->
-        mapState(home, yard, lights, ui)
+    val state: StateFlow<GardenState> = combine(repository.state, node1.snapshot, node2.state, node6.state, extras) { home, yard, lights, pool, ui ->
+        mapState(home, yard, lights, pool, ui)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GardenState())
 
-    private fun mapState(home: SmartHomeState, yard: Node1Snapshot, lights: Node2State?, ui: UiExtras): GardenState {
+    private fun mapState(home: SmartHomeState, yard: Node1Snapshot, lights: Node2State?, pool: Node6State?, ui: UiExtras): GardenState {
         val config = yard.config
         val live = yard.state
         return GardenState(
@@ -59,9 +61,10 @@ class GardenViewModel(
             fountainPumpLeftSeconds = live?.fountain?.pumpLeftSeconds,
             fountainLightOn = live?.fountain?.light ?: false,
             fountainLightLeftSeconds = live?.fountain?.lightLeftSeconds,
-            poolPumpOn = home.poolPump,
-            poolHeatingOn = home.poolHeating,
+            poolPumpOn = pool?.pump ?: false,
+            poolPumpLeftSeconds = pool?.pumpLeftSeconds,
             poolTemperature = Readings.temperature(home.temperaturePool),
+            poolSensorOk = pool?.sensorOk != false,
             irrigation = IrrigationUi(
                 auto = config?.auto ?: live?.auto ?: false,
                 zoneMinutes = config?.zones ?: List(6) { 0 },
@@ -83,8 +86,7 @@ class GardenViewModel(
         when (intent) {
             is GardenIntent.SetLedStrip -> command(null) { node2.setNeon(intent.on, intent.minutes) }
             is GardenIntent.SetBulb -> command(null) { node2.setLamp(intent.on, intent.minutes) }
-            is GardenIntent.TogglePoolPump -> publish(MqttTopics.NODE6_POOL_PUMP_CONTROL, intent.on.wire())
-            is GardenIntent.TogglePoolHeating -> publish(MqttTopics.NODE6_POOL_HEATING_CONTROL, intent.on.wire())
+            is GardenIntent.SetPoolPump -> command(null) { node6.setPump(intent.on, intent.minutes) }
             is GardenIntent.SetFountainPump -> command(null) { node1.setPump(intent.on, intent.minutes) }
             is GardenIntent.SetFountainLight -> command(null) { node1.setLight(intent.on, intent.minutes) }
             is GardenIntent.StartZone -> {
@@ -139,11 +141,5 @@ class GardenViewModel(
             }
             extras.update { it.copy(busy = false, message = message ?: it.message) }
         }
-    }
-
-    private fun Boolean.wire() = if (this) "1" else "0"
-
-    private fun publish(topic: String, payload: String) {
-        viewModelScope.launch { repository.publish(topic, payload) }
     }
 }

@@ -136,6 +136,16 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
+    fun `node6 water temperature from the English topic, a withdrawn value shows as missing`() {
+        val repo = repository(FakeMqttConnector())
+        repo.handleMessage("bozaSub/kuca/node6/temperature", "24.31", retained = true)
+        repo.handleMessage("bozaSub/kuca/node6/pool/temperature", "-127", retained = true)
+        assertEquals("24.31", repo.state.value.temperaturePool)
+        repo.handleMessage("bozaSub/kuca/node6/temperature", "", retained = true)
+        assertEquals("--", zhb.company.smart_home.ui.format.Readings.temperature(repo.state.value.temperaturePool))
+    }
+
+    @Test
     fun `node2 outdoor temperature from the English topic, a withdrawn value shows as missing`() {
         val repo = repository(FakeMqttConnector())
 
@@ -161,11 +171,11 @@ class SmartHomeRepositoryTest {
     fun `only live (non-retained) messages mark a node online`() {
         val repo = repository(FakeMqttConnector())
 
-        repo.handleMessage(MqttTopics.NODE6_POOL_TEMPERATURE, "24", retained = true)
-        assertFalse(repo.state.value.isNodeOnline(6))
+        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "40", retained = true)
+        assertFalse(repo.state.value.isNodeOnline(8))
 
-        repo.handleMessage(MqttTopics.NODE6_POOL_TEMPERATURE, "24.5", retained = false)
-        assertTrue(repo.state.value.isNodeOnline(6))
+        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "41", retained = false)
+        assertTrue(repo.state.value.isNodeOnline(8))
     }
 
     @Test
@@ -192,12 +202,12 @@ class SmartHomeRepositoryTest {
         repo.handleMessage("bozaSub/kuca/node5/status", "offline", retained = true)
         assertEquals(NodeStatus.OFFLINE, repo.state.value.nodeStatus("node5"))
 
-        // node6 (legacy): unknown until a live message, then online with no timeout.
-        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node6"))
-        repo.handleMessage(MqttTopics.NODE6_POOL_TEMPERATURE, "24", retained = false)
+        // node8 (legacy): unknown until a live message, then online with no timeout.
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node8"))
+        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "40", retained = false)
         now = 10_000_000
         repo.refreshNodeHealth()
-        assertTrue(repo.state.value.isNodeOnline(6))
+        assertTrue(repo.state.value.isNodeOnline(8))
     }
 
     @Test
@@ -206,12 +216,12 @@ class SmartHomeRepositoryTest {
         val repo = repository(connector)
         repo.connect("token")
         repo.handleMessage("bozaSub/kuca/node4/status", "online", retained = true)
-        repo.handleMessage(MqttTopics.NODE6_POOL_TEMPERATURE, "24", retained = false)
+        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "40", retained = false)
 
         connector.listeners.last().onDisconnected("network lost")
 
         assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node4"))
-        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node6"))
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node8"))
     }
 
     @Test

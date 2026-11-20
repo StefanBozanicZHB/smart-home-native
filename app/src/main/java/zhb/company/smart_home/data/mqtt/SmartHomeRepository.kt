@@ -290,9 +290,7 @@ class SmartHomeRepository(
             topic == MqttTopics.NODE4_HUMIDITY -> state.copy(humidityLivingRoomDown = payload)
 
 
-            topic == MqttTopics.NODE6_POOL_PUMP_STATUS -> state.copy(poolPump = onOff)
-            topic == MqttTopics.NODE6_POOL_HEATING_STATUS -> state.copy(poolHeating = onOff)
-            topic == MqttTopics.NODE6_POOL_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload))
+            topic == MqttTopics.NODE6_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload))
 
             topic == MqttTopics.NODE7_FINGER_ALL_STATUS ||
                 topic == MqttTopics.NODE7_FINGER_ADD_STATUS ||

@@ -21,6 +21,7 @@ import zhb.company.smart_home.data.remote.FirebaseRtdbApi
 import zhb.company.smart_home.data.door.Node3Repository
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node2Repository
+import zhb.company.smart_home.data.garden.Node6Repository
 import zhb.company.smart_home.domain.GoodNightUseCase
 
 /** Process-wide scope for background work that outlives screens (reconnects, health checks). */
@@ -48,7 +49,8 @@ val mqttModule = module {
     single(createdAtStart = true) { Node1Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
     single(createdAtStart = true) { Node2Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
     single(createdAtStart = true) { Node3Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
-    single { GoodNightUseCase(get(), get(), get()) }
+    single(createdAtStart = true) { Node6Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
+    single { GoodNightUseCase(get(), get(), get(), get()) }
     single { PushNotifications(context = androidContext(), preferences = get(), scope = get(named(APP_SCOPE)), log = get()) }
     single { NotificationLog(context = androidContext(), httpClient = get(), auth = get()) }
     single { NotificationInbox(context = androidContext(), log = get()) }

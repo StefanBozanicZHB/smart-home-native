@@ -48,7 +48,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Fountain pump and light | ✓ | ✓, plus automatic switch-off after 30 min – 4 h (Node 1 v2 API) | ✅ (new API) |
 | Sprinklers 1–6 manual, all on/off, "currently running" | ✓ (old API) | manual run of one zone or all, stop, zone/phase/time left, queued zones, last run event (Node 1 v2 API) | ✅ (new API) |
 | Sprinkler schedule | Node 0 timer: start, on, off, sets, auto | "Plan zalivanja" on Node 1: days, up to 4 start times, minutes per zone, soak cycles, rain pause | ✅ (new API, Node 0 retired) |
-| Pool pump, pool heating, pool temperature | ✓ | ✓ | ✅ |
+| Pool pump, pool heating, pool temperature | ✓ (old topics; heating had no firmware behind it) | pump via `node6/pump/set` with automatic switch-off, water temperature from `node6/temperature`; heating removed (Node 6 v2 API) | ✅ (new API) |
 | Sprinkler location map ("Pregled prskalica") | ✓ | ✓ (location dialog) | ✅ |
 
 ### House (upper floor, node8)
@@ -84,8 +84,8 @@ Flutter app can control the real heating.
 
 Only in Flutter: all old Node 5 and Node 1 topics and every `node0/*` topic (intentionally removed:
 `node1-2.0.0` and `node5-2.0.0` replaced them, Node 0 is retired), `node8/ac/{temp,fan,mode}` (B1).
-Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1, 2, 3 and 5 v2 topics under `node1/`, `node2/`, `node3/`, `node5/`.
-Everything else (nodes 4, 6–8) matches.
+Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1, 2, 3, 5 and 6 v2 topics under `node1/`, `node2/`, `node3/`, `node5/`, `node6/`.
+Everything else (nodes 4, 7, 8) matches.
 
 ## 4. Improvements that are not Flutter parity
 

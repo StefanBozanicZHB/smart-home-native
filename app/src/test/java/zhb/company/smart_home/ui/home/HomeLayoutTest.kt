@@ -17,7 +17,7 @@ class HomeLayoutTest {
 
     private val idle = HomeSignals(
         heatingMainSwitch = false, sprinklerAuto = false, sprinklerRunning = false,
-        poolPumpOn = false, poolHeaterOn = false, acOn = false,
+        poolPumpOn = false, acOn = false,
     )
 
     @Test

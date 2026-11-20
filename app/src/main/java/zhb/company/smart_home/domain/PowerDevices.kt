@@ -22,8 +22,6 @@ object PowerDevices {
         PowerDevice("Sijalica 1 (šupa)", MqttTopics.node7BulbControl(1)) { it.bulbSmallHome1 },
         PowerDevice("Sijalica 2 (šupa)", MqttTopics.node7BulbControl(2)) { it.bulbSmallHome2 },
         PowerDevice("Sijalica 3 (šupa)", MqttTopics.node7BulbControl(3)) { it.bulbSmallHome3 },
-        PowerDevice("Pumpa bazena", MqttTopics.NODE6_POOL_PUMP_CONTROL) { it.poolPump },
-        PowerDevice("Grejanje bazena", MqttTopics.NODE6_POOL_HEATING_CONTROL) { it.poolHeating },
     )
 }
 

@@ -36,7 +36,7 @@ data class HomeState(
     val connected: Boolean = false,
     val alerts: List<HomeAlert> = emptyList(),
     val sections: List<HomeSection> = HomeLayout.sections(
-        HomeSignals(false, false, false, false, false, false),
+        HomeSignals(false, false, false, false, false),
     ),
     val heating: HeatingSummary = HeatingSummary(),
 
@@ -56,7 +56,6 @@ data class HomeState(
     val ledStripOn: Boolean = false,
     val fountainOn: Boolean = false,
     val poolPumpOn: Boolean = false,
-    val poolHeaterOn: Boolean = false,
     val acOn: Boolean = false,
     val acTemp: Int = 22,
     val acMode: AcMode = AcMode.COOL,
@@ -80,7 +79,6 @@ sealed interface HomeIntent {
     data class ToggleLedStrip(val on: Boolean) : HomeIntent
     data class ToggleFountain(val on: Boolean) : HomeIntent
     data class TogglePoolPump(val on: Boolean) : HomeIntent
-    data class TogglePoolHeater(val on: Boolean) : HomeIntent
     data object TurnHeatingOn : HomeIntent
     data object ShowDevicesOnDialog : HomeIntent
     data object DismissDevicesOnDialog : HomeIntent

@@ -275,11 +275,11 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
 @Composable
 private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit, onOpenHouse: () -> Unit) {
     val tiles = buildList<@Composable (Modifier) -> Unit> {
-        if (state.poolPumpOn || state.poolHeaterOn) add { m ->
+        if (state.poolPumpOn) add { m ->
             ActionTile(
                 icon = Icons.Outlined.Pool,
                 label = "${stringResource(R.string.garden_pool)} · ${state.poolTemp}°",
-                detail = stringResource(if (state.poolHeaterOn) R.string.home_pool_heating_on else R.string.home_pool_running),
+                detail = stringResource(R.string.home_pool_running),
                 onClick = onOpenGarden,
                 modifier = m,
             )
@@ -421,7 +421,7 @@ private fun lastAccessText(event: zhb.company.smart_home.domain.door.AccessEvent
 private val PreviewWinter = HomeState(
     connected = true,
     alerts = listOf(HomeAlert.NodeOffline("Ulazna vrata", lastWill = false)),
-    sections = HomeLayout.sections(HomeSignals(true, false, false, false, false, false)),
+    sections = HomeLayout.sections(HomeSignals(true, false, false, false, false)),
     heating = HeatingSummary(
         online = true, mainSwitch = true, pump = true, flowTemp = "34.3",
         status = zhb.company.smart_home.domain.heating.HeatPumpStatus.Running(minutes = 12, demand = true, minRunLeftMinutes = null),
@@ -434,7 +434,7 @@ private val PreviewWinter = HomeState(
 
 private val PreviewSummer = HomeState(
     connected = true,
-    sections = HomeLayout.sections(HomeSignals(false, true, false, true, false, true)),
+    sections = HomeLayout.sections(HomeSignals(false, true, false, true, true)),
     heating = HeatingSummary(online = true, mainSwitch = false),
     outdoorTemp = "31.2", groundTemp = "25.1", groundHumidity = "52", upperTemp = "26.8", upperHumidity = "48",
     poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true, acOn = true, acTemp = 24,
