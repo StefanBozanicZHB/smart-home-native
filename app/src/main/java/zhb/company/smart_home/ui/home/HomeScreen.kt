@@ -262,11 +262,6 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.home_outdoor), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 BigValue("${state.outdoorTemp}°")
-                Text(
-                    stringResource(R.string.home_humidity, state.outdoorHumidity),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.home_next_watering), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -312,7 +307,7 @@ private fun acModeLabel(mode: AcMode): Int = when (mode) {
 private fun RoomTemps(state: HomeState, showOutdoor: Boolean) {
     val tiles = buildList<@Composable (Modifier) -> Unit> {
         // In summer the yard card already shows the outdoor reading.
-        if (showOutdoor) add { m -> StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", m, detail = stringResource(R.string.home_humidity, state.outdoorHumidity)) }
+        if (showOutdoor) add { m -> StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", m) }
         add { m -> StatTile(stringResource(R.string.home_room_ground), "${state.groundTemp}°", m, detail = stringResource(R.string.home_humidity, state.groundHumidity)) }
         add { m -> StatTile(stringResource(R.string.home_room_upper), "${state.upperTemp}°", m, detail = stringResource(R.string.home_humidity, state.upperHumidity)) }
     }
@@ -403,7 +398,7 @@ private val PreviewWinter = HomeState(
         status = zhb.company.smart_home.domain.heating.HeatPumpStatus.Running(minutes = 12, demand = true, minRunLeftMinutes = null),
         zones = listOf(ZoneSummary("ground", "21.5", "21.5", true)),
     ),
-    outdoorTemp = "3.5", outdoorHumidity = "81", groundTemp = "21.5", groundHumidity = "45", upperTemp = "22.4", upperHumidity = "40",
+    outdoorTemp = "3.5", groundTemp = "21.5", groundHumidity = "45", upperTemp = "22.4", upperHumidity = "40",
     poolTemp = "8.0", ledStripOn = true, yardNodeOnline = true, fountainNodeOnline = true, poolNodeOnline = true, doorNodeOnline = false,
     devicesOnList = listOf("LED traka (dvorište)"),
 )
@@ -412,7 +407,7 @@ private val PreviewSummer = HomeState(
     connected = true,
     sections = HomeLayout.sections(HomeSignals(false, true, false, true, false, true)),
     heating = HeatingSummary(online = true, mainSwitch = false),
-    outdoorTemp = "31.2", outdoorHumidity = "38", groundTemp = "25.1", groundHumidity = "52", upperTemp = "26.8", upperHumidity = "48",
+    outdoorTemp = "31.2", groundTemp = "25.1", groundHumidity = "52", upperTemp = "26.8", upperHumidity = "48",
     poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true, acOn = true, acTemp = 24,
     yardNodeOnline = true, fountainNodeOnline = true, poolNodeOnline = true, doorNodeOnline = true,
     devicesOnList = listOf("Pumpa bazena", "Klima uređaj"),

@@ -12,11 +12,8 @@ import zhb.company.smart_home.data.mqtt.NodeStatus
 data class SmartHomeState(
     // node1 (fountain, sprinklers): data/garden/Node1Repository; node5 (heating): data/heating/Node5Repository.
 
-    // node2 - terrace / garden
-    val ledStripTerrace: Boolean = false,
-    val bulbTerrace: Boolean = false,
+    // node2 - yard: outdoor temperature ("" while the node has withdrawn it); lights in data/garden/Node2Repository
     val temperatureOutdoor: String = "--",
-    val humidityOutdoor: String = "--",
 
     // node3 - main / front door
     val mainDoor: Boolean = false,

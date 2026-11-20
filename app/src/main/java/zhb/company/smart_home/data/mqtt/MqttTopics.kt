@@ -14,13 +14,10 @@ object MqttTopics {
      */
     const val NODE1_REQUEST_STATUS = "$BASE/node1/stanje"
 
-    // node2 - terrace / garden
-    const val NODE2_HUMIDITY = "$BASE/node2/dvoriste/vlaznost"
-    const val NODE2_TEMPERATURE = "$BASE/node2/dvoriste/temperatura"
-    const val NODE2_LED_STRIP_CONTROL = "$BASE/node2/neonka"
-    const val NODE2_LED_STRIP_STATUS = "$BASE/node2/neonka/stanje"
-    const val NODE2_BULB_CONTROL = "$BASE/node2/sijalica"
-    const val NODE2_BULB_STATUS = "$BASE/node2/sijalica/stanje"
+    // node2 - yard (node2-2.0.0): outdoor temperature from a DS18B20, °C; deleted (empty retained
+    // message) after 5 min without a valid reading. Humidity is no longer measured. The lights use
+    // the JSON API, see data/garden/Node2Repository.kt.
+    const val NODE2_TEMPERATURE = "$BASE/node2/temperature"
 
     // node3 - main door
     const val NODE3_DOOR_CONTROL = "$BASE/node3/vrata"

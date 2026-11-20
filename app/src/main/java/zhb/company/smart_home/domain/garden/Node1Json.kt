@@ -11,6 +11,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import zhb.company.smart_home.domain.node.NodeJson
 
 /**
  * Parses Node 1 payloads and builds its commands. A parse function returns null for a payload it
@@ -120,11 +121,7 @@ object Node1Json {
     fun runStopCommand(id: String): String = buildJsonObject { put("id", id) }.toString()
 
     /** Fountain pump or light; [minutes] (1-1440) switches it off by itself after that time. */
-    fun fountainCommand(id: String, on: Boolean, minutes: Int? = null): String = buildJsonObject {
-        put("on", on)
-        if (on && minutes != null) put("minutes", minutes)
-        put("id", id)
-    }.toString()
+    fun fountainCommand(id: String, on: Boolean, minutes: Int? = null): String = NodeJson.switchCommand(id, on, minutes)
 
     // ---- helpers -----------------------------------------------------------------------------
 

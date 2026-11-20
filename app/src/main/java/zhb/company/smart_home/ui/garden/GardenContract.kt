@@ -31,9 +31,12 @@ data class GardenState(
     /** Pool (node6). */
     val poolOnline: Boolean = false,
     val temperature: String = NO_VALUE,
-    val humidity: String = NO_VALUE,
+    /** False when Node 2 reports that its DS18B20 did not answer. */
+    val outdoorSensorOk: Boolean = true,
     val ledStripOn: Boolean = false,
+    val ledStripLeftSeconds: Int? = null,
     val bulbOn: Boolean = false,
+    val bulbLeftSeconds: Int? = null,
     val fountainPumpOn: Boolean = false,
     val fountainPumpLeftSeconds: Int? = null,
     val fountainLightOn: Boolean = false,
@@ -67,8 +70,9 @@ sealed interface GardenMessage {
 }
 
 sealed interface GardenIntent {
-    data class ToggleLedStrip(val on: Boolean) : GardenIntent
-    data class ToggleBulb(val on: Boolean) : GardenIntent
+    /** Node 2 lights; [minutes] switches them off by themselves after that time. */
+    data class SetLedStrip(val on: Boolean, val minutes: Int? = null) : GardenIntent
+    data class SetBulb(val on: Boolean, val minutes: Int? = null) : GardenIntent
     /** [minutes] switches it off by itself after that time. */
     data class SetFountainPump(val on: Boolean, val minutes: Int? = null) : GardenIntent
     data class SetFountainLight(val on: Boolean, val minutes: Int? = null) : GardenIntent

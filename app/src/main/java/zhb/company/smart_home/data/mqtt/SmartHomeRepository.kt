@@ -284,9 +284,6 @@ class SmartHomeRepository(
         val onOff = payload == "1"
         return when {
             topic == MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload))
-            topic == MqttTopics.NODE2_HUMIDITY -> state.copy(humidityOutdoor = payload)
-            topic == MqttTopics.NODE2_LED_STRIP_STATUS -> state.copy(ledStripTerrace = onOff)
-            topic == MqttTopics.NODE2_BULB_STATUS -> state.copy(bulbTerrace = onOff)
 
             topic == MqttTopics.NODE3_DOOR_STATUS -> state.copy(mainDoor = onOff)
 

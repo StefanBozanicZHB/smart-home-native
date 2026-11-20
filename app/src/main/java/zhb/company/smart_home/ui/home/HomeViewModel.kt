@@ -15,6 +15,7 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
+import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
@@ -24,6 +25,8 @@ import zhb.company.smart_home.data.mqtt.OfflineReason
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.GoodNightUseCase
 import zhb.company.smart_home.domain.garden.Node1Devices
+import zhb.company.smart_home.domain.garden.Node2Devices
+import zhb.company.smart_home.domain.garden.Node2State
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.model.SmartHomeState
@@ -35,6 +38,7 @@ class HomeViewModel(
     private val goodNightUseCase: GoodNightUseCase,
     private val node5: Node5Repository,
     private val node1: Node1Repository,
+    private val node2: Node2Repository,
 ) : ViewModel() {
 
     private data class UiExtras(val showDevicesOnDialog: Boolean = false, val showUnlockConfirm: Boolean = false)
@@ -49,12 +53,28 @@ class HomeViewModel(
         repository.connectionState,
         node5.snapshot,
         node1.snapshot,
+        node2.state,
         extras,
-    ) { home, connection, heating, yard, ui ->
-        mapState(home, connection, heating, yard, ui)
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        mapState(
+            values[0] as SmartHomeState,
+            values[1] as MqttConnectionState,
+            values[2] as Node5Snapshot,
+            values[3] as Node1Snapshot,
+            values[4] as Node2State?,
+            values[5] as UiExtras,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
-    private fun mapState(home: SmartHomeState, connection: MqttConnectionState, heating: Node5Snapshot, yard: Node1Snapshot, ui: UiExtras): HomeState {
+    private fun mapState(
+        home: SmartHomeState,
+        connection: MqttConnectionState,
+        heating: Node5Snapshot,
+        yard: Node1Snapshot,
+        lights: Node2State?,
+        ui: UiExtras,
+    ): HomeState {
         val connected = connection is MqttConnectionState.Connected
         val heatingSummary = heatingSummary(home, connected, heating)
         val yardState = yard.state
@@ -75,7 +95,6 @@ class HomeViewModel(
             ),
             heating = heatingSummary,
             outdoorTemp = Readings.temperature(home.temperatureOutdoor),
-            outdoorHumidity = Readings.percent(home.humidityOutdoor),
             groundTemp = Readings.temperature(home.temperatureLivingRoomDown),
             groundHumidity = Readings.percent(home.humidityLivingRoomDown),
             upperTemp = Readings.temperature(home.temperatureLivingRoomUp),
@@ -84,7 +103,7 @@ class HomeViewModel(
             sprinklerAuto = sprinklerAuto,
             sprinklerStartTime = yardState?.next?.time ?: "--:--",
             sprinklerRunningZone = yardState?.run?.zone,
-            ledStripOn = home.ledStripTerrace,
+            ledStripOn = lights?.neon ?: false,
             fountainOn = yardState?.fountain?.pump ?: false,
             poolPumpOn = home.poolPump,
             poolHeaterOn = home.poolHeating,
@@ -95,7 +114,7 @@ class HomeViewModel(
             fountainNodeOnline = home.isNodeOnline(1),
             poolNodeOnline = home.isNodeOnline(6),
             doorNodeOnline = home.isNodeOnline(3),
-            devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState),
+            devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState) + Node2Devices.onLabels(lights),
             showDevicesOnDialog = ui.showDevicesOnDialog,
             showUnlockConfirm = ui.showUnlockConfirm,
         )
@@ -148,7 +167,10 @@ class HomeViewModel(
                 extras.update { it.copy(showUnlockConfirm = false) }
                 publish(MqttTopics.NODE3_DOOR_CONTROL, "1")
             }
-            is HomeIntent.ToggleLedStrip -> publish(MqttTopics.NODE2_LED_STRIP_CONTROL, intent.on.wire())
+            is HomeIntent.ToggleLedStrip -> viewModelScope.launch {
+                val outcome = node2.setNeon(intent.on)
+                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
+            }
             is HomeIntent.ToggleFountain -> viewModelScope.launch {
                 val outcome = node1.setPump(intent.on)
                 if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))

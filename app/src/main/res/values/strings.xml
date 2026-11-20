@@ -128,6 +128,10 @@
     <string name="garden_soil_text">Pojaviće se kad senzor počne da šalje podatke. Prskalice će moći da preskoče zalivanje kad je zemlja vlažna.</string>
     <string name="garden_fountain_and_lights">Fontana i svetla</string>
     <string name="garden_fountain_timer">Fontana sa automatskim gašenjem</string>
+    <string name="garden_lights_timer">Svetla sa automatskim gašenjem</string>
+    <string name="garden_led_strip_short">LED traka…</string>
+    <string name="garden_bulb_short">Sijalica…</string>
+    <string name="garden_sensor_missing">Senzor spoljne temperature ne odgovara. Temperatura se ne prikazuje dok se ne javi.</string>
     <string name="garden_fountain_pump_short">Pumpa…</string>
     <string name="garden_fountain_light_short">Svetlo…</string>
     <string name="garden_on_for">Uključi na %1$s</string>

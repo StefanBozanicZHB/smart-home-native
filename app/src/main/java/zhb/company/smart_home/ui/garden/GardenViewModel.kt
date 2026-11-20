@@ -12,16 +12,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
+import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.domain.garden.IrrigationRules
+import zhb.company.smart_home.domain.garden.Node2State
 import zhb.company.smart_home.domain.model.SmartHomeState
 import zhb.company.smart_home.ui.format.Readings
 
 class GardenViewModel(
     private val repository: SmartHomeRepository,
     private val node1: Node1Repository,
+    private val node2: Node2Repository,
     private val today: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
 
@@ -34,11 +37,11 @@ class GardenViewModel(
 
     private val extras = MutableStateFlow(UiExtras())
 
-    val state: StateFlow<GardenState> = combine(repository.state, node1.snapshot, extras) { home, yard, ui ->
-        mapState(home, yard, ui)
+    val state: StateFlow<GardenState> = combine(repository.state, node1.snapshot, node2.state, extras) { home, yard, lights, ui ->
+        mapState(home, yard, lights, ui)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GardenState())
 
-    private fun mapState(home: SmartHomeState, yard: Node1Snapshot, ui: UiExtras): GardenState {
+    private fun mapState(home: SmartHomeState, yard: Node1Snapshot, lights: Node2State?, ui: UiExtras): GardenState {
         val config = yard.config
         val live = yard.state
         return GardenState(
@@ -47,9 +50,11 @@ class GardenViewModel(
             node1Ready = config != null && live != null,
             poolOnline = home.isNodeOnline(6),
             temperature = Readings.temperature(home.temperatureOutdoor),
-            humidity = Readings.percent(home.humidityOutdoor),
-            ledStripOn = home.ledStripTerrace,
-            bulbOn = home.bulbTerrace,
+            outdoorSensorOk = lights?.sensorOk != false,
+            ledStripOn = lights?.neon ?: false,
+            ledStripLeftSeconds = lights?.neonLeftSeconds,
+            bulbOn = lights?.lamp ?: false,
+            bulbLeftSeconds = lights?.lampLeftSeconds,
             fountainPumpOn = live?.fountain?.pump ?: false,
             fountainPumpLeftSeconds = live?.fountain?.pumpLeftSeconds,
             fountainLightOn = live?.fountain?.light ?: false,
@@ -76,8 +81,8 @@ class GardenViewModel(
 
     fun onIntent(intent: GardenIntent) {
         when (intent) {
-            is GardenIntent.ToggleLedStrip -> publish(MqttTopics.NODE2_LED_STRIP_CONTROL, intent.on.wire())
-            is GardenIntent.ToggleBulb -> publish(MqttTopics.NODE2_BULB_CONTROL, intent.on.wire())
+            is GardenIntent.SetLedStrip -> command(null) { node2.setNeon(intent.on, intent.minutes) }
+            is GardenIntent.SetBulb -> command(null) { node2.setLamp(intent.on, intent.minutes) }
             is GardenIntent.TogglePoolPump -> publish(MqttTopics.NODE6_POOL_PUMP_CONTROL, intent.on.wire())
             is GardenIntent.TogglePoolHeating -> publish(MqttTopics.NODE6_POOL_HEATING_CONTROL, intent.on.wire())
             is GardenIntent.SetFountainPump -> command(null) { node1.setPump(intent.on, intent.minutes) }

@@ -19,8 +19,6 @@ data class PowerDevice(
  */
 object PowerDevices {
     val ALL: List<PowerDevice> = listOf(
-        PowerDevice("LED traka (dvorište)", MqttTopics.NODE2_LED_STRIP_CONTROL) { it.ledStripTerrace },
-        PowerDevice("Sijalica (dvorište)", MqttTopics.NODE2_BULB_CONTROL) { it.bulbTerrace },
         PowerDevice("Sijalica 1 (šupa)", MqttTopics.node7BulbControl(1)) { it.bulbSmallHome1 },
         PowerDevice("Sijalica 2 (šupa)", MqttTopics.node7BulbControl(2)) { it.bulbSmallHome2 },
         PowerDevice("Sijalica 3 (šupa)", MqttTopics.node7BulbControl(3)) { it.bulbSmallHome3 },

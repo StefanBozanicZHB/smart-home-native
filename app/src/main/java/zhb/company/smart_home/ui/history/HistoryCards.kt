@@ -263,7 +263,7 @@ fun ClimateHistoryCard(state: HistoryState) {
             PeriodTabs(periodOptions(), period, { period = it })
         }
         val temps: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> doc?.get(p.temperature)?.takeIf { it.hasData }?.let { p to it } }
-        val hums: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> doc?.get(p.humidity)?.takeIf { it.hasData }?.let { p to it } }
+        val hums: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> p.humidity?.let { doc?.get(it) }?.takeIf { it.hasData }?.let { p to it } }
         if (doc == null || (temps.isEmpty() && hums.isEmpty())) {
             HistoryPlaceholder(state.error, state.isLoading(period))
             return@DashboardCard
@@ -312,11 +312,14 @@ fun ClimateHistoryCard(state: HistoryState) {
     }
 }
 
-/** Places in the house charts, with their series in the RPi catalog. */
-enum class Place(val label: Int, val temperature: String, val humidity: String) {
+/**
+ * Places in the house charts, with their series in the RPi catalog. Outdoor humidity is not shown:
+ * Node 2's humidity element was broken from the first record and `node2-2.0.0` no longer measures it.
+ */
+enum class Place(val label: Int, val temperature: String, val humidity: String?) {
     GROUND(R.string.home_room_ground, HistorySeriesNames.ROOM_GROUND_T, HistorySeriesNames.ROOM_GROUND_H),
     UPPER(R.string.home_room_upper, HistorySeriesNames.ROOM_UPPER_T, HistorySeriesNames.ROOM_UPPER_H),
-    OUTDOOR(R.string.history_outdoor, HistorySeriesNames.OUTDOOR_T, HistorySeriesNames.OUTDOOR_H),
+    OUTDOOR(R.string.history_outdoor, HistorySeriesNames.OUTDOOR_T, null),
 }
 
 @Composable

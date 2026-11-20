@@ -43,8 +43,8 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 ### Garden / yard (node1, node2, node6; node0 retired)
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
-| Yard temperature and humidity | ✓ | ✓ | ✅ |
-| LED strip, lamp (`neonka`, `sijalica`) | ✓ | ✓ | ✅ |
+| Yard temperature and humidity | ✓ (old topics) | temperature from `node2/temperature` (DS18B20); humidity no longer measured (`node2-2.0.0`) | ✅ (new API) |
+| LED strip, lamp (`neonka`, `sijalica`) | ✓ (old topics) | `node2/neon/set`, `node2/lamp/set` with automatic switch-off (Node 2 v2 API) | ✅ (new API) |
 | Fountain pump and light | ✓ | ✓, plus automatic switch-off after 30 min – 4 h (Node 1 v2 API) | ✅ (new API) |
 | Sprinklers 1–6 manual, all on/off, "currently running" | ✓ (old API) | manual run of one zone or all, stop, zone/phase/time left, queued zones, last run event (Node 1 v2 API) | ✅ (new API) |
 | Sprinkler schedule | Node 0 timer: start, on, off, sets, auto | "Plan zalivanja" on Node 1: days, up to 4 start times, minutes per zone, soak cycles, rain pause | ✅ (new API, Node 0 retired) |
@@ -84,8 +84,8 @@ Flutter app can control the real heating.
 
 Only in Flutter: all old Node 5 and Node 1 topics and every `node0/*` topic (intentionally removed:
 `node1-2.0.0` and `node5-2.0.0` replaced them, Node 0 is retired), `node8/ac/{temp,fan,mode}` (B1).
-Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1 v2 topics under `node1/`, Node 5 v2 topics under `node5/`.
-Everything else (nodes 2–4, 6–8) matches.
+Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1, Node 2 and Node 5 v2 topics under `node1/`, `node2/`, `node5/`.
+Everything else (nodes 3, 4, 6–8) matches.
 
 ## 4. Improvements that are not Flutter parity
 

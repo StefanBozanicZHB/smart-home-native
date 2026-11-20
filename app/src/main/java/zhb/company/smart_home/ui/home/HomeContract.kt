@@ -41,7 +41,6 @@ data class HomeState(
     val heating: HeatingSummary = HeatingSummary(),
 
     val outdoorTemp: String = NO_VALUE,
-    val outdoorHumidity: String = NO_VALUE,
     val groundTemp: String = NO_VALUE,
     val groundHumidity: String = NO_VALUE,
     val upperTemp: String = NO_VALUE,
