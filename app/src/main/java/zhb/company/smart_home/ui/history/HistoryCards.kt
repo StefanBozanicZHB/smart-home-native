@@ -28,6 +28,7 @@ import zhb.company.smart_home.data.history.HistoryDoc
 import zhb.company.smart_home.data.history.HistoryMeta
 import zhb.company.smart_home.data.history.HistoryPeriod
 import zhb.company.smart_home.data.history.HistoryRepository
+import zhb.company.smart_home.data.history.HistorySeries
 import zhb.company.smart_home.data.history.HistorySeriesNames
 import zhb.company.smart_home.data.remote.RtdbError
 import zhb.company.smart_home.ui.components.AvailabilityStrip
@@ -36,7 +37,6 @@ import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.ChartAxis
 import zhb.company.smart_home.ui.components.ChartLine
 import zhb.company.smart_home.ui.components.ChartReadout
-import zhb.company.smart_home.ui.components.ChoiceGroup
 import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.Legend
 import zhb.company.smart_home.ui.components.LegendStyle
@@ -127,70 +127,72 @@ fun PumpRunCard(state: HistoryState) {
     }
 }
 
-/** House screen: temperature (solid, min/max band) and humidity (dashed) for one place. */
+/**
+ * House screen: one chart for temperature and one for humidity, each with every place as its
+ * own line (same colors in both). Period and the touched point are shared by the two charts.
+ */
 @Composable
 fun ClimateHistoryCard(state: HistoryState) {
     var period by rememberSaveable { mutableStateOf(HistoryPeriod.DAY) }
-    var place by rememberSaveable { mutableStateOf(Place.UPPER) }
-    var selected by remember(period, place) { mutableStateOf<Int?>(null) }
+    var selected by remember(period) { mutableStateOf<Int?>(null) }
     val doc = state.doc(period)
+    val colors = mapOf(Place.GROUND to AppTheme.status.warm, Place.UPPER to AppTheme.status.active, Place.OUTDOOR to AppTheme.status.cold)
     DashboardCard {
         CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_climate_title)) {
             PeriodTabs(periodOptions(), period, { period = it })
         }
-        ChoiceGroup(
-            options = Place.entries.map { it to stringResource(it.label) },
-            selected = place,
-            onSelect = { place = it },
-        )
-        val t = doc?.get(place.temperature)?.takeIf { it.hasData }
-        val h = doc?.get(place.humidity)?.takeIf { it.hasData }
-        if (doc == null || (t == null && h == null)) {
+        val temps: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> doc?.get(p.temperature)?.takeIf { it.hasData }?.let { p to it } }
+        val hums: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> doc?.get(p.humidity)?.takeIf { it.hasData }?.let { p to it } }
+        if (doc == null || (temps.isEmpty() && hums.isEmpty())) {
             HistoryPlaceholder(state.error, state.isLoading(period))
             return@DashboardCard
         }
-        val tc = AppTheme.status.warm
-        val hc = AppTheme.status.cold
-        LineChart(
-            lines = listOfNotNull(
-                t?.let { ChartLine(it.avg, tc, low = it.min, high = it.max) },
-                h?.let { ChartLine(it.avg, hc, dashed = true, axis = ChartAxis.RIGHT) },
-            ),
-            xTicks = xTicks(doc.times, doc.endMs),
-            leftFormat = { "${it.toInt()}°" },
-            rightFormat = { "${it.toInt()} %" },
-            selected = selected,
-            onSelect = { selected = it },
-            description = stringResource(R.string.history_climate_description, stringResource(place.label)),
-        )
-        val i = selected
-        if (i != null && i in doc.times.indices) {
-            val parts = listOfNotNull(
-                pointLabel(doc.times[i], granularity(period)),
-                t?.avg?.getOrNull(i)?.let { v ->
-                    val lo = t.min?.getOrNull(i)
-                    val hi = t.max?.getOrNull(i)
-                    if (lo != null && hi != null) "${temp(v)} (${temp(lo)}–${temp(hi)})" else temp(v)
-                },
-                h?.avg?.getOrNull(i)?.let { "${it.toInt()} %" },
+        val ticks = xTicks(doc.times, doc.endMs)
+        val i = selected?.takeIf { it in doc.times.indices }
+        val labels = Place.entries.associateWith { stringResource(it.label) }
+        Legend(Place.entries.filter { p -> temps.any { it.first == p } || hums.any { it.first == p } }
+            .map { Triple(colors.getValue(it), labels.getValue(it), LegendStyle.SOLID) })
+        if (i != null) ChartReadout(pointLabel(doc.times[i], granularity(period)), emphasized = true)
+        if (temps.isNotEmpty()) {
+            SectionCaption(stringResource(R.string.history_temperature_title))
+            LineChart(
+                lines = temps.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
+                xTicks = ticks,
+                leftFormat = { "${it.toInt()}°" },
+                selected = i,
+                onSelect = { selected = it },
+                height = 140.dp,
+                description = stringResource(R.string.history_temperature_title),
             )
-            ChartReadout(if (parts.size > 1) parts.joinToString(" · ") else parts.first() + " · " + stringResource(R.string.history_no_data), emphasized = true)
-        } else {
-            Legend(
-                listOfNotNull(
-                    t?.let { Triple(tc, stringResource(R.string.history_temperature), LegendStyle.SOLID) },
-                    h?.let { Triple(hc, stringResource(R.string.history_humidity), LegendStyle.DASHED) },
-                ),
-            )
-            if (period != HistoryPeriod.DAY && t?.min != null) ChartReadout(stringResource(R.string.history_band_hint))
+            if (i != null) ChartReadout(temps.joinToString(" · ") { pair -> labels.getValue(pair.first) + " " + (pair.second.avg.getOrNull(i)?.let(::temp) ?: "–") })
         }
+        if (hums.isNotEmpty()) {
+            SectionCaption(stringResource(R.string.history_humidity_title))
+            LineChart(
+                lines = hums.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
+                xTicks = ticks,
+                leftFormat = { "${it.toInt()} %" },
+                selected = i,
+                onSelect = { selected = it },
+                height = 140.dp,
+                description = stringResource(R.string.history_humidity_title),
+            )
+            if (i != null) ChartReadout(hums.joinToString(" · ") { pair -> labels.getValue(pair.first) + " " + humidityText(pair.second.avg.getOrNull(i)) })
+        }
+        if (period != HistoryPeriod.DAY && i == null) ChartReadout(stringResource(R.string.history_average_hint))
     }
 }
 
+/** Places in the house charts, with their series in the RPi catalog. */
 enum class Place(val label: Int, val temperature: String, val humidity: String) {
     GROUND(R.string.home_room_ground, HistorySeriesNames.ROOM_GROUND_T, HistorySeriesNames.ROOM_GROUND_H),
     UPPER(R.string.home_room_upper, HistorySeriesNames.ROOM_UPPER_T, HistorySeriesNames.ROOM_UPPER_H),
     OUTDOOR(R.string.history_outdoor, HistorySeriesNames.OUTDOOR_T, HistorySeriesNames.OUTDOOR_H),
+}
+
+@Composable
+private fun SectionCaption(text: String) {
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
 }
 
 /** System screen: per day over the last 7 days, was the node online the whole time. */
@@ -297,6 +299,8 @@ fun xTicks(times: List<Long>, endMs: Long, zone: ZoneId = ZoneId.systemDefault()
 }
 
 private fun temp(v: Float) = String.format(SR, "%.1f°", v)
+
+private fun humidityText(v: Float?): String = if (v == null) "–" else v.toInt().toString() + " %"
 
 private fun runText(value: Float, unit: BarUnit): String {
     val seconds = when (unit) {

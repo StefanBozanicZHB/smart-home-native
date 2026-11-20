@@ -494,9 +494,9 @@
     <string name="history_outdoor_value">napolju %1$s</string>
     <string name="history_climate_title">Temperatura i vlažnost</string>
     <string name="history_climate_description">Temperatura i vlažnost: %1$s</string>
-    <string name="history_temperature">°C</string>
-    <string name="history_humidity">vlažnost %</string>
-    <string name="history_band_hint">Senka: najniža i najviša temperatura</string>
+    <string name="history_temperature_title">Temperatura</string>
+    <string name="history_humidity_title">Vlažnost</string>
+    <string name="history_average_hint">Prosek po satu (7d) ili po danu (30d). Dodirni grafikon za vrednosti.</string>
     <string name="history_availability_title">Dostupnost · 7 dana</string>
     <string name="history_availability_caption">%1$s: prosečno %2$s %% onlajn · žuto = dan sa prekidima</string>
     <string name="history_no_data">nema podataka</string>

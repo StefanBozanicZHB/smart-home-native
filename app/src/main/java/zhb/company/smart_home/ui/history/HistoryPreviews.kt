@@ -40,6 +40,7 @@ internal object PreviewHistory {
                 "room_upper_t" to HistorySeries("C", "", wave(n, n, 22.2f, 0.7f, 0.5f)),
                 "room_upper_h" to HistorySeries("pct", "", wave(n, n, 40f, 3f, 0.1f)),
                 "outdoor_t" to HistorySeries("C", "", wave(n, n, 3.5f, 3f, 0.7f)),
+                "outdoor_h" to HistorySeries("pct", "", wave(n, n, 78f, 12f, 0.2f)),
                 "target_ground" to HistorySeries("C", "", List(n) { if (it in 36..138) 21.5f else 19.5f }),
                 "pump" to HistorySeries("bool", "", List(n) { i -> if ((i / 9) % 3 == 0) 1f else if ((i / 9) % 3 == 1) 0.3f else 0f }),
             ),
