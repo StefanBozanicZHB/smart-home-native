@@ -1,6 +1,7 @@
 package zhb.company.smart_home.ui.settings
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.AlertDialog
@@ -42,9 +44,12 @@ import zhb.company.smart_home.ui.theme.AppTheme
 
 /** Node list with status, signal and firmware; used on the system screen. */
 @Composable
-internal fun ConnectionsList(state: ConnectionsState) {
+internal fun ConnectionsList(state: ConnectionsState, onNodeClick: ((String) -> Unit)? = null) {
     Column {
-        state.nodes.forEach { NodeStatusRow(it) }
+        state.nodes.forEach { row ->
+            // Only new-firmware nodes have details to show.
+            NodeStatusRow(row, onClick = if (row.health != null && onNodeClick != null) ({ onNodeClick(row.nodeId) }) else null)
+        }
         Text(
             stringResource(R.string.connections_legend),
             style = MaterialTheme.typography.labelSmall,
@@ -55,8 +60,10 @@ internal fun ConnectionsList(state: ConnectionsState) {
 }
 
 @Composable
-private fun NodeStatusRow(row: NodeRow) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+private fun NodeStatusRow(row: NodeRow, onClick: (() -> Unit)?) {
+    val openLabel = stringResource(R.string.node_detail_open, row.label)
+    val clickable = if (onClick != null) Modifier.clickable(onClickLabel = openLabel, onClick = onClick) else Modifier
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().then(clickable).padding(vertical = 4.dp)) {
         Column(modifier = Modifier.weight(1f)) {
             Text(row.label, style = MaterialTheme.typography.bodyMedium)
             Text(
@@ -79,13 +86,16 @@ private fun NodeStatusRow(row: NodeRow) {
             )
         }
         Icon(icon, contentDescription = description, tint = tint)
+        if (onClick != null) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
 
 /** Four bars plus dBm; colored by quality while the node is online, gray (last known value) otherwise. */
 @Composable
-private fun SignalIndicator(rssi: Int, quality: SignalQuality, live: Boolean) {
+internal fun SignalIndicator(rssi: Int, quality: SignalQuality, live: Boolean) {
     val color = when {
         !live -> MaterialTheme.colorScheme.outline
         quality == SignalQuality.EXCELLENT || quality == SignalQuality.GOOD -> AppTheme.status.active
@@ -116,7 +126,7 @@ private fun SignalIndicator(rssi: Int, quality: SignalQuality, live: Boolean) {
 }
 
 @Composable
-private fun signalName(quality: SignalQuality): String = stringResource(
+internal fun signalName(quality: SignalQuality): String = stringResource(
     when (quality) {
         SignalQuality.EXCELLENT -> R.string.connections_signal_excellent
         SignalQuality.GOOD -> R.string.connections_signal_good
@@ -134,7 +144,7 @@ private fun nodeDetail(row: NodeRow): String {
         "${row.nodeId} · ${stringResource(R.string.connections_legacy_no_message)}"
     }
     val parts = mutableListOf(row.nodeId)
-    (health.heartbeat?.firmware ?: health.info?.firmware)?.let { parts += it }
+    health.firmware?.let { parts += it }
     when (health.offlineReason) {
         OfflineReason.LAST_WILL -> parts += stringResource(R.string.connections_reason_last_will)
         OfflineReason.NO_HEARTBEAT -> parts += stringResource(R.string.connections_reason_no_heartbeat)

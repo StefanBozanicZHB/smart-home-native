@@ -33,6 +33,18 @@ data class NodeInfo(
     val host: String?,
     /** RSSI at connect time (dBm). */
     val rssi: Int? = null,
+    val mac: String? = null,
+    val ssid: String? = null,
+)
+
+/** `<node>/boot` (once after boot, not retained): only known if the app was connected at that moment. */
+data class NodeBoot(
+    val firmware: String?,
+    val gitRevision: String?,
+    /** ESP reset reason as text, e.g. "Power On", "Hardware Watchdog". */
+    val reset: String?,
+    /** Wall-clock time (ms) the message arrived. */
+    val atMs: Long,
 )
 
 /** Wi-Fi signal quality from RSSI (dBm), using the usual ESP8266 thresholds. */
@@ -60,11 +72,47 @@ data class NodeHealth(
     val lastSeenAtMs: Long?,
     val heartbeat: NodeHeartbeat?,
     val info: NodeInfo?,
+    /** Wall-clock time (ms) the last [heartbeat] arrived. */
+    val heartbeatAtMs: Long? = null,
+    val boot: NodeBoot? = null,
 ) {
     /** Latest known RSSI: from the last heartbeat, else from the connect-time info. */
     val rssi: Int? get() = heartbeat?.rssi ?: info?.rssi
 
     val signal: SignalQuality? get() = rssi?.let(SignalQuality::fromRssi)
+
+    val firmware: String? get() = heartbeat?.firmware ?: info?.firmware ?: boot?.firmware
+
+    /** Estimated boot time (wall clock, ms) from the last heartbeat's uptime. */
+    val bootedAtMs: Long? get() {
+        val up = heartbeat?.uptimeSeconds ?: return null
+        val at = heartbeatAtMs ?: return null
+        return at - up * 1000
+    }
+
+    /** Uptime now, extrapolated from the last heartbeat; null if unknown or the node is not online. */
+    fun uptimeSecondsAt(nowMs: Long): Long? =
+        bootedAtMs?.takeIf { status == NodeStatus.ONLINE }?.let { ((nowMs - it) / 1000).coerceAtLeast(0) }
+
+    /** Booted within [RECENT_RESTART_MS] (watchdog, power cut, crash): worth a warning. */
+    fun recentlyRestarted(nowMs: Long): Boolean = uptimeSecondsAt(nowMs)?.let { it * 1000 < RECENT_RESTART_MS } == true
+
+    /** The [boot] message, if it belongs to the current run (not to an earlier boot). */
+    val currentBoot: NodeBoot? get() {
+        val b = boot ?: return null
+        val booted = bootedAtMs ?: return b
+        return b.takeIf { kotlin.math.abs(it.atMs - booted) <= BOOT_MATCH_MS }
+    }
+
+    /** Broker reconnects since boot (the first connect does not count). */
+    val reconnects: Long? get() = heartbeat?.mqttConnects?.let { (it - 1).coerceAtLeast(0) }
+
+    companion object {
+        const val RECENT_RESTART_MS = 30 * 60_000L
+
+        /** A boot message arrives within seconds of the boot (Wi-Fi + broker connect). */
+        private const val BOOT_MATCH_MS = 2 * 60_000L
+    }
 }
 
 /**
@@ -91,7 +139,9 @@ class NodeStatusTracker(
         val lastWill: Boolean = false,
         val lastSeenAtMs: Long? = null,
         val heartbeat: NodeHeartbeat? = null,
+        val heartbeatAtMs: Long? = null,
         val info: NodeInfo? = null,
+        val boot: NodeBoot? = null,
     )
 
     private val entries = LinkedHashMap<String, Entry>()
@@ -114,8 +164,11 @@ class NodeStatusTracker(
         // Everything else only matters for nodes that have announced themselves with `status`.
         current ?: return false
         var next = current
-        if (leaf == "heartbeat") next = next.copy(heartbeat = parseHeartbeat(payload) ?: next.heartbeat)
+        val heartbeat = if (leaf == "heartbeat") parseHeartbeat(payload) else null
+        if (heartbeat != null) next = next.copy(heartbeat = heartbeat, heartbeatAtMs = nowMs)
         if (leaf == "info") next = next.copy(info = parseInfo(payload) ?: next.info)
+        val boot = if (leaf == "boot" && !retained) parseBoot(payload, nowMs) else null
+        if (boot != null) next = next.copy(boot = boot)
         if (!retained) next = next.copy(lastSeenAtMs = nowMs, lastWill = false)
         entries[nodeId] = next
         return true
@@ -128,7 +181,7 @@ class NodeStatusTracker(
             nowMs - e.lastSeenAtMs > heartbeatTimeoutMs -> NodeStatus.OFFLINE to OfflineReason.NO_HEARTBEAT
             else -> NodeStatus.ONLINE to null
         }
-        NodeHealth(id, status, reason, e.lastSeenAtMs, e.heartbeat, e.info)
+        NodeHealth(id, status, reason, e.lastSeenAtMs, e.heartbeat, e.info, e.heartbeatAtMs, e.boot)
     }
 
     /** The app lost its broker connection: nothing is known until retained messages arrive again. */
@@ -156,7 +209,11 @@ class NodeStatusTracker(
         }
 
         private fun parseInfo(payload: String) = parseObject(payload)?.let {
-            NodeInfo(it.str("fw"), it.str("git"), it.str("ip"), it.str("host"), it.int("rssi"))
+            NodeInfo(it.str("fw"), it.str("git"), it.str("ip"), it.str("host"), it.int("rssi"), it.str("mac"), it.str("ssid"))
+        }
+
+        private fun parseBoot(payload: String, nowMs: Long) = parseObject(payload)?.let {
+            NodeBoot(it.str("fw"), it.str("git"), it.str("reset"), nowMs)
         }
     }
 }

@@ -42,6 +42,7 @@ import zhb.company.smart_home.ui.settings.SettingsDialog
 @Composable
 fun SystemScreen(
     onOpenShed: () -> Unit,
+    onOpenNode: (String) -> Unit,
     viewModel: ConnectionsViewModel = koinViewModel(),
     repository: SmartHomeRepository = koinInject(),
 ) {
@@ -54,12 +55,19 @@ fun SystemScreen(
         connected = connection is MqttConnectionState.Connected,
         onOpenSettings = { showSettings = true },
         onOpenShed = onOpenShed,
+        onOpenNode = onOpenNode,
     )
     if (showSettings) SettingsDialog(onDismiss = { showSettings = false })
 }
 
 @Composable
-private fun SystemContent(state: ConnectionsState, connected: Boolean, onOpenSettings: () -> Unit, onOpenShed: () -> Unit) {
+private fun SystemContent(
+    state: ConnectionsState,
+    connected: Boolean,
+    onOpenSettings: () -> Unit,
+    onOpenShed: () -> Unit,
+    onOpenNode: (String) -> Unit = {},
+) {
     // Nodes not in use (the shed) are left out of the count and the list; the shed has its own row.
     val nodes = state.nodes.filter { it.nodeId !in NodeLabels.NOT_IN_USE }
     val online = nodes.count { it.status == NodeStatus.ONLINE }
@@ -89,7 +97,7 @@ private fun SystemContent(state: ConnectionsState, connected: Boolean, onOpenSet
         item {
             DashboardCard {
                 CardHeader(Icons.Outlined.Memory, stringResource(R.string.system_nodes))
-                ConnectionsList(ConnectionsState(nodes))
+                ConnectionsList(ConnectionsState(nodes), onNodeClick = onOpenNode)
             }
         }
         item { CompactRow(Icons.Outlined.Settings, stringResource(R.string.system_settings), onClick = onOpenSettings) }

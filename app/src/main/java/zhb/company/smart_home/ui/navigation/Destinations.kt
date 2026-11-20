@@ -11,4 +11,8 @@ sealed class Destination(val route: String) {
     data object System : Destination("system")
     data object HeatingSensors : Destination("heating_sensors")
     data object HeatingCalibration : Destination("heating_calibration")
+    data object NodeDetail : Destination("node/{nodeId}") {
+        const val ARG = "nodeId"
+        fun of(nodeId: String) = "node/$nodeId"
+    }
 }

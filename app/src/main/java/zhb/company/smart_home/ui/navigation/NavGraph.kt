@@ -39,6 +39,7 @@ import zhb.company.smart_home.ui.home.HomeScreen
 import zhb.company.smart_home.ui.house.HouseScreen
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectScreen
 import zhb.company.smart_home.ui.smallhome.SmallHomeScreen
+import zhb.company.smart_home.ui.system.NodeDetailScreen
 import zhb.company.smart_home.ui.system.SystemScreen
 
 /**
@@ -92,7 +93,7 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
     }
     // The shed is opened from the system tab, so that tab stays selected there.
     val selectedRoute = when (currentRoute) {
-        Destination.SmallHome.route -> Destination.System.route
+        Destination.SmallHome.route, Destination.NodeDetail.route -> Destination.System.route
         Destination.HeatingSensors.route, Destination.HeatingCalibration.route -> Destination.Heating.route
         else -> currentRoute
     }
@@ -166,7 +167,13 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
                 PipeCalibrationScreen(onDone = { navController.popBackStack() })
             }
             composable(Destination.System.route) {
-                SystemScreen(onOpenShed = { navController.navigate(Destination.SmallHome.route) })
+                SystemScreen(
+                    onOpenShed = { navController.navigate(Destination.SmallHome.route) },
+                    onOpenNode = { navController.navigate(Destination.NodeDetail.of(it)) },
+                )
+            }
+            composable(Destination.NodeDetail.route) { entry ->
+                NodeDetailScreen(nodeId = entry.arguments?.getString(Destination.NodeDetail.ARG).orEmpty())
             }
             composable(Destination.SmallHome.route) {
                 SmallHomeScreen()

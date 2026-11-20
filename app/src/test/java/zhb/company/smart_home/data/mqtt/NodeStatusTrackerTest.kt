@@ -111,3 +111,58 @@ class SignalQualityTest {
         assertEquals(SignalQuality.EXCELLENT, tracker.snapshot(1)["node4"]?.signal)
     }
 }
+
+class NodeDetailsTest {
+
+    private val tracker = NodeStatusTracker(heartbeatTimeoutMs = 180_000)
+    private val t0 = 10_000_000L
+
+    private fun online(id: String = "node4") = tracker.onMessage("bozaSub/kuca/$id/status", "online", retained = true, nowMs = t0)
+
+    @Test
+    fun `info carries mac and ssid`() {
+        online()
+        tracker.onMessage(
+            "bozaSub/kuca/node4/info",
+            """{"fw":"node4-2.1.1","git":"6de36a7","ip":"192.168.1.54","mac":"A4:CF:12:00:00:00","host":"node4-living-room-ground","ssid":"HomeWiFi","rssi":-58}""",
+            retained = true, nowMs = t0,
+        )
+        assertEquals(
+            NodeInfo("node4-2.1.1", "6de36a7", "192.168.1.54", "node4-living-room-ground", -58, "A4:CF:12:00:00:00", "HomeWiFi"),
+            tracker.snapshot(t0)["node4"]?.info,
+        )
+    }
+
+    @Test
+    fun `uptime is extrapolated from the last heartbeat and flags a recent restart`() {
+        online()
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"fw":"f","up":600,"rssi":-60,"heap":27000,"mqtt":3}""", false, t0 + 1_000)
+        val h = tracker.snapshot(t0 + 61_000)["node4"]!!
+        assertEquals(t0 + 1_000 - 600_000, h.bootedAtMs)
+        assertEquals(660L, h.uptimeSecondsAt(t0 + 61_000))
+        assertTrue(h.recentlyRestarted(t0 + 61_000))
+        assertFalse(h.recentlyRestarted(t0 + 1_000 + 30 * 60_000))
+        assertEquals(2L, h.reconnects)
+    }
+
+    @Test
+    fun `no uptime while offline or without heartbeat`() {
+        online()
+        assertNull(tracker.snapshot(t0)["node4"]!!.uptimeSecondsAt(t0))
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"up":100}""", false, t0)
+        assertNull(tracker.snapshot(t0 + 200_000)["node4"]!!.uptimeSecondsAt(t0 + 200_000))
+    }
+
+    @Test
+    fun `boot message is shown only for the current run`() {
+        online()
+        tracker.onMessage("bozaSub/kuca/node4/boot", """{"fw":"node4-2.1.1","git":"6de36a7","reset":"Hardware Watchdog"}""", false, t0 + 5_000)
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"up":65}""", false, t0 + 60_000)
+        val h = tracker.snapshot(t0 + 60_000)["node4"]!!
+        assertEquals("Hardware Watchdog", h.currentBoot?.reset)
+
+        // The node rebooted later without the app seeing the new boot message.
+        tracker.onMessage("bozaSub/kuca/node4/heartbeat", """{"up":30}""", false, t0 + 3_600_000)
+        assertNull(tracker.snapshot(t0 + 3_600_000)["node4"]!!.currentBoot)
+    }
+}
