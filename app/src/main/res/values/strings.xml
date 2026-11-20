@@ -494,6 +494,22 @@
     <string name="history_outdoor_value">napolju %1$s</string>
     <string name="history_climate_title">Temperatura i vlažnost</string>
     <string name="history_climate_description">Temperatura i vlažnost: %1$s</string>
+    <string name="history_room_target_title">Soba i cilj: %1$s</string>
+    <string name="history_room">soba</string>
+    <string name="history_target">cilj</string>
+    <string name="history_pump_ran">pumpa radi</string>
+    <string name="history_room_value">soba %1$s</string>
+    <string name="history_target_value">cilj %1$s</string>
+    <string name="history_pump_share">pumpa %1$d %% vremena</string>
+    <string name="history_degree_days">%1$s h rada po stepen-danu (%2$s stepen-dana, osnova 18 °C); manje = efikasnije</string>
+    <string name="history_delta_title">ΔT na toplotnoj pumpi</string>
+    <string name="history_delta_waiting">Pojaviće se kad senzori na cevima počnu da šalju (polaz i povrat, bunar ulaz i izlaz). Računa se samo dok pumpa radi.</string>
+    <string name="history_delta_heat">grejanje (polaz − povrat)</string>
+    <string name="history_delta_well">bunar (ulaz − izlaz)</string>
+    <string name="history_delta_heat_value">grejanje %1$s</string>
+    <string name="history_delta_well_value">bunar %1$s</string>
+    <string name="history_delta_hint">Samo dok pumpa radi. Veća razlika na grejanju = više toplote u kuću.</string>
+    <string name="history_pump_off">pumpa nije radila</string>
     <string name="history_temperature_title">Temperatura</string>
     <string name="history_humidity_title">Vlažnost</string>
     <string name="history_average_hint">Prosek po satu (7d) ili po danu (30d). Dodirni grafikon za vrednosti.</string>
@@ -508,4 +524,31 @@
     <string name="history_logger_silent">logger ne beleži već %1$s</string>
     <string name="history_logger_empty">logger još nema podataka</string>
     <string name="history_rpi_stale">istorija sa RPi-ja stara %1$s</string>
+
+    <!-- In-app notification list -->
+    <string name="inbox_title">Obaveštenja</string>
+    <string name="inbox_empty">Još nema obaveštenja. Ovde se čuva sve što RPi pošalje na ovaj telefon (poslednjih 200).</string>
+    <string name="inbox_filter_to_label">Za označavanje (%1$d)</string>
+    <string name="inbox_filter_all">Sva</string>
+    <string name="inbox_label_help">„U redu je“: nije bilo potrebe za upozorenjem (očekivano, namerno, lažna uzbuna). „Pravi problem“: dobro je što je javljeno. Oznaka može da se promeni.</string>
+    <string name="inbox_all_labeled">Sve je označeno. Hvala!</string>
+    <string name="inbox_resolved_after">Rešeno posle %1$s</string>
+    <string name="inbox_not_resolved">Još nije javljeno da je rešeno</string>
+    <string name="inbox_labeled_at">Označeno u %1$s (%2$s)</string>
+    <string name="inbox_via_notification">u obaveštenju</string>
+    <string name="inbox_via_app">u aplikaciji</string>
+    <string name="inbox_today">Danas</string>
+    <string name="inbox_yesterday">Juče</string>
+
+    <!-- Home screen widget -->
+    <string name="widget_name">Kuća</string>
+    <string name="widget_description">Temperature napolju i u kući i rad toplotne pumpe</string>
+    <string name="widget_empty">Otvori aplikaciju jednom da se widget popuni.</string>
+    <string name="widget_outdoor">Napolju</string>
+    <string name="widget_pump_running">Pumpa radi</string>
+    <string name="widget_pump_idle">Pumpa ne radi</string>
+    <string name="widget_heating_off">Grejanje isključeno</string>
+    <string name="widget_heating_unknown">Grejanje: nepoznato</string>
+    <string name="widget_heating_unreachable">Grejanje: čvor nije dostupan</string>
+    <string name="widget_at">u %1$s</string>
 </resources>

@@ -123,4 +123,25 @@ class HistoryTest {
         assertEquals("30.11.", ticks.last().label)
         assertNotNull(ticks.firstOrNull())
     }
+
+    @Test
+    fun `delta and hours per degree day`() {
+        val doc = HistoryDoc(
+            HistoryPeriod.MONTH, listOf(0L, 1L, 2L), 3L,
+            mapOf(
+                "pipe_supply" to HistorySeries("C", "", listOf(34f, null, 30f)),
+                "pipe_return" to HistorySeries("C", "", listOf(30f, 29f, 27.5f)),
+                "pump" to HistorySeries("bool", "", listOf(0.3f, 0.2f, 0f), onHours = listOf(6f, 4f, 0f)),
+                "outdoor_t" to HistorySeries("C", "", listOf(8f, 13f, null)),
+            ),
+            null,
+        )
+        assertEquals(listOf(4f, null, 2.5f), HistoryCharts.delta(doc, "pipe_supply", "pipe_return"))
+        assertNull(HistoryCharts.delta(doc, "pipe_well_in", "pipe_well_out"))
+        val dd = HistoryCharts.hoursPerDegreeDay(doc, 30)!!
+        // day 3 has no outdoor value and is left out: 10 h over (10 + 5) degree-days
+        assertEquals(10f, dd.runHours)
+        assertEquals(15f, dd.degreeDays)
+        assertEquals(10f / 15f, dd.ratio!!, 1e-6f)
+    }
 }

@@ -43,6 +43,10 @@ internal object PreviewHistory {
                 "outdoor_h" to HistorySeries("pct", "", wave(n, n, 78f, 12f, 0.2f)),
                 "target_ground" to HistorySeries("C", "", List(n) { if (it in 36..138) 21.5f else 19.5f }),
                 "pump" to HistorySeries("bool", "", List(n) { i -> if ((i / 9) % 3 == 0) 1f else if ((i / 9) % 3 == 1) 0.3f else 0f }),
+                "pipe_supply" to HistorySeries("C", "", List(n) { i -> if ((i / 9) % 3 != 2) 34f + (i % 9) * 0.2f else null }),
+                "pipe_return" to HistorySeries("C", "", List(n) { i -> if ((i / 9) % 3 != 2) 29.5f + (i % 9) * 0.1f else null }),
+                "pipe_well_in" to HistorySeries("C", "", List(n) { i -> if ((i / 9) % 3 != 2) 11.2f else null }),
+                "pipe_well_out" to HistorySeries("C", "", List(n) { i -> if ((i / 9) % 3 != 2) 8.1f - (i % 9) * 0.05f else null }),
             ),
             midnight,
         )
@@ -107,6 +111,20 @@ private fun HistoryErrorPreview() {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PumpRunCard(HistoryState(error = RtdbError.PERMISSION_DENIED))
                 ClimateHistoryCard(HistoryState())
+            }
+        }
+    }
+}
+
+@Preview(name = "Heating history cards", heightDp = 1300)
+@Composable
+private fun HeatingHistoryPreview() {
+    SmartHomeTheme(darkTheme = false) {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                RoomTargetCard(PreviewHistory.state, "ground", "Prizemlje")
+                PumpRunCard(PreviewHistory.state)
+                PipeDeltaCard(PreviewHistory.state)
             }
         }
     }

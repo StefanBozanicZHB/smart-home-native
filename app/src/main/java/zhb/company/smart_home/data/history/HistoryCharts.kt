@@ -17,6 +17,9 @@ data class BarChartData(
 
 enum class BarUnit { MINUTES, HOURS }
 
+/** [ratio] is null when it was too warm to compare (under 1 degree-day). */
+data class DegreeDays(val runHours: Float, val degreeDays: Float, val ratio: Float?)
+
 /** Turns history documents into what a chart draws. Pure, so it is unit tested. */
 object HistoryCharts {
 
@@ -72,6 +75,36 @@ object HistoryCharts {
             Instant.ofEpochMilli(month.times[i]).atZone(zone).toLocalDate() to values.getOrNull(i)
         }
     }
+
+    /** Point by point [a] − [b] (e.g. supply − return); null where either is missing. */
+    fun delta(doc: HistoryDoc?, a: String, b: String): List<Float?>? {
+        val x = doc?.get(a)?.avg ?: return null
+        val y = doc[b]?.avg ?: return null
+        val d = x.indices.map { i -> val p = x[i]; val q = y.getOrNull(i); if (p != null && q != null) p - q else null }
+        return d.takeIf { v -> v.any { it != null } }
+    }
+
+    /**
+     * Pump run hours per heating degree-day over the last [days] days of `month`:
+     * degree-days = Σ max(0, [baseC] − mean outdoor of the day), as in the daily report. Lower is
+     * better (less running for the same cold). Days without outdoor data are left out of both sums.
+     */
+    fun hoursPerDegreeDay(month: HistoryDoc?, days: Int, baseC: Float = HDD_BASE_C): DegreeDays? {
+        val hours = month?.get(HistorySeriesNames.PUMP)?.onHours ?: return null
+        val outdoor = month[HistorySeriesNames.OUTDOOR_T]?.avg ?: return null
+        val from = (month.times.size - days).coerceAtLeast(0)
+        var h = 0f
+        var dd = 0f
+        for (i in from until month.times.size) {
+            val o = outdoor.getOrNull(i) ?: continue
+            val run = hours.getOrNull(i) ?: continue
+            h += run
+            dd += (baseC - o).coerceAtLeast(0f)
+        }
+        return DegreeDays(h, dd, if (dd >= 1f) h / dd else null)
+    }
+
+    const val HDD_BASE_C = 18f
 
     /** Most recent value of a series, with the start time of its point. */
     fun latest(doc: HistoryDoc?, name: String): Pair<Long, Float>? {

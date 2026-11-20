@@ -2,6 +2,8 @@ package zhb.company.smart_home.di
 
 import org.koin.core.module.dsl.viewModel
 import zhb.company.smart_home.ui.history.HistoryViewModel
+import zhb.company.smart_home.ui.notifications.NotificationsViewModel
+import org.koin.android.ext.koin.androidContext
 import zhb.company.smart_home.ui.system.NodeDetailViewModel
 import org.koin.dsl.module
 import zhb.company.smart_home.ui.ThemeStateHolder
@@ -35,5 +37,6 @@ val viewModelModule = module {
     viewModel { ThemeStateHolder(get()) }
     viewModel { ReportsViewModel(get()) }
     viewModel { HistoryViewModel(get()) }
+    viewModel { NotificationsViewModel(get(), androidContext()) }
     viewModel { params -> ReportDetailViewModel(params.get(), get()) }
 }

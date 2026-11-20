@@ -12,6 +12,9 @@ import zhb.company.smart_home.data.mqtt.ConnectionLifecycle
 import zhb.company.smart_home.data.mqtt.HiveMqConnector
 import zhb.company.smart_home.data.mqtt.MqttConnector
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.data.notifications.NotificationInbox
+import zhb.company.smart_home.widget.WidgetLiveSync
+import zhb.company.smart_home.widget.WidgetStore
 import zhb.company.smart_home.data.notifications.NotificationLog
 import zhb.company.smart_home.data.notifications.PushNotifications
 import zhb.company.smart_home.data.remote.FirebaseRtdbApi
@@ -41,4 +44,7 @@ val mqttModule = module {
     single { GoodNightUseCase(get()) }
     single { PushNotifications(context = androidContext(), preferences = get(), scope = get(named(APP_SCOPE)), log = get()) }
     single { NotificationLog(context = androidContext(), httpClient = get(), auth = get()) }
+    single { NotificationInbox(context = androidContext(), log = get()) }
+    single { WidgetStore(androidContext()) }
+    single { WidgetLiveSync(repository = get(), node5 = get(), store = get(), scope = get(named(APP_SCOPE))) }
 }

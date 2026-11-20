@@ -18,7 +18,7 @@ import zhb.company.smart_home.di.APP_SCOPE
 /** "U redu je" / "Pravi problem" pressed on a notification. */
 class FeedbackReceiver : BroadcastReceiver(), KoinComponent {
 
-    private val log: NotificationLog by inject()
+    private val inbox: NotificationInbox by inject()
     private val push: PushNotifications by inject()
     private val scope: CoroutineScope by inject(named(APP_SCOPE))
 
@@ -50,7 +50,7 @@ class FeedbackReceiver : BroadcastReceiver(), KoinComponent {
         val pending = goAsync()
         scope.launch {
             try {
-                withTimeoutOrNull(WRITE_TIMEOUT_MS) { log.recordFeedback(id, label, now) }
+                withTimeoutOrNull(WRITE_TIMEOUT_MS) { inbox.label(id, label, NotificationInbox.VIA_NOTIFICATION, now) }
             } finally {
                 pending.finish()
             }

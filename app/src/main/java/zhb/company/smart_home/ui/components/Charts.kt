@@ -120,6 +120,9 @@ fun LineChart(
     description: String? = null,
     /** Hard limits for the left axis, e.g. 0..100 for humidity. */
     leftBounds: ClosedFloatingPointRange<Float>? = null,
+    /** Per point 0..1, drawn as background bands (e.g. the share of time the pump ran). */
+    shade: List<Float?>? = null,
+    shadeColor: Color = AppTheme.status.active,
 ) {
     val n = lines.maxOfOrNull { it.values.size } ?: 0
     val hasRight = lines.any { it.axis == ChartAxis.RIGHT && it.values.any { v -> v != null } }
@@ -130,6 +133,18 @@ fun LineChart(
             if (leftBounds == null) r else r.first.coerceIn(leftBounds) to r.second.coerceIn(leftBounds)
         }
         val rightRange = if (right.isEmpty()) null else paddedRange(right.min(), right.max(), minSpan = 10f)
+        shade?.let { s ->
+            val w = plot.width / n.coerceAtLeast(1)
+            s.forEachIndexed { i, f ->
+                if (f != null && f > 0f) {
+                    drawRect(
+                        shadeColor.copy(alpha = 0.3f * f.coerceAtMost(1f)),
+                        topLeft = Offset(plot.left + i * w, plot.top),
+                        size = Size(w + 0.5f, plot.bottom - plot.top),
+                    )
+                }
+            }
+        }
         leftRange?.let { labels.axis(it, ChartAxis.LEFT, leftFormat) }
         if (hasRight) rightRange?.let { labels.axis(it, ChartAxis.RIGHT, rightFormat) }
         lines.forEach { line ->

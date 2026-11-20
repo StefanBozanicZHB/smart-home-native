@@ -45,8 +45,9 @@ class NotificationLog(
         flush()
     }
 
-    suspend fun recordFeedback(id: String, label: String, atMs: Long) {
-        enqueue(id, mapOf("feedback" to label, "feedback_ms" to atMs))
+    /** [via]: where the label was given, [NotificationInbox.VIA_NOTIFICATION] or [NotificationInbox.VIA_APP]. */
+    suspend fun recordFeedback(id: String, label: String, atMs: Long, via: String) {
+        enqueue(id, mapOf("feedback" to label, "feedback_ms" to atMs, "feedback_via" to via))
         flush()
     }
 

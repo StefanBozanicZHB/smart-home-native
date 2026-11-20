@@ -29,7 +29,14 @@ object HistorySeriesNames {
     const val OUTDOOR_H = "outdoor_h"
     const val PUMP = "pump"
     const val LOGGED = "logged"
+    // Pipe temperatures, sampled only while the pump runs (RPi catalog `..., pump`).
+    const val PIPE_SUPPLY = "pipe_supply"
+    const val PIPE_RETURN = "pipe_return"
+    const val PIPE_WELL_IN = "pipe_well_in"
+    const val PIPE_WELL_OUT = "pipe_well_out"
     fun target(zone: String) = "target_$zone"
+    /** Room temperature of a heating zone: `room_ground_t`, `room_upper_t`. */
+    fun room(zone: String) = "room_${zone}_t"
     fun online(node: String) = "online_$node"
 }
 

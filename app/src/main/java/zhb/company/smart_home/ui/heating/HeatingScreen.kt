@@ -77,6 +77,8 @@ import zhb.company.smart_home.ui.history.HistoryAutoLoad
 import zhb.company.smart_home.ui.history.HistoryState
 import zhb.company.smart_home.ui.history.HistoryViewModel
 import zhb.company.smart_home.ui.history.PumpRunCard
+import zhb.company.smart_home.ui.history.PipeDeltaCard
+import zhb.company.smart_home.ui.history.RoomTargetCard
 import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.heating.DayType
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
@@ -112,7 +114,7 @@ fun HeatingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val history by historyViewModel.state.collectAsStateWithLifecycle()
-    HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.DAY, HistoryPeriod.MONTH))
+    HistoryAutoLoad(historyViewModel, HistoryPeriod.entries.toSet())
     // Leaving drops the view model and with it every unsaved schedule draft, so ask first.
     BackHandler(enabled = state.hasUnsavedDrafts) { viewModel.onIntent(HeatingIntent.RequestLeave) }
     val snackbar = remember { SnackbarHostState() }
@@ -179,7 +181,10 @@ private fun HeatingContent(
         if (!state.loading) item { ScheduleCard(state, onIntent, initiallyEditing) }
         // The flow temperature is already in the heat pump card; outdoor explains how hard it works.
         item { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
+        val zone = state.selectedZone ?: "ground"
+        item { RoomTargetCard(history, zone, zoneName(zone)) }
         item { PumpRunCard(history) }
+        item { PipeDeltaCard(history) }
     }
 }
 

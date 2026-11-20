@@ -41,6 +41,7 @@ import zhb.company.smart_home.ui.house.HouseScreen
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectScreen
 import zhb.company.smart_home.ui.reports.ReportDetailScreen
 import zhb.company.smart_home.ui.reports.ReportsScreen
+import zhb.company.smart_home.ui.notifications.NotificationsScreen
 import zhb.company.smart_home.ui.smallhome.SmallHomeScreen
 import zhb.company.smart_home.ui.system.NodeDetailScreen
 import zhb.company.smart_home.ui.system.SystemScreen
@@ -110,6 +111,7 @@ fun SmartHomeNavGraph(
         Destination.SmallHome.route, Destination.NodeDetail.route -> Destination.System.route
         Destination.HeatingSensors.route, Destination.HeatingCalibration.route,
         Destination.Reports.route, Destination.ReportDetail.route -> Destination.Heating.route
+        Destination.Notifications.route -> Destination.Home.route
         else -> currentRoute
     }
     val tab: (Destination) -> Unit = { navController.navigateToTab(it.route) }
@@ -158,6 +160,7 @@ fun SmartHomeNavGraph(
                     onOpenHeating = { tab(Destination.Heating) },
                     onOpenGarden = { tab(Destination.Garden) },
                     onOpenHouse = { tab(Destination.House) },
+                    onOpenNotifications = { navController.navigate(Destination.Notifications.route) },
                 )
             }
             composable(Destination.Garden.route) {
@@ -168,6 +171,12 @@ fun SmartHomeNavGraph(
                     onBack = { navController.popBackStack() },
                     onOpenSensors = { navController.navigate(Destination.HeatingSensors.route) },
                     onOpenReports = { navController.navigate(Destination.Reports.route) },
+                )
+            }
+            composable(Destination.Notifications.route) {
+                NotificationsScreen(
+                    onBack = { navController.navigateUp() },
+                    onOpenReport = { navController.navigate(Destination.ReportDetail.of(it)) },
                 )
             }
             composable(Destination.Reports.route) {

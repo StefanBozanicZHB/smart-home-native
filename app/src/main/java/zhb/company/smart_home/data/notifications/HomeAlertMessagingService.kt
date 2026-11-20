@@ -27,12 +27,15 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
 
     private val push: PushNotifications by inject()
     private val log: NotificationLog by inject()
+    private val inbox: NotificationInbox by inject()
     private val preferences: AppPreferences by inject()
 
     override fun onMessageReceived(message: RemoteMessage) {
         val receivedMs = System.currentTimeMillis()
         val n = message.notification
         val payload = AlertPayload.parse(message.data, n?.title, n?.body, n?.channelId, n?.tag) ?: return
+        // Into the in-app list first: it keeps the message even if notifications are off.
+        runBlocking { inbox.add(payload, receivedMs) }
         if (push.hasPermission()) {
             val quiet = runBlocking { preferences.quietHours.first() }
             val now = java.time.LocalTime.now()

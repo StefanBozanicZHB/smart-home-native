@@ -67,7 +67,7 @@ private fun periodOptions() = listOf(
 @Composable
 fun RoomTrend(state: HistoryState, zone: String = "ground") {
     val day = state.doc(HistoryPeriod.DAY) ?: return
-    val room = day[HistorySeriesNames.ROOM_GROUND_T]?.takeIf { it.hasData } ?: return
+    val room = day[HistorySeriesNames.room(zone)]?.takeIf { it.hasData } ?: return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Sparkline(
             values = room.avg,
@@ -79,6 +79,115 @@ fun RoomTrend(state: HistoryState, zone: String = "ground") {
         ChartReadout(stringResource(R.string.history_room_trend_caption))
     }
 }
+
+/**
+ * Heating screen: room temperature of the zone against its scheduled target, with the periods
+ * the pump ran shaded behind (share of each 10 min / hour / day).
+ */
+@Composable
+fun RoomTargetCard(state: HistoryState, zone: String, zoneLabel: String) {
+    var period by rememberSaveable { mutableStateOf(HistoryPeriod.DAY) }
+    var selected by remember(period, zone) { mutableStateOf<Int?>(null) }
+    val doc = state.doc(period)
+    DashboardCard {
+        CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_room_target_title, zoneLabel)) {
+            PeriodTabs(periodOptions(), period, { period = it })
+        }
+        val room = doc?.get(HistorySeriesNames.room(zone))?.takeIf { it.hasData }
+        val target = doc?.get(HistorySeriesNames.target(zone))?.takeIf { it.hasData }
+        val pump = doc?.get(HistorySeriesNames.PUMP)
+        if (doc == null || room == null) {
+            HistoryPlaceholder(state.error, state.isLoading(period))
+            return@DashboardCard
+        }
+        val roomColor = AppTheme.status.warm
+        val targetColor = MaterialTheme.colorScheme.onSurfaceVariant
+        LineChart(
+            lines = listOfNotNull(
+                target?.let { ChartLine(it.avg, targetColor, dashed = true) },
+                ChartLine(room.avg, roomColor),
+            ),
+            xTicks = xTicks(doc.times, doc.endMs),
+            leftFormat = { "${it.toInt()}°" },
+            shade = pump?.avg,
+            selected = selected,
+            onSelect = { selected = it },
+            description = stringResource(R.string.history_room_target_title, zoneLabel),
+        )
+        val i = selected?.takeIf { it in doc.times.indices }
+        if (i != null) {
+            val parts = listOfNotNull(
+                pointLabel(doc.times[i], granularity(period)),
+                room.avg[i]?.let { stringResource(R.string.history_room_value, temp(it)) },
+                target?.avg?.getOrNull(i)?.let { stringResource(R.string.history_target_value, temp(it)) },
+                pump?.avg?.getOrNull(i)?.let { stringResource(R.string.history_pump_share, (it * 100).toInt()) },
+            )
+            ChartReadout(parts.joinToString(" · "), emphasized = true)
+        } else {
+            Legend(
+                listOfNotNull(
+                    Triple(roomColor, stringResource(R.string.history_room), LegendStyle.SOLID),
+                    target?.let { Triple(targetColor, stringResource(R.string.history_target), LegendStyle.DASHED) },
+                    pump?.takeIf { p -> p.avg.any { (it ?: 0f) > 0f } }?.let { Triple(AppTheme.status.active.copy(alpha = 0.4f), stringResource(R.string.history_pump_ran), LegendStyle.BAR) },
+                ),
+            )
+        }
+    }
+}
+
+/**
+ * Heating screen: temperature difference across the heat pump while it runs. Heating side
+ * (supply − return) shows how much heat goes to the house, well side (in − out) how much is taken
+ * from the ground water. Shows a placeholder until the pipe sensors report.
+ */
+@Composable
+fun PipeDeltaCard(state: HistoryState) {
+    var period by rememberSaveable { mutableStateOf(HistoryPeriod.DAY) }
+    var selected by remember(period) { mutableStateOf<Int?>(null) }
+    val doc = state.doc(period)
+    val heat = HistoryCharts.delta(doc, HistorySeriesNames.PIPE_SUPPLY, HistorySeriesNames.PIPE_RETURN)
+    val well = HistoryCharts.delta(doc, HistorySeriesNames.PIPE_WELL_IN, HistorySeriesNames.PIPE_WELL_OUT)
+    val heatColor = AppTheme.status.warm
+    val wellColor = AppTheme.status.cold
+    DashboardCard {
+        CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_delta_title)) {
+            PeriodTabs(periodOptions(), period, { period = it })
+        }
+        if (doc == null || (heat == null && well == null)) {
+            if (doc == null) HistoryPlaceholder(state.error, state.isLoading(period))
+            else ChartReadout(stringResource(R.string.history_delta_waiting))
+            return@DashboardCard
+        }
+        LineChart(
+            lines = listOfNotNull(heat?.let { ChartLine(it, heatColor) }, well?.let { ChartLine(it, wellColor) }),
+            xTicks = xTicks(doc.times, doc.endMs),
+            leftFormat = { "${formatDelta(it)}°" },
+            selected = selected,
+            onSelect = { selected = it },
+            height = 130.dp,
+            description = stringResource(R.string.history_delta_title),
+        )
+        val i = selected?.takeIf { it in doc.times.indices }
+        if (i != null) {
+            val parts = listOfNotNull(
+                pointLabel(doc.times[i], granularity(period)),
+                heat?.getOrNull(i)?.let { stringResource(R.string.history_delta_heat_value, temp(it)) },
+                well?.getOrNull(i)?.let { stringResource(R.string.history_delta_well_value, temp(it)) },
+            )
+            ChartReadout(if (parts.size > 1) parts.joinToString(" · ") else parts.first() + " · " + stringResource(R.string.history_pump_off), emphasized = true)
+        } else {
+            Legend(
+                listOfNotNull(
+                    heat?.let { Triple(heatColor, stringResource(R.string.history_delta_heat), LegendStyle.SOLID) },
+                    well?.let { Triple(wellColor, stringResource(R.string.history_delta_well), LegendStyle.SOLID) },
+                ),
+            )
+            ChartReadout(stringResource(R.string.history_delta_hint))
+        }
+    }
+}
+
+private fun formatDelta(v: Float) = if (v == kotlin.math.floor(v)) v.toInt().toString() else String.format(SR, "%.1f", v)
 
 /** Heating screen: pump run time per hour (24 h) or per day (7 / 30 days) and the outdoor mean. */
 @Composable
@@ -104,7 +213,7 @@ fun PumpRunCard(state: HistoryState) {
             barColor = bars,
             lineColor = line,
             xTicks = xTicks(data.starts, data.endMs),
-            barFormat = { "${it.toInt()} $unit" },
+            barFormat = { "${zhb.company.smart_home.ui.components.formatAxis(it)} $unit" },
             lineFormat = { "${it.toInt()}°" },
             selected = selected,
             onSelect = { selected = it },
@@ -127,6 +236,12 @@ fun PumpRunCard(state: HistoryState) {
             )
             val total = data.bars.filterNotNull().sum()
             ChartReadout(stringResource(R.string.history_pump_total, runText(total, data.barUnit)))
+            if (period != HistoryPeriod.DAY) {
+                val dd = HistoryCharts.hoursPerDegreeDay(state.doc(HistoryPeriod.MONTH), if (period == HistoryPeriod.WEEK) 7 else 30)
+                dd?.ratio?.takeIf { dd.runHours > 0f }?.let { r ->
+                    ChartReadout(stringResource(R.string.history_degree_days, String.format(SR, "%.2f", r), String.format(SR, "%.0f", dd.degreeDays)))
+                }
+            }
         }
     }
 }

@@ -22,6 +22,13 @@ import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Water
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.Notifications
+import org.koin.compose.koinInject
+import zhb.company.smart_home.data.notifications.NotificationInbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -69,11 +76,15 @@ fun HomeScreen(
     onOpenHeating: () -> Unit,
     onOpenGarden: () -> Unit,
     onOpenHouse: () -> Unit,
+    onOpenNotifications: () -> Unit = {},
     viewModel: HomeViewModel = koinViewModel(),
+    inbox: NotificationInbox = koinInject(),
     historyViewModel: HistoryViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val history by historyViewModel.state.collectAsStateWithLifecycle()
+    val inboxEntries by inbox.entries.collectAsStateWithLifecycle()
+    val toLabel = inboxEntries.count { it.needsLabel }
     // Only the winter heating card has a chart.
     if (HomeSection.HEATING_HERO in state.sections) HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.DAY))
     val context = LocalContext.current
@@ -86,7 +97,7 @@ fun HomeScreen(
         }
     }
 
-    HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse, history = history)
+    HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse, history = history, toLabel = toLabel, onOpenNotifications = onOpenNotifications)
 
     if (state.showDevicesOnDialog) DevicesOnDialog(state.devicesOnList) { viewModel.onIntent(HomeIntent.DismissDevicesOnDialog) }
     if (state.showUnlockConfirm) UnlockDialog(viewModel::onIntent)
@@ -101,13 +112,15 @@ private fun HomeContent(
     onOpenHouse: () -> Unit,
     now: LocalDateTime = LocalDateTime.now(),
     history: HistoryState = HistoryState(),
+    toLabel: Int = 0,
+    onOpenNotifications: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { HomeHeader(state.connected, now) }
+        item { HomeHeader(state.connected, now, toLabel, onOpenNotifications) }
         state.alerts.forEach { alert -> item { HomeAlertBanner(alert) } }
         state.sections.forEach { section ->
             item(key = section.name) {
@@ -143,7 +156,7 @@ private fun HomeContent(
 }
 
 @Composable
-private fun HomeHeader(connected: Boolean, now: LocalDateTime) {
+private fun HomeHeader(connected: Boolean, now: LocalDateTime, toLabel: Int = 0, onOpenNotifications: () -> Unit = {}) {
     val greeting = stringResource(
         when (now.hour) {
             in 5..11 -> R.string.home_greeting_morning
@@ -154,6 +167,14 @@ private fun HomeHeader(connected: Boolean, now: LocalDateTime) {
     val date = now.format(DateTimeFormatter.ofPattern("EEEE, HH:mm", Locale.forLanguageTag("sr-Latn")))
         .replaceFirstChar { it.titlecase(Locale.forLanguageTag("sr-Latn")) }
     ScreenHeader(title = greeting, subtitle = date, horizontalPadding = 0.dp) {
+        BadgedBox(
+            badge = { if (toLabel > 0) Badge { Text(toLabel.toString()) } },
+            modifier = Modifier.padding(end = 4.dp),
+        ) {
+            IconButton(onClick = onOpenNotifications) {
+                Icon(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.inbox_title))
+            }
+        }
         StatusChip(
             text = stringResource(if (connected) R.string.home_connected else R.string.home_disconnected),
             tone = if (connected) Tone.ACTIVE else Tone.DANGER,

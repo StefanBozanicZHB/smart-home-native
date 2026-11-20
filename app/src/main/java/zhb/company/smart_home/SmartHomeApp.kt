@@ -17,6 +17,8 @@ import zhb.company.smart_home.di.mqttModule
 import zhb.company.smart_home.di.networkModule
 import zhb.company.smart_home.di.viewModelModule
 
+import zhb.company.smart_home.widget.WidgetLiveSync
+
 class SmartHomeApp : Application() {
     override fun onCreate() {
         super.onCreate()
@@ -26,6 +28,7 @@ class SmartHomeApp : Application() {
         }
         watchVisibilityAndNetwork(get())
         get<PushNotifications>().start()
+        get<WidgetLiveSync>().start()
     }
 
     /** Feeds app foreground/background and "network is back" events to the MQTT connection. */

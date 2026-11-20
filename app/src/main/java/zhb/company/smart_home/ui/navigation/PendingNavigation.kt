@@ -19,6 +19,9 @@ class PendingNavigation {
         if (extras.getString("type") == "report" && extras.getString("kind") == "heating") {
             val date = extras.getString("date") ?: return
             if (DATE.matches(date)) _route.value = Destination.ReportDetail.of(date)
+        } else if (extras.getString("type") != null && extras.getString("title") != null) {
+            // Any other notifier message (node, heating, system): the list, where it can be labeled.
+            _route.value = Destination.Notifications.route
         }
     }
 
