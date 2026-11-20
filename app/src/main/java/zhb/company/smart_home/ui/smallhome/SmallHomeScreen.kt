@@ -45,20 +45,20 @@ import zhb.company.smart_home.ui.components.adaptiveColumns
 
 /** Shed (node7). The node is not in use (smart-home-mcu docs/nodes.md); the screen stays for when it returns. */
 @Composable
-fun SmallHomeScreen(viewModel: SmallHomeViewModel = koinViewModel()) {
+fun SmallHomeScreen(onBack: () -> Unit, viewModel: SmallHomeViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SmallHomeContent(state, viewModel::onIntent)
+    SmallHomeContent(state, viewModel::onIntent, onBack)
 }
 
 @Composable
-private fun SmallHomeContent(state: SmallHomeState, onIntent: (SmallHomeIntent) -> Unit) {
+private fun SmallHomeContent(state: SmallHomeState, onIntent: (SmallHomeIntent) -> Unit, onBack: () -> Unit = {}) {
     val offline = stringResource(R.string.home_node_offline_tile)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { ScreenHeader(title = stringResource(R.string.menu_house), horizontalPadding = 0.dp) }
+        item { ScreenHeader(title = stringResource(R.string.menu_house), horizontalPadding = 0.dp, onBack = onBack) }
         if (!state.online) item { AlertBanner(Icons.Outlined.Info, stringResource(R.string.small_home_not_in_use), Tone.NEUTRAL) }
         item {
             TileGrid(

@@ -171,10 +171,10 @@ fun SmartHomeNavGraph(
                 )
             }
             composable(Destination.Reports.route) {
-                ReportsScreen(onOpen = { navController.navigate(Destination.ReportDetail.of(it)) })
+                ReportsScreen(onOpen = { navController.navigate(Destination.ReportDetail.of(it)) }, onBack = { navController.navigateUp() })
             }
             composable(Destination.ReportDetail.route) { entry ->
-                ReportDetailScreen(date = entry.arguments?.getString(Destination.ReportDetail.ARG).orEmpty())
+                ReportDetailScreen(date = entry.arguments?.getString(Destination.ReportDetail.ARG).orEmpty(), onBack = { navController.navigateUp() })
             }
             composable(Destination.House.route) {
                 HouseScreen()
@@ -195,10 +195,10 @@ fun SmartHomeNavGraph(
                 )
             }
             composable(Destination.NodeDetail.route) { entry ->
-                NodeDetailScreen(nodeId = entry.arguments?.getString(Destination.NodeDetail.ARG).orEmpty())
+                NodeDetailScreen(nodeId = entry.arguments?.getString(Destination.NodeDetail.ARG).orEmpty(), onBack = { navController.navigateUp() })
             }
             composable(Destination.SmallHome.route) {
-                SmallHomeScreen()
+                SmallHomeScreen(onBack = { navController.navigateUp() })
             }
         }
     }

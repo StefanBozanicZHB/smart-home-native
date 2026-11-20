@@ -2,11 +2,14 @@ package zhb.company.smart_home
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
@@ -21,6 +24,10 @@ import zhb.company.smart_home.ui.ThemeStateHolder
 import zhb.company.smart_home.ui.navigation.PendingNavigation
 import zhb.company.smart_home.ui.navigation.SmartHomeNavGraph
 import zhb.company.smart_home.ui.theme.SmartHomeTheme
+
+/** Scrims behind three-button navigation (AndroidX defaults); gesture navigation stays transparent. */
+private val LIGHT_NAV_SCRIM = Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
+private val DARK_NAV_SCRIM = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
 
 class MainActivity : FragmentActivity() {
     private val preferences: AppPreferences by inject()
@@ -39,6 +46,15 @@ class MainActivity : FragmentActivity() {
         setContent {
             val themeViewModel: ThemeStateHolder = koinViewModel()
             val darkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
+            // The app's own light/dark switch, not the system setting, decides the status bar
+            // icon color; otherwise dark icons end up on the dark theme's background.
+            DisposableEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(LIGHT_NAV_SCRIM, DARK_NAV_SCRIM) { darkTheme },
+                )
+                onDispose {}
+            }
             SmartHomeTheme(darkTheme = darkTheme) {
                 SmartHomeNavGraph()
             }

@@ -5,24 +5,27 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -34,14 +37,16 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import zhb.company.smart_home.R
 import zhb.company.smart_home.ui.theme.AppTheme
 
 /*
@@ -53,20 +58,32 @@ val CardShape = RoundedCornerShape(16.dp)
 val TileShape = RoundedCornerShape(12.dp)
 private val SwitchRowHeight = 32.dp
 
-/** Screen title row used under the status bar on every main tab. */
+/**
+ * Screen title row under the status bar. Main tabs have no [onBack]; screens opened from a tab
+ * (details, reports, sensors) pass it and get a back arrow on the left.
+ */
 @Composable
 fun ScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     horizontalPadding: Dp = 16.dp,
+    onBack: (() -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth().padding(horizontal = horizontalPadding, vertical = 12.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        // The arrow and the title are pulled left so the arrow lines up with the cards below; the
+        // touch target stays 48 dp.
+        val shift = if (onBack != null) (-12).dp else 0.dp
+        if (onBack != null) {
+            IconButton(onClick = onBack, modifier = Modifier.offset(x = shift)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
+            }
+        }
+        Column(modifier = Modifier.weight(1f).offset(x = shift)) {
             if (subtitle != null) {
                 Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

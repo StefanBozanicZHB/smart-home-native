@@ -49,7 +49,7 @@ import zhb.company.smart_home.ui.format.Durations
 
 /** Daily heating reports from the RPi, newest first. */
 @Composable
-fun ReportsScreen(onOpen: (String) -> Unit, viewModel: ReportsViewModel = koinViewModel()) {
+fun ReportsScreen(onOpen: (String) -> Unit, onBack: () -> Unit, viewModel: ReportsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -57,7 +57,7 @@ fun ReportsScreen(onOpen: (String) -> Unit, viewModel: ReportsViewModel = koinVi
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            ScreenHeader(title = stringResource(R.string.reports_title), horizontalPadding = 0.dp) {
+            ScreenHeader(title = stringResource(R.string.reports_title), horizontalPadding = 0.dp, onBack = onBack) {
                 TextButton(onClick = viewModel::refresh, enabled = !state.loading) { Text(stringResource(R.string.reports_refresh)) }
             }
         }
@@ -98,14 +98,14 @@ private fun ReportRow(item: ReportSummary, onClick: () -> Unit) {
 
 /** One day's report. */
 @Composable
-fun ReportDetailScreen(date: String, viewModel: ReportDetailViewModel = koinViewModel(key = "report-$date") { parametersOf(date) }) {
+fun ReportDetailScreen(date: String, onBack: () -> Unit, viewModel: ReportDetailViewModel = koinViewModel(key = "report-$date") { parametersOf(date) }) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { ScreenHeader(title = formatDay(date), subtitle = stringResource(R.string.reports_title), horizontalPadding = 0.dp) }
+        item { ScreenHeader(title = formatDay(date), subtitle = stringResource(R.string.reports_title), horizontalPadding = 0.dp, onBack = onBack) }
         val report = state.report
         when {
             state.loading -> item { Loading() }

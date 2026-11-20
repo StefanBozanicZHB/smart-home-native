@@ -65,7 +65,7 @@ import zhb.company.smart_home.ui.theme.AppTheme
 
 /** Diagnostics for one node: connection, uptime and restarts, memory, firmware and network. */
 @Composable
-fun NodeDetailScreen(nodeId: String, viewModel: NodeDetailViewModel = koinViewModel { parametersOf(nodeId) }) {
+fun NodeDetailScreen(nodeId: String, onBack: () -> Unit, viewModel: NodeDetailViewModel = koinViewModel { parametersOf(nodeId) }) {
     val row by viewModel.state.collectAsStateWithLifecycle()
     // Relative times (uptime, "seen 20 s ago") move on between heartbeats.
     val now by produceState(System.currentTimeMillis()) {
@@ -74,13 +74,13 @@ fun NodeDetailScreen(nodeId: String, viewModel: NodeDetailViewModel = koinViewMo
             value = System.currentTimeMillis()
         }
     }
-    NodeDetailContent(row, now)
+    NodeDetailContent(row, now, onBack)
 }
 
 private const val TICK_MS = 5_000L
 
 @Composable
-private fun NodeDetailContent(row: NodeRow, nowMs: Long) {
+private fun NodeDetailContent(row: NodeRow, nowMs: Long, onBack: () -> Unit = {}) {
     val health = row.health
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -88,7 +88,7 @@ private fun NodeDetailContent(row: NodeRow, nowMs: Long) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            ScreenHeader(title = row.label, subtitle = row.nodeId, horizontalPadding = 0.dp) {
+            ScreenHeader(title = row.label, subtitle = row.nodeId, horizontalPadding = 0.dp, onBack = onBack) {
                 val (text, tone) = when (row.status) {
                     NodeStatus.ONLINE -> R.string.connections_online to Tone.ACTIVE
                     NodeStatus.OFFLINE -> R.string.connections_offline to Tone.DANGER

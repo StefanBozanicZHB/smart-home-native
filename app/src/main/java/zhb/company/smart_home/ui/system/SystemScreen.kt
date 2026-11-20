@@ -84,6 +84,7 @@ private fun SystemContent(
                 )
             }
         }
+        item { CompactRow(Icons.Outlined.Settings, stringResource(R.string.system_settings), onClick = onOpenSettings) }
         item {
             DashboardCard {
                 CardHeader(Icons.Outlined.Dns, stringResource(if (connected) R.string.system_broker_connected else R.string.system_broker_disconnected)) {
@@ -100,7 +101,6 @@ private fun SystemContent(
                 ConnectionsList(ConnectionsState(nodes), onNodeClick = onOpenNode)
             }
         }
-        item { CompactRow(Icons.Outlined.Settings, stringResource(R.string.system_settings), onClick = onOpenSettings) }
         item { CompactRow(Icons.Outlined.Warehouse, stringResource(R.string.system_shed), onClick = onOpenShed) }
     }
 }

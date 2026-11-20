@@ -59,6 +59,7 @@ import zhb.company.smart_home.domain.heating.PipeSensorRules
 import zhb.company.smart_home.ui.components.AlertBanner
 import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.DashboardCard
+import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
@@ -110,14 +111,7 @@ private fun PipeSensorsContent(state: PipeSensorsState, onIntent: (PipeSensorsIn
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back)) }
-                Text(
-                    stringResource(R.string.sensors_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
+            ScreenHeader(title = stringResource(R.string.sensors_title), horizontalPadding = 0.dp, onBack = onBack) {
                 IconButton(onClick = { onIntent(PipeSensorsIntent.Refresh) }, enabled = state.connected) {
                     Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.sensors_refresh))
                 }
