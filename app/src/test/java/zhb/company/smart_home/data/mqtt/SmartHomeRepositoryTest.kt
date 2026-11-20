@@ -258,6 +258,23 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
+    fun `node4 room climate comes from the English topics, deleted value shows as missing`() {
+        val repo = repository(FakeMqttConnector())
+
+        repo.handleMessage("bozaSub/kuca/node4/temperature", "21.53", retained = true)
+        repo.handleMessage("bozaSub/kuca/node4/humidity", "45.2", retained = true)
+        repo.handleMessage("bozaSub/kuca/node4/dnevniBoravak/temperatura", "19.00", retained = true)
+        assertEquals("21.53", repo.state.value.temperatureLivingRoomDown)
+        assertEquals("45.2", repo.state.value.humidityLivingRoomDown)
+
+        // AHT10 failed for 5 min: the node deletes the retained values.
+        repo.handleMessage("bozaSub/kuca/node4/temperature", "", retained = true)
+        repo.handleMessage("bozaSub/kuca/node4/humidity", "", retained = true)
+        assertEquals("--", zhb.company.smart_home.ui.format.Readings.temperature(repo.state.value.temperatureLivingRoomDown))
+        assertEquals("--", zhb.company.smart_home.ui.format.Readings.percent(repo.state.value.humidityLivingRoomDown))
+    }
+
+    @Test
     fun `AC power is tracked client-side and listed as a power device`() {
         val repo = repository(FakeMqttConnector())
 

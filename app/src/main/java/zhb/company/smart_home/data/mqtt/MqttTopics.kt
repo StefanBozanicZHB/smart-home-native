@@ -36,9 +36,8 @@ object MqttTopics {
     const val NODE3_DOOR_STATUS = "$BASE/node3/vrata/stanje"
 
     // node4 - ground floor living room
-    // Sensor-only since node4-2.0.0: the light relays were removed, the node subscribes to nothing.
-    const val NODE4_HUMIDITY = "$BASE/node4/dnevniBoravak/vlaznost"
-    const val NODE4_TEMPERATURE = "$BASE/node4/dnevniBoravak/temperatura"
+    const val NODE4_HUMIDITY = "$BASE/node4/humidity"
+    const val NODE4_TEMPERATURE = "$BASE/node4/temperature"
 
     // node5 - heating: new JSON API with a switchable node id, see data/heating/Node5Topics.kt
 
