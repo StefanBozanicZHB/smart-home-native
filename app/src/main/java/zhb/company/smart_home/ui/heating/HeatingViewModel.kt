@@ -2,7 +2,6 @@ package zhb.company.smart_home.ui.heating
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +20,8 @@ import zhb.company.smart_home.domain.heating.Hysteresis
 import zhb.company.smart_home.domain.heating.ScheduleRules
 import zhb.company.smart_home.domain.heating.ScheduleSegment
 import zhb.company.smart_home.domain.heating.formatTenths
+import zhb.company.smart_home.domain.heating.TimeOfDay
+import zhb.company.smart_home.ui.format.Readings
 import zhb.company.smart_home.domain.model.SmartHomeState
 
 class HeatingViewModel(
@@ -76,11 +77,13 @@ class HeatingViewModel(
                 NodeStatus.UNKNOWN -> null
             },
             loading = config == null || zoneSettings == null,
-            outdoorTemp = home.temperatureOutdoor,
+            outdoorTemp = Readings.temperature(home.temperatureOutdoor),
             mainSwitch = config?.mainSwitch ?: live?.mainSwitch ?: false,
             pump = live?.pump ?: false,
             demand = live?.demand ?: false,
-            flowTemp = live?.flowTemp?.let { String.format(Locale.US, "%.1f", it) } ?: "--",
+            flowTemp = Readings.temperature(live?.flowTemp),
+            pipes = PipeTemps(supply = live?.flowTemp?.let(Readings::temperature)),
+            nextChange = nextChange(snapshot, zone),
             nodeTime = live?.time,
             nodeIsWeekend = live?.weekend,
             safeMode = when {
@@ -96,8 +99,10 @@ class HeatingViewModel(
                 val z = live?.zones?.get(id)
                 ZoneUi(
                     id = id,
-                    roomTemp = z?.roomTemp?.let { String.format(Locale.US, "%.1f", it) } ?: "--",
+                    roomTemp = Readings.temperature(z?.roomTemp),
                     target = z?.targetTenths?.let(::formatTenths),
+                    roomTempValue = z?.roomTemp,
+                    targetTenths = z?.targetTenths,
                     demand = z?.demand ?: false,
                     fault = z?.fault,
                 )
@@ -119,6 +124,20 @@ class HeatingViewModel(
             showMainSwitchOffConfirm = ui.showMainSwitchOffConfirm,
             message = ui.message,
         )
+    }
+
+    /** Next change today in the program the node runs now (its own clock and day type), for the selected zone. */
+    private fun nextChange(snapshot: Node5Snapshot, zone: String?): NextChangeUi? {
+        val live = snapshot.live ?: return null
+        val now = TimeOfDay.parse(live.time) ?: return null
+        val dayType = when (live.weekend) {
+            true -> DayType.WEEKEND
+            false -> DayType.WORKDAY
+            null -> return null
+        }
+        val program = zone?.let { snapshot.zones[it] }?.day(dayType) ?: return null
+        val next = ScheduleRules.nextChange(program, now) ?: return null
+        return NextChangeUi(TimeOfDay.format(next.startMinute), formatTenths(next.tempTenths))
     }
 
     fun onIntent(intent: HeatingIntent) {

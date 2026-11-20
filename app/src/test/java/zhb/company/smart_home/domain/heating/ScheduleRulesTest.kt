@@ -83,6 +83,18 @@ class ScheduleRulesTest {
     }
 
     @Test
+    fun `active segment and next change`() {
+        val day = listOf(seg("00:00", 195), seg("06:00", 215), seg("22:30", 195))
+        assertEquals(0, ScheduleRules.activeIndex(day, 0))
+        assertEquals(1, ScheduleRules.activeIndex(day, 360))
+        assertEquals(2, ScheduleRules.activeIndex(day, 1439))
+        assertEquals(-1, ScheduleRules.activeIndex(emptyList(), 600))
+        assertEquals(seg("22:30", 195), ScheduleRules.nextChange(day, 21 * 60 + 35))
+        assertEquals(seg("06:00", 215), ScheduleRules.nextChange(day, 0))
+        assertNull(ScheduleRules.nextChange(day, 23 * 60))
+    }
+
+    @Test
     fun `first start cannot move and temperatures are clamped`() {
         val day = listOf(seg("00:00", 195), seg("06:00", 215))
         assertEquals(day, ScheduleRules.setStart(day, 0, 60))

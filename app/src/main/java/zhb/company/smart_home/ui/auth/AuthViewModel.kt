@@ -35,6 +35,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             is AuthIntent.PasswordChanged -> _state.update { it.copy(password = intent.value) }
             AuthIntent.Submit -> submit()
             AuthIntent.BiometricSucceeded -> submit()
+            AuthIntent.UseBiometrics -> viewModelScope.launch { _effects.send(AuthEffect.RequestBiometricPrompt) }
         }
     }
 
@@ -54,7 +55,8 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             _state.update { it.copy(isLoading = false) }
             result.fold(
                 onSuccess = { _effects.send(AuthEffect.NavigateToMqttConnect) },
-                onFailure = { _effects.send(AuthEffect.ShowError(it.message ?: "auth_failed")) },
+                // Firebase error codes (e.g. INVALID_LOGIN_CREDENTIALS) are mapped to text by the screen.
+                onFailure = { error -> _state.update { it.copy(errorMessage = error.message ?: "auth_failed") } },
             )
         }
     }

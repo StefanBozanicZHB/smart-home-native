@@ -65,6 +65,12 @@ object ScheduleRules {
     fun endMinute(day: List<ScheduleSegment>, index: Int): Int =
         if (index >= day.lastIndex) MINUTES_PER_DAY else day[index + 1].startMinute
 
+    /** Index of the segment in force at [minute] (minutes since midnight), or -1 for an empty day. */
+    fun activeIndex(day: List<ScheduleSegment>, minute: Int): Int = day.indexOfLast { it.startMinute <= minute }
+
+    /** The next segment that starts today after [minute], or null if the current one lasts until midnight. */
+    fun nextChange(day: List<ScheduleSegment>, minute: Int): ScheduleSegment? = day.firstOrNull { it.startMinute > minute }
+
     /** Starting point for a day that has no program yet: one segment, whole day. */
     fun defaultDay(limits: Node5Limits): List<ScheduleSegment> =
         listOf(ScheduleSegment(0, 200.coerceIn(limits.tempMinTenths, limits.tempMaxTenths)))

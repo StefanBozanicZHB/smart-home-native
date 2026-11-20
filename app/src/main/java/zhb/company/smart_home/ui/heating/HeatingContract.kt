@@ -25,6 +25,10 @@ data class HeatingState(
     val nodeIsWeekend: Boolean? = null,
     val safeMode: SafeModeUi? = null,
     val lastPumpChange: PumpChangeUi? = null,
+    /** Heat pump pipe temperatures; only the flow pipe is published today (node5-2.0.0). */
+    val pipes: PipeTemps = PipeTemps(),
+    /** Next scheduled change today for the selected zone, from the program the node runs now. */
+    val nextChange: NextChangeUi? = null,
     val zones: List<ZoneUi> = emptyList(),
 
     val limits: Node5Limits = Node5Limits(),
@@ -54,10 +58,23 @@ data class ZoneUi(
     val id: String,
     val roomTemp: String,
     val target: String?,
+    /** Raw values for the room-vs-target indicator. */
+    val roomTempValue: Double? = null,
+    val targetTenths: Int? = null,
     val demand: Boolean,
     /** `no_schedule`, `sensor_offline`, `room_temp_stale` or null. */
     val fault: String?,
 )
+
+/** Four pipes of the water-to-water heat pump; null = no sensor (yet). Formatted with one decimal. */
+data class PipeTemps(
+    val wellIn: String? = null,
+    val wellOut: String? = null,
+    val supply: String? = null,
+    val ret: String? = null,
+)
+
+data class NextChangeUi(val time: String, val temp: String)
 
 data class SafeModeUi(val reason: String?, val zone: String?)
 

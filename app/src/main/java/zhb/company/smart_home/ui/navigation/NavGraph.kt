@@ -111,39 +111,19 @@ fun SmartHomeNavGraph() {
                 )
             }
             composable(Destination.Garden.route) {
-                GardenScreen(
-                    onOpenHome = { tab(Destination.Home) },
-                    onOpenHeating = { tab(Destination.Heating) },
-                    onOpenHouse = { tab(Destination.House) },
-                    onOpenShed = { navController.navigate(Destination.SmallHome.route) },
-                )
+                GardenScreen()
             }
             composable(Destination.Heating.route) {
-                HeatingScreen(
-                    onOpenHome = { tab(Destination.Home) },
-                    onOpenGarden = { tab(Destination.Garden) },
-                    onOpenHouse = { tab(Destination.House) },
-                    onOpenShed = { navController.navigate(Destination.SmallHome.route) },
-                )
+                HeatingScreen()
             }
             composable(Destination.House.route) {
-                HouseScreen(
-                    onOpenHome = { tab(Destination.Home) },
-                    onOpenGarden = { tab(Destination.Garden) },
-                    onOpenHeating = { tab(Destination.Heating) },
-                    onOpenShed = { navController.navigate(Destination.SmallHome.route) },
-                )
+                HouseScreen()
             }
             composable(Destination.System.route) {
                 SystemScreen(onOpenShed = { navController.navigate(Destination.SmallHome.route) })
             }
             composable(Destination.SmallHome.route) {
-                SmallHomeScreen(
-                    onOpenHome = { tab(Destination.Home) },
-                    onOpenGarden = { tab(Destination.Garden) },
-                    onOpenHeating = { tab(Destination.Heating) },
-                    onOpenHouse = { tab(Destination.House) },
-                )
+                SmallHomeScreen()
             }
         }
     }

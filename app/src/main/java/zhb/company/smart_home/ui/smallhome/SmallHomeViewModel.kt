@@ -14,7 +14,7 @@ import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 
 class SmallHomeViewModel(private val repository: SmartHomeRepository) : ViewModel() {
 
-    private data class UiExtras(val addIdInput: String = "", val deleteIdInput: String = "", val plusMenuExpanded: Boolean = false)
+    private data class UiExtras(val addIdInput: String = "", val deleteIdInput: String = "")
 
     private val _uiExtras = MutableStateFlow(UiExtras())
 
@@ -28,7 +28,6 @@ class SmallHomeViewModel(private val repository: SmartHomeRepository) : ViewMode
             fingerLog = home.fingerSensorStatus,
             addIdInput = extras.addIdInput,
             deleteIdInput = extras.deleteIdInput,
-            plusMenuExpanded = extras.plusMenuExpanded,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SmallHomeState())
 
@@ -50,7 +49,6 @@ class SmallHomeViewModel(private val repository: SmartHomeRepository) : ViewMode
                 if (id.isNotBlank()) publish(MqttTopics.NODE7_FINGER_DEL_CONTROL, id)
                 _uiExtras.update { it.copy(deleteIdInput = "") }
             }
-            SmallHomeIntent.TogglePlusMenu -> _uiExtras.update { it.copy(plusMenuExpanded = !it.plusMenuExpanded) }
         }
     }
 

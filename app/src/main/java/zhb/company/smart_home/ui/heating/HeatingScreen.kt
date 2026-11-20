@@ -1,6 +1,5 @@
 package zhb.company.smart_home.ui.heating
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,31 +14,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -47,7 +42,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -55,22 +49,22 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,31 +72,28 @@ import org.koin.androidx.compose.koinViewModel
 import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.heating.DayType
 import zhb.company.smart_home.domain.heating.Hysteresis
+import zhb.company.smart_home.domain.heating.MINUTES_PER_DAY
 import zhb.company.smart_home.domain.heating.Node5Limits
 import zhb.company.smart_home.domain.heating.ScheduleProblem
 import zhb.company.smart_home.domain.heating.ScheduleRules
 import zhb.company.smart_home.domain.heating.ScheduleSegment
 import zhb.company.smart_home.domain.heating.TimeOfDay
 import zhb.company.smart_home.domain.heating.formatTenths
-import zhb.company.smart_home.ui.components.PulsingStatusDot
-import zhb.company.smart_home.ui.theme.DisableRed
-import zhb.company.smart_home.ui.theme.EnableGreen
-import zhb.company.smart_home.ui.theme.PanelBorderTeal
-import zhb.company.smart_home.ui.theme.PrimaryColor
-import zhb.company.smart_home.ui.theme.White
+import zhb.company.smart_home.ui.components.AlertBanner
+import zhb.company.smart_home.ui.components.BigValue
+import zhb.company.smart_home.ui.components.CardHeader
+import zhb.company.smart_home.ui.components.DashboardCard
+import zhb.company.smart_home.ui.components.ScreenHeader
+import zhb.company.smart_home.ui.components.StatTile
+import zhb.company.smart_home.ui.components.StatusChip
+import zhb.company.smart_home.ui.components.TileShape
+import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.theme.AppTheme
 
-private val PipeOffset = 22.dp
-private val PipeWidth = 5.dp
 private const val TEMP_STEP_TENTHS = 1
 
 @Composable
-fun HeatingScreen(
-    viewModel: HeatingViewModel = koinViewModel(),
-    onOpenHome: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onOpenGarden: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onOpenHouse: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onOpenShed: () -> Unit,
-) {
+fun HeatingScreen(viewModel: HeatingViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -119,8 +110,9 @@ fun HeatingScreen(
         snackbar.showSnackbar(text)
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        HeatingContent(state, viewModel::onIntent, padding, onOpenHome)
+    Box(modifier = Modifier.fillMaxSize()) {
+        HeatingContent(state, viewModel::onIntent)
+        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 
     if (state.showSettingsDialog) HeatingSettingsDialog(state, viewModel::onIntent)
@@ -128,57 +120,50 @@ fun HeatingScreen(
 }
 
 @Composable
-private fun HeatingContent(
-    state: HeatingState,
-    onIntent: (HeatingIntent) -> Unit,
-    padding: PaddingValues,
-    onBack: () -> Unit,
-) {
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-        item { HeatingTitleRow(state, onBack = onBack, onIntent = onIntent) }
-        if (state.sending) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) }
+private fun HeatingContent(state: HeatingState, onIntent: (HeatingIntent) -> Unit, initiallyEditing: Boolean = false) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item { HeatingHeader(state, onIntent) }
+        if (state.sending) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         item { StatusBanners(state, onIntent) }
-        item { HeatingDiagramCard(state, onIntent) }
-        if (!state.loading) item { ScheduleCard(state, onIntent) }
-        item { Spacer(modifier = Modifier.height(8.dp)) }
+        if (!state.loading) {
+            if (state.zones.size > 1) item { ZoneSelector(state, onIntent) }
+            item { ZoneCard(state) }
+        }
+        item { HeatPumpCard(state, onIntent) }
+        if (!state.loading) item { ScheduleCard(state, onIntent, initiallyEditing) }
+        // The flow temperature is already in the heat pump card; outdoor explains how hard it works.
+        item { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
     }
 }
 
 @Composable
-private fun HeatingTitleRow(state: HeatingState, onBack: () -> Unit, onIntent: (HeatingIntent) -> Unit) {
-    val online = state.online == true
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp),
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-        }
-        Text(
-            text = stringResource(R.string.menu_heating),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-        )
-        if (state.nodeId != "node5") {
-            Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(6.dp), modifier = Modifier.padding(start = 8.dp)) {
-                Text(
-                    text = stringResource(R.string.heating_test_board),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        PulsingStatusDot(online = online)
-        Text(
-            text = stringResource(if (online) R.string.connections_online else R.string.connections_offline),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (online) EnableGreen else MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(start = 6.dp, end = 4.dp),
+private fun HeatingHeader(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
+    val subtitle = state.nodeTime?.let { time ->
+        val dayLabel = stringResource(if (state.nodeIsWeekend == true) R.string.heating_weekend else R.string.heating_workday)
+        stringResource(R.string.heating_node_time, time, dayLabel)
+    }
+    ScreenHeader(title = stringResource(R.string.menu_heating), subtitle = subtitle, horizontalPadding = 0.dp) {
+        if (state.nodeId != "node5") StatusChip(stringResource(R.string.heating_test_board), Tone.WARNING, Modifier.padding(end = 6.dp))
+        StatusChip(
+            text = stringResource(
+                when (state.online) {
+                    true -> R.string.connections_online
+                    false -> R.string.connections_offline
+                    null -> R.string.connections_unknown
+                },
+            ),
+            tone = when (state.online) {
+                true -> Tone.ACTIVE
+                false -> Tone.DANGER
+                null -> Tone.NEUTRAL
+            },
         )
         IconButton(onClick = { onIntent(HeatingIntent.OpenSettingsDialog) }, enabled = !state.loading) {
-            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.heating_settings_title))
+            Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.heating_settings_title))
         }
     }
 }
@@ -186,36 +171,332 @@ private fun HeatingTitleRow(state: HeatingState, onBack: () -> Unit, onIntent: (
 /** Connection, node and safe-mode problems, most fundamental first. */
 @Composable
 private fun StatusBanners(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
-    when {
-        !state.connected -> Banner(stringResource(R.string.heating_not_connected), null)
-        state.online == false -> Banner(stringResource(R.string.heating_node_offline), null)
-        state.loading -> Banner(stringResource(R.string.heating_waiting_for_node, state.nodeId), null) {
-            TextButton(onClick = { onIntent(HeatingIntent.Refresh) }) {
-                Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.heating_refresh), modifier = Modifier.padding(start = 4.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        when {
+            !state.connected -> AlertBanner(Icons.Outlined.CloudOff, stringResource(R.string.heating_not_connected), Tone.DANGER)
+            state.online == false -> AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_node_offline), Tone.DANGER)
+            state.loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                AlertBanner(
+                    Icons.Outlined.HourglassEmpty,
+                    stringResource(R.string.heating_waiting_for_node, state.nodeId),
+                    Tone.NEUTRAL,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { onIntent(HeatingIntent.Refresh) }) { Text(stringResource(R.string.heating_refresh)) }
             }
         }
-    }
-    state.safeMode?.let { safe ->
-        Banner(stringResource(R.string.heating_safe_mode_title), safeModeText(safe.reason))
+        state.safeMode?.let { safe ->
+            AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_safe_mode_title), Tone.WARNING, detail = safeModeText(safe.reason))
+        }
     }
 }
 
 @Composable
-private fun Banner(title: String, detail: String?, action: (@Composable () -> Unit)? = null) {
-    Card(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
-            Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-            Column(modifier = Modifier.padding(start = 10.dp).weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                if (detail != null) {
-                    Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+private fun ZoneSelector(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        state.zones.forEachIndexed { index, zone ->
+            SegmentedButton(
+                selected = zone.id == state.selectedZone,
+                onClick = { onIntent(HeatingIntent.SelectZone(zone.id)) },
+                shape = SegmentedButtonDefaults.itemShape(index, state.zones.size),
+                label = { Text(zoneName(zone.id)) },
+            )
+        }
+    }
+}
+
+/** Selected zone: room temperature in a ring that fills toward the target, target, demand and next change. */
+@Composable
+private fun ZoneCard(state: HeatingState) {
+    val zone = state.zones.firstOrNull { it.id == state.selectedZone } ?: return
+    DashboardCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            RoomVsTargetRing(zone.roomTempValue, zone.targetTenths, zone.roomTemp, zone.target, warm = zone.demand)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
+                Text(zoneName(zone.id), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (zone.demand) StatusChip(stringResource(R.string.heating_demand), Tone.ACTIVE)
+                    zone.fault?.let { StatusChip(faultText(it), Tone.DANGER) }
+                }
+                val next = state.nextChange
+                Text(
+                    if (next != null) stringResource(R.string.heating_next_change, next.time, next.temp) else stringResource(R.string.heating_no_change_today),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                state.hysteresis?.let { h ->
+                    Text(
+                        stringResource(R.string.heating_hysteresis_short, formatTenths(h.lowerTenths), formatTenths(h.upperTenths)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-            action?.invoke()
+        }
+    }
+}
+
+/**
+ * Ring around the room temperature. The arc covers target −2 °C … target +1 °C, so a room right
+ * at the target shows two thirds filled; it is warm-colored while the zone demands heat.
+ */
+@Composable
+private fun RoomVsTargetRing(room: Double?, targetTenths: Int?, roomText: String, targetText: String?, warm: Boolean) {
+    val track = MaterialTheme.colorScheme.surfaceContainerHighest
+    val fill = if (warm) AppTheme.status.warm else AppTheme.status.active
+    val fraction = if (room != null && targetTenths != null) {
+        val low = targetTenths / 10.0 - 2.0
+        ((room - low) / 3.0).coerceIn(0.0, 1.0).toFloat()
+    } else 0f
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(104.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val stroke = 10.dp.toPx()
+            val inset = stroke / 2
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(track, startAngle = 135f, sweepAngle = 270f, useCenter = false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            if (fraction > 0f) {
+                drawArc(fill, startAngle = 135f, sweepAngle = 270f * fraction, useCenter = false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("$roomText°", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            if (targetText != null) {
+                Text(stringResource(R.string.home_target, targetText), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** Heat pump: running state, main switch, last change and the four pipes (well side, heating side). */
+@Composable
+private fun HeatPumpCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
+    DashboardCard {
+        CardHeader(Icons.Outlined.SwapVert, stringResource(R.string.heating_heat_pump)) {
+            StatusChip(
+                stringResource(if (state.pump) R.string.heating_pump_running else R.string.heating_pump_idle),
+                if (state.pump) Tone.ACTIVE else Tone.NEUTRAL,
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.heating_main_switch), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Switch(
+                checked = state.mainSwitch,
+                onCheckedChange = { onIntent(HeatingIntent.ToggleMainSwitch(it)) },
+                enabled = state.connected && !state.loading && !state.sending,
+            )
+        }
+        state.lastPumpChange?.let { change ->
+            val whenText = buildString {
+                change.minutesAgo?.let { append(stringResource(R.string.heating_minutes_ago, it)).append(", ") }
+                append(pumpSourceText(change.source))
+            }
+            Text(
+                stringResource(if (change.on) R.string.heating_last_change_on else R.string.heating_last_change_off, whenText),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        PipeGrid(state.pipes)
+    }
+}
+
+@Composable
+private fun PipeGrid(pipes: PipeTemps) {
+    val s = AppTheme.status
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        PipeSide(
+            title = stringResource(R.string.heating_well_side),
+            first = stringResource(R.string.heating_pipe_in) to pipes.wellIn,
+            second = stringResource(R.string.heating_pipe_out) to pipes.wellOut,
+            container = s.coldContainer, onContainer = s.onColdContainer,
+            modifier = Modifier.weight(1f),
+        )
+        PipeSide(
+            title = stringResource(R.string.heating_heating_side),
+            first = stringResource(R.string.heating_pipe_supply) to pipes.supply,
+            second = stringResource(R.string.heating_pipe_return) to pipes.ret,
+            container = s.warmContainer, onContainer = s.onWarmContainer,
+            modifier = Modifier.weight(1f),
+        )
+    }
+    if (listOf(pipes.wellIn, pipes.wellOut, pipes.ret).any { it == null }) {
+        Text(stringResource(R.string.heating_pipes_pending), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PipeSide(
+    title: String,
+    first: Pair<String, String?>,
+    second: Pair<String, String?>,
+    container: androidx.compose.ui.graphics.Color,
+    onContainer: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    val a = first.second?.toDoubleOrNull()
+    val b = second.second?.toDoubleOrNull()
+    val delta = if (a != null && b != null) String.format(java.util.Locale.US, "%.1f", kotlin.math.abs(a - b)) else null
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            listOfNotNull(title, delta?.let { stringResource(R.string.heating_delta, it) }).joinToString(" · "),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        listOf(first, second).forEach { (label, value) ->
+            Surface(shape = TileShape, color = if (value != null) container else MaterialTheme.colorScheme.surfaceContainerHighest, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = if (value != null) onContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (value != null) "$value°" else "—",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (value != null) onContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Day program as a 24-hour bar; the editor opens with "Izmeni" and stays open while there is a draft. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit, initiallyEditing: Boolean) {
+    var editingStartIndex by remember { mutableStateOf<Int?>(null) }
+    var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
+    val showEditor = editing || state.scheduleDirty || state.dayNotSet
+    val segments = state.editorSegments
+
+    DashboardCard {
+        CardHeader(Icons.Outlined.CalendarMonth, stringResource(R.string.heating_schedule_title)) {
+            if (!state.scheduleDirty && !state.dayNotSet) {
+                TextButton(onClick = { editing = !editing }) {
+                    Text(stringResource(if (editing) R.string.heating_done else R.string.heating_edit))
+                }
+            }
+        }
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            DayType.entries.forEachIndexed { index, day ->
+                val isToday = state.nodeIsWeekend != null && state.nodeIsWeekend == (day == DayType.WEEKEND)
+                val label = stringResource(if (day == DayType.WORKDAY) R.string.heating_workday else R.string.heating_weekend)
+                SegmentedButton(
+                    selected = state.selectedDay == day,
+                    onClick = { onIntent(HeatingIntent.SelectDay(day)) },
+                    shape = SegmentedButtonDefaults.itemShape(index, DayType.entries.size),
+                    label = { Text(if (isToday) "$label (${stringResource(R.string.heating_today)})" else label) },
+                )
+            }
+        }
+
+        val isToday = state.nodeIsWeekend != null && state.nodeIsWeekend == (state.selectedDay == DayType.WEEKEND)
+        ScheduleTimeline(segments, state.limits, nowMinute = if (isToday) TimeOfDay.parse(state.nodeTime) else null)
+
+        if (state.dayNotSet && !state.scheduleDirty) Hint(stringResource(R.string.heating_day_not_set), warning = false)
+        if (state.remoteChangedWhileEditing) Hint(stringResource(R.string.heating_remote_changed), warning = true)
+
+        if (showEditor) {
+            segments.forEachIndexed { index, segment ->
+                ScheduleSegmentRow(
+                    segment = segment,
+                    endMinute = ScheduleRules.endMinute(segments, index),
+                    startEditable = index > 0,
+                    onStartClick = { editingStartIndex = index },
+                    limits = state.limits,
+                    onTempChange = { delta -> onIntent(HeatingIntent.ChangeSegmentTemp(index, delta)) },
+                    onDelete = if (segments.size > 1) ({ onIntent(HeatingIntent.RemoveSegment(index)) }) else null,
+                )
+            }
+            state.scheduleProblem?.let { Hint(problemText(it), warning = true) }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                if (segments.size < state.limits.segmentsMax) {
+                    TextButton(onClick = { onIntent(HeatingIntent.AddSegment) }) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.heating_add_segment), modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                if (state.scheduleDirty) {
+                    OutlinedButton(onClick = { onIntent(HeatingIntent.DiscardSchedule) }, enabled = !state.sending) {
+                        Text(stringResource(R.string.heating_discard))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Button(
+                    onClick = { onIntent(HeatingIntent.SaveSchedule) },
+                    enabled = (state.scheduleDirty || state.dayNotSet) && state.scheduleProblem == null && state.connected && !state.sending,
+                ) { Text(stringResource(R.string.heating_save)) }
+            }
+        }
+    }
+
+    editingStartIndex?.let { index ->
+        segments.getOrNull(index)?.let { segment ->
+            ScheduleTimePickerDialog(
+                initialMinute = segment.startMinute,
+                onConfirm = { minute ->
+                    onIntent(HeatingIntent.SetSegmentStart(index, minute))
+                    editingStartIndex = null
+                },
+                onDismiss = { editingStartIndex = null },
+            )
+        }
+    }
+}
+
+/**
+ * The day as one bar: each segment's width is its duration, its color is darker for warmer
+ * targets, and its temperature is written inside when it fits. A marker shows the node's time.
+ */
+@Composable
+private fun ScheduleTimeline(segments: List<ScheduleSegment>, limits: Node5Limits, nowMinute: Int?) {
+    val low = AppTheme.status.activeContainer
+    val high = AppTheme.status.active
+    val onLow = AppTheme.status.onActiveContainer
+    val marker = MaterialTheme.colorScheme.onSurface
+    val temps = segments.map { it.tempTenths }
+    val minT = (temps.minOrNull() ?: limits.tempMinTenths).toFloat()
+    val maxT = (temps.maxOrNull() ?: limits.tempMaxTenths).toFloat()
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(32.dp)) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                segments.forEachIndexed { i, seg ->
+                    val start = seg.startMinute / MINUTES_PER_DAY.toFloat() * size.width
+                    val end = ScheduleRules.endMinute(segments, i) / MINUTES_PER_DAY.toFloat() * size.width
+                    val t = if (maxT > minT) (seg.tempTenths - minT) / (maxT - minT) else 1f
+                    drawRoundRect(
+                        color = androidx.compose.ui.graphics.lerp(low, high, t),
+                        topLeft = Offset(start + 1f, 0f),
+                        size = Size((end - start - 2f).coerceAtLeast(1f), size.height),
+                        cornerRadius = CornerRadius(6.dp.toPx()),
+                    )
+                }
+                nowMinute?.let {
+                    val x = it / MINUTES_PER_DAY.toFloat() * size.width
+                    drawLine(marker, Offset(x, -2f), Offset(x, size.height + 2f), strokeWidth = 2.dp.toPx())
+                }
+            }
+            Row(modifier = Modifier.fillMaxSize()) {
+                segments.forEachIndexed { i, seg ->
+                    val minutes = ScheduleRules.endMinute(segments, i) - seg.startMinute
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(minutes.coerceAtLeast(1).toFloat()).fillMaxSize()) {
+                        if (minutes >= 150) {
+                            val t = if (maxT > minT) (seg.tempTenths - minT) / (maxT - minT) else 1f
+                            Text(
+                                formatTenths(seg.tempTenths),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (t > 0.5f) MaterialTheme.colorScheme.onPrimary else onLow,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            listOf("00", "06", "12", "18", "24").forEach {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -254,259 +535,6 @@ private fun pumpSourceText(source: String): String = when (source) {
     "safe_mode" -> stringResource(R.string.heating_source_safe_mode)
     "boot" -> stringResource(R.string.heating_source_boot)
     else -> source
-}
-
-/**
- * Outdoor temperature, one row per zone (room temperature and current target), and the heat
- * pump at the bottom, with pipes from the pump to the zones that turn green while it runs.
- */
-@Composable
-private fun HeatingDiagramCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
-    val density = LocalDensity.current
-    val pipeColor = if (state.pump) EnableGreen else MaterialTheme.colorScheme.outlineVariant
-    val pipeOffsetPx = with(density) { PipeOffset.toPx() }
-    val pipeWidthPx = with(density) { PipeWidth.toPx() }
-
-    var boxRootY by remember { mutableFloatStateOf(0f) }
-    var topZoneY by remember { mutableFloatStateOf(0f) }
-    var pumpRowTopY by remember { mutableFloatStateOf(0f) }
-
-    Card(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .onGloballyPositioned { boxRootY = it.positionInRoot().y },
-        ) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-                if (pumpRowTopY > 0f && topZoneY > 0f) {
-                    val centerX = size.width / 2f
-                    listOf(-pipeOffsetPx, pipeOffsetPx).forEach { dx ->
-                        drawLine(
-                            color = pipeColor,
-                            start = Offset(centerX + dx, pumpRowTopY - boxRootY),
-                            end = Offset(centerX + dx, topZoneY - boxRootY),
-                            strokeWidth = pipeWidthPx,
-                            cap = StrokeCap.Round,
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                DiagramRow(
-                    icon = Icons.Filled.Thermostat,
-                    label = stringResource(R.string.heating_outdoor_temp),
-                    value = "${state.outdoorTemp}°C",
-                    detail = null,
-                    active = false,
-                )
-                state.zones.forEachIndexed { index, zone ->
-                    val detail = buildList {
-                        zone.target?.let { add(stringResource(R.string.heating_target, it)) }
-                        if (zone.demand) add(stringResource(R.string.heating_demand))
-                        zone.fault?.let { add(faultText(it)) }
-                    }.joinToString(" · ").ifEmpty { null }
-                    DiagramRow(
-                        icon = Icons.Filled.Thermostat,
-                        label = zoneName(zone.id),
-                        value = "${zone.roomTemp}°C",
-                        detail = detail,
-                        active = state.pump && zone.demand,
-                        warning = zone.fault != null,
-                        modifier = if (index == 0) {
-                            // Pipes end at the bottom edge of the row, so they never cross its text.
-                            Modifier.onGloballyPositioned { topZoneY = it.positionInRoot().y + it.size.height }
-                        } else Modifier,
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                HeatPumpDock(
-                    state = state,
-                    onIntent = onIntent,
-                    modifier = Modifier.onGloballyPositioned { pumpRowTopY = it.positionInRoot().y },
-                )
-                state.nodeTime?.let { time ->
-                    val dayLabel = stringResource(if (state.nodeIsWeekend == true) R.string.heating_weekend else R.string.heating_workday)
-                    Text(
-                        text = stringResource(R.string.heating_node_time, time, dayLabel),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DiagramRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    detail: String?,
-    active: Boolean,
-    modifier: Modifier = Modifier,
-    warning: Boolean = false,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Surface(shape = CircleShape, color = if (active) PrimaryColor else MaterialTheme.colorScheme.outlineVariant) {
-            Icon(icon, contentDescription = null, tint = White, modifier = Modifier.padding(9.dp).size(18.dp))
-        }
-        Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            if (detail != null) {
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (warning) DisableRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun HeatPumpDock(state: HeatingState, onIntent: (HeatingIntent) -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        color = if (state.pump) PrimaryColor.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(18.dp),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Surface(shape = CircleShape, color = if (state.pump) PrimaryColor else MaterialTheme.colorScheme.outlineVariant) {
-                Icon(Icons.Filled.WaterDrop, contentDescription = null, tint = White, modifier = Modifier.padding(10.dp).size(20.dp))
-            }
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(stringResource(R.string.heating_heat_pump), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text(
-                    text = stringResource(if (state.pump) R.string.heating_pump_running else R.string.heating_pump_idle),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (state.pump) EnableGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "${stringResource(R.string.heating_flow_temp)}: ${state.flowTemp}°C",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                state.lastPumpChange?.let { change ->
-                    val whenText = buildString {
-                        change.minutesAgo?.let { append(stringResource(R.string.heating_minutes_ago, it)).append(", ") }
-                        append(pumpSourceText(change.source))
-                    }
-                    Text(
-                        text = stringResource(if (change.on) R.string.heating_last_change_on else R.string.heating_last_change_off, whenText),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Switch(
-                    checked = state.mainSwitch,
-                    onCheckedChange = { onIntent(HeatingIntent.ToggleMainSwitch(it)) },
-                    enabled = state.connected && !state.loading && !state.sending,
-                    colors = SwitchDefaults.colors(checkedTrackColor = PrimaryColor),
-                )
-                Text(stringResource(R.string.heating_main_switch), style = MaterialTheme.typography.labelSmall)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
-    var editingStartIndex by remember { mutableStateOf<Int?>(null) }
-    val segments = state.editorSegments
-
-    Card(modifier = Modifier.padding(16.dp).fillMaxWidth(), border = BorderStroke(2.dp, PanelBorderTeal)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(stringResource(R.string.heating_schedule_title), style = MaterialTheme.typography.titleSmall)
-
-            if (state.zones.size > 1) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    state.zones.forEach { zone ->
-                        FilterChip(
-                            selected = zone.id == state.selectedZone,
-                            onClick = { onIntent(HeatingIntent.SelectZone(zone.id)) },
-                            label = { Text(zoneName(zone.id)) },
-                        )
-                    }
-                }
-            }
-
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                DayType.entries.forEachIndexed { index, day ->
-                    val isToday = state.nodeIsWeekend != null && state.nodeIsWeekend == (day == DayType.WEEKEND)
-                    val label = stringResource(if (day == DayType.WORKDAY) R.string.heating_workday else R.string.heating_weekend)
-                    SegmentedButton(
-                        selected = state.selectedDay == day,
-                        onClick = { onIntent(HeatingIntent.SelectDay(day)) },
-                        shape = SegmentedButtonDefaults.itemShape(index, DayType.entries.size),
-                        label = { Text(if (isToday) "$label (${stringResource(R.string.heating_today)})" else label) },
-                    )
-                }
-            }
-
-            if (state.dayNotSet && !state.scheduleDirty) Hint(stringResource(R.string.heating_day_not_set), warning = false)
-            if (state.remoteChangedWhileEditing) Hint(stringResource(R.string.heating_remote_changed), warning = true)
-
-            segments.forEachIndexed { index, segment ->
-                ScheduleSegmentRow(
-                    segment = segment,
-                    endMinute = ScheduleRules.endMinute(segments, index),
-                    startEditable = index > 0,
-                    onStartClick = { editingStartIndex = index },
-                    limits = state.limits,
-                    onTempChange = { delta -> onIntent(HeatingIntent.ChangeSegmentTemp(index, delta)) },
-                    onDelete = if (segments.size > 1) ({ onIntent(HeatingIntent.RemoveSegment(index)) }) else null,
-                )
-            }
-
-            state.scheduleProblem?.let { Hint(problemText(it), warning = true) }
-
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                if (segments.size < state.limits.segmentsMax) {
-                    TextButton(onClick = { onIntent(HeatingIntent.AddSegment) }) {
-                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(stringResource(R.string.heating_add_segment), modifier = Modifier.padding(start = 4.dp))
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                if (state.scheduleDirty) {
-                    OutlinedButton(onClick = { onIntent(HeatingIntent.DiscardSchedule) }, enabled = !state.sending) {
-                        Text(stringResource(R.string.heating_discard))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Button(
-                    onClick = { onIntent(HeatingIntent.SaveSchedule) },
-                    enabled = (state.scheduleDirty || state.dayNotSet) && state.scheduleProblem == null &&
-                        state.connected && !state.sending,
-                ) { Text(stringResource(R.string.heating_save)) }
-            }
-        }
-    }
-
-    editingStartIndex?.let { index ->
-        segments.getOrNull(index)?.let { segment ->
-            ScheduleTimePickerDialog(
-                initialMinute = segment.startMinute,
-                onConfirm = { minute ->
-                    onIntent(HeatingIntent.SetSegmentStart(index, minute))
-                    editingStartIndex = null
-                },
-                onDismiss = { editingStartIndex = null },
-            )
-        }
-    }
 }
 
 @Composable
@@ -702,81 +730,77 @@ private fun MainSwitchOffDialog(onIntent: (HeatingIntent) -> Unit) {
 
 private val PreviewLimits = Node5Limits()
 
-private val PreviewRunning = HeatingState(
-    nodeId = "node5",
-    connected = true,
-    online = true,
-    loading = false,
-    outdoorTemp = "3.50",
-    mainSwitch = true,
-    pump = true,
-    demand = true,
-    flowTemp = "34.3",
-    nodeTime = "21:35",
-    nodeIsWeekend = false,
+private val PreviewToday = HeatingState(
+    nodeId = "node5", connected = true, online = true, loading = false,
+    outdoorTemp = "3.5", mainSwitch = true, pump = true, demand = true, flowTemp = "34.3",
+    nodeTime = "21:35", nodeIsWeekend = false,
     lastPumpChange = PumpChangeUi(on = true, source = "thermostat", minutesAgo = 12),
-    zones = listOf(ZoneUi("ground", roomTemp = "21.2", target = "21.5", demand = true, fault = null)),
-    limits = PreviewLimits,
-    selectedZone = "ground",
-    selectedDay = DayType.WORKDAY,
+    pipes = PipeTemps(supply = "34.3"),
+    nextChange = NextChangeUi("22:30", "19.5"),
+    zones = listOf(ZoneUi("ground", roomTemp = "21.2", target = "21.5", roomTempValue = 21.2, targetTenths = 215, demand = true, fault = null)),
+    limits = PreviewLimits, selectedZone = "ground", selectedDay = DayType.WORKDAY,
     editorSegments = listOf(ScheduleSegment(0, 195), ScheduleSegment(360, 215), ScheduleSegment(1350, 195)),
-    scheduleDirty = true,
-    hysteresis = Hysteresis(2, 1),
-    minOnSeconds = 600,
-    minOffSeconds = 600,
-    configRev = 9,
+    hysteresis = Hysteresis(2, 1), minOnSeconds = 600, minOffSeconds = 600, configRev = 9,
 )
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Running, edited workday", heightDp = 1100)
+@androidx.compose.ui.tooling.preview.Preview(name = "Heating - today (flow pipe only)", heightDp = 1250)
 @Composable
-private fun HeatingRunningPreview() {
+private fun HeatingTodayPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
-        Surface { HeatingContent(PreviewRunning, onIntent = {}, padding = PaddingValues(), onBack = {}) }
+        Surface { HeatingContent(PreviewToday, onIntent = {}) }
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Bench board, safe mode, no weekend program", heightDp = 1100)
+@androidx.compose.ui.tooling.preview.Preview(name = "Heating - two zones, four pipes (dark)", heightDp = 1250)
 @Composable
-private fun HeatingSafeModePreview() {
+private fun HeatingFuturePreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = true) {
         Surface {
             HeatingContent(
-                PreviewRunning.copy(
-                    nodeId = "testnode5",
-                    pump = false,
-                    demand = false,
-                    flowTemp = "--",
-                    nodeIsWeekend = true,
-                    selectedDay = DayType.WEEKEND,
-                    safeMode = SafeModeUi("no_schedule", "ground"),
-                    lastPumpChange = PumpChangeUi(on = false, source = "safe_mode", minutesAgo = 3),
-                    zones = listOf(ZoneUi("ground", roomTemp = "20.9", target = null, demand = false, fault = "no_schedule")),
-                    editorSegments = ScheduleRules.defaultDay(PreviewLimits),
-                    dayNotSet = true,
-                    scheduleDirty = false,
+                PreviewToday.copy(
+                    pipes = PipeTemps(wellIn = "11.2", wellOut = "8.1", supply = "34.3", ret = "29.7"),
+                    zones = PreviewToday.zones + ZoneUi("upper", "22.4", "21.0", 22.4, 210, demand = false, fault = null),
                 ),
                 onIntent = {},
-                padding = PaddingValues(),
-                onBack = {},
             )
         }
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Invalid draft and remote change", heightDp = 1100)
+@androidx.compose.ui.tooling.preview.Preview(name = "Heating - bench board, safe mode", heightDp = 1250)
+@Composable
+private fun HeatingSafeModePreview() {
+    zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
+        Surface {
+            HeatingContent(
+                PreviewToday.copy(
+                    nodeId = "testnode5", pump = false, demand = false, flowTemp = "--", pipes = PipeTemps(),
+                    nodeIsWeekend = true, selectedDay = DayType.WEEKEND, nextChange = null,
+                    safeMode = SafeModeUi("no_schedule", "ground"),
+                    lastPumpChange = PumpChangeUi(on = false, source = "safe_mode", minutesAgo = 3),
+                    zones = listOf(ZoneUi("ground", "20.9", null, 20.9, null, demand = false, fault = "no_schedule")),
+                    editorSegments = ScheduleRules.defaultDay(PreviewLimits), dayNotSet = true,
+                ),
+                onIntent = {},
+            )
+        }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Heating - editing an invalid draft", heightDp = 1450)
 @Composable
 private fun HeatingInvalidDraftPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
         Surface {
             HeatingContent(
-                PreviewRunning.copy(
+                PreviewToday.copy(
                     editorSegments = listOf(ScheduleSegment(0, 195), ScheduleSegment(480, 215), ScheduleSegment(420, 195)),
+                    scheduleDirty = true,
                     scheduleProblem = ScheduleProblem.StartsNotRising(2),
                     remoteChangedWhileEditing = true,
                 ),
                 onIntent = {},
-                padding = PaddingValues(),
-                onBack = {},
+                initiallyEditing = true,
             )
         }
     }

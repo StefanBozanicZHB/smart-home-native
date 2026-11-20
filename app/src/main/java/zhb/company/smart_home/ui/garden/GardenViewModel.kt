@@ -12,14 +12,11 @@ import kotlinx.coroutines.launch
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.model.SmartHomeState
+import zhb.company.smart_home.ui.format.Readings
 
 class GardenViewModel(private val repository: SmartHomeRepository) : ViewModel() {
 
-    private data class UiExtras(
-        val showSprinklerDialog: Boolean = false,
-        val showLocationDialog: Boolean = false,
-        val plusMenuExpanded: Boolean = false,
-    )
+    private data class UiExtras(val showLocationDialog: Boolean = false)
 
     private val _uiExtras = MutableStateFlow(UiExtras())
 
@@ -28,22 +25,26 @@ class GardenViewModel(private val repository: SmartHomeRepository) : ViewModel()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GardenState())
 
     private fun mapState(home: SmartHomeState, extras: UiExtras) = GardenState(
-        online = home.isNodeOnline(2),
-        temperature = home.temperatureOutdoor,
-        humidity = home.humidityOutdoor,
+        yardOnline = home.isNodeOnline(2),
+        fountainOnline = home.isNodeOnline(1),
+        sprinklerTimerOnline = home.isNodeOnline(0),
+        poolOnline = home.isNodeOnline(6),
+        temperature = Readings.temperature(home.temperatureOutdoor),
+        humidity = Readings.percent(home.humidityOutdoor),
         ledStripOn = home.ledStripTerrace,
         bulbOn = home.bulbTerrace,
         fountainPumpOn = home.fountainPump,
         fountainLightOn = home.fountainLight,
         poolPumpOn = home.poolPump,
         poolHeatingOn = home.poolHeating,
-        poolTemperature = home.temperaturePool,
+        poolTemperature = Readings.temperature(home.temperaturePool),
         sprinklerActiveIndex = home.sprinklerPower,
         sprinklerAuto = home.sprinklerTimerAuto,
+        sprinklerStartTime = home.sprinklerStartTime,
+        sprinklerOnMinutes = home.sprinklerDurationOnMinutes,
+        sprinklerSets = home.sprinklerSets,
         sprinklers = listOf(home.sprinkler1, home.sprinkler2, home.sprinkler3, home.sprinkler4, home.sprinkler5, home.sprinkler6),
-        showSprinklerDialog = extras.showSprinklerDialog,
         showLocationDialog = extras.showLocationDialog,
-        plusMenuExpanded = extras.plusMenuExpanded,
     )
 
     fun onIntent(intent: GardenIntent) {
@@ -58,11 +59,8 @@ class GardenViewModel(private val repository: SmartHomeRepository) : ViewModel()
                 if (intent.on) publish(MqttTopics.NODE1_SPRINKLER_ALL_STOP, "0")
                 publish(MqttTopics.node0SprinklerControl(intent.index), intent.on.wire())
             }
-            GardenIntent.OpenSprinklerDialog -> _uiExtras.update { it.copy(showSprinklerDialog = true) }
-            GardenIntent.DismissSprinklerDialog -> _uiExtras.update { it.copy(showSprinklerDialog = false) }
             GardenIntent.OpenLocationDialog -> _uiExtras.update { it.copy(showLocationDialog = true) }
             GardenIntent.DismissLocationDialog -> _uiExtras.update { it.copy(showLocationDialog = false) }
-            GardenIntent.TogglePlusMenu -> _uiExtras.update { it.copy(plusMenuExpanded = !it.plusMenuExpanded) }
         }
     }
 

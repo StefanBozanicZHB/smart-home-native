@@ -15,10 +15,7 @@ data class HouseState(
     val acMode: AcMode = AcMode.COOL,
     val acFanSpeed: AcFanSpeed = AcFanSpeed.AUTO,
     val acTemp: Int = 22,
-    val plusMenuExpanded: Boolean = false,
-) {
-    val online: Boolean get() = groundOnline && upperOnline
-}
+)
 
 sealed interface HouseIntent {
     data object PowerOn : HouseIntent
@@ -27,5 +24,4 @@ sealed interface HouseIntent {
     data class SelectFanSpeed(val fanSpeed: AcFanSpeed) : HouseIntent
     data object IncreaseTemp : HouseIntent
     data object DecreaseTemp : HouseIntent
-    data object TogglePlusMenu : HouseIntent
 }

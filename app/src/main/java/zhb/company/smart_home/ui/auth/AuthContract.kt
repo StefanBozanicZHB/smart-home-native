@@ -13,10 +13,10 @@ sealed interface AuthIntent {
     data class PasswordChanged(val value: String) : AuthIntent
     data object Submit : AuthIntent
     data object BiometricSucceeded : AuthIntent
+    data object UseBiometrics : AuthIntent
 }
 
 sealed interface AuthEffect {
     data object NavigateToMqttConnect : AuthEffect
     data object RequestBiometricPrompt : AuthEffect
-    data class ShowError(val message: String) : AuthEffect
 }

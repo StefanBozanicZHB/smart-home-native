@@ -9,7 +9,6 @@ data class SmallHomeState(
     val fingerLog: String = "",
     val addIdInput: String = "",
     val deleteIdInput: String = "",
-    val plusMenuExpanded: Boolean = false,
 )
 
 sealed interface SmallHomeIntent {
@@ -21,5 +20,4 @@ sealed interface SmallHomeIntent {
     data class DeleteIdInputChanged(val value: String) : SmallHomeIntent
     data object AddFingerprintId : SmallHomeIntent
     data object DeleteFingerprintId : SmallHomeIntent
-    data object TogglePlusMenu : SmallHomeIntent
 }

@@ -12,14 +12,18 @@
     <string name="auth_biometric_title">Prijavljivanje pomoću otiska prsta</string>
     <string name="auth_biometric_subtitle">Potvrdite identitet da biste se prijavili</string>
     <string name="auth_biometric_hint">Otisak prsta je dostupan za brzu prijavu</string>
+    <string name="auth_error_wrong_credentials">Pogrešan email ili lozinka.</string>
+    <string name="auth_error_too_many">Previše pokušaja. Sačekaj malo pa pokušaj ponovo.</string>
+    <string name="auth_use_biometrics">Otključaj otiskom prsta</string>
     <string name="auth_error_generic">Došlo je do greške, pokušajte ponovo.</string>
     <string name="auth_error_invalid_email">Unesite ispravnu email adresu.</string>
     <string name="auth_error_invalid_password">Lozinka mora imati najmanje 5 karaktera.</string>
 
     <!-- MQTT connect -->
     <string name="mqtt_connecting">Povezivanje sa serverom…</string>
-    <string name="mqtt_connect_failed">Konektivnost sa serverom ne postoji!</string>
-    <string name="mqtt_reconnect">Povezi se</string>
+    <string name="mqtt_connect_failed">Nema veze sa serverom</string>
+    <string name="mqtt_reconnect">Pokušaj ponovo</string>
+    <string name="mqtt_connect_failed_detail">Proveri internet vezu. Aplikacija pokušava glavni pa rezervni broker.</string>
 
     <!-- Navigation -->
     <string name="nav_back">Nazad</string>
@@ -116,6 +120,15 @@
     <string name="garden_sprinkler_none_active">Nijedna prskalica nije aktivna</string>
 
     <!-- Sprinkler dialog -->
+    <string name="garden_plan_auto">Auto · %1$s · %2$d min × %3$d</string>
+    <string name="garden_plan_manual">Ručno: dodirni zonu da je uključiš</string>
+    <string name="garden_settings">Podesi</string>
+    <string name="garden_map">Mapa</string>
+    <string name="garden_zone_desc">Zona %1$d</string>
+    <string name="garden_soil">Vlažnost zemljišta</string>
+    <string name="garden_soon">uskoro</string>
+    <string name="garden_soil_text">Pojaviće se kad senzor počne da šalje podatke. Prskalice će moći da preskoče zalivanje kad je zemlja vlažna.</string>
+    <string name="garden_fountain_and_lights">Fontana i svetla</string>
     <string name="sprinkler_dialog_title">Ručno upravljanje prskalicama</string>
     <string name="sprinkler_1">Prskalica 1</string>
     <string name="sprinkler_2">Prskalica 2</string>
@@ -188,6 +201,19 @@
     <string name="heating_main_switch_off_text">Toplotna pumpa staje odmah, bez minimalnog vremena rada.</string>
     <string name="heating_turn_off">Isključi</string>
     <string name="heating_cancel">Otkaži</string>
+    <string name="heating_next_change">Do %1$s, zatim %2$s°</string>
+    <string name="heating_no_change_today">Isti cilj do ponoći</string>
+    <string name="heating_hysteresis_short">Histereza −%1$s / +%2$s °C</string>
+    <string name="heating_well_side">Bunar</string>
+    <string name="heating_heating_side">Grejanje</string>
+    <string name="heating_pipe_in">Ulaz</string>
+    <string name="heating_pipe_out">Izlaz</string>
+    <string name="heating_pipe_supply">Polaz</string>
+    <string name="heating_pipe_return">Povrat</string>
+    <string name="heating_delta">ΔT %1$s°</string>
+    <string name="heating_pipes_pending">Ostali senzori stižu sa proširenjem Node 5.</string>
+    <string name="heating_edit">Izmeni</string>
+    <string name="heating_done">Gotovo</string>
     <string name="heating_msg_saved">Sačuvano na čvoru.</string>
     <string name="heating_msg_rejected">Čvor je odbio izmenu: %1$s</string>
     <string name="heating_msg_timeout">Čvor nije odgovorio (10 s). Proveri stanje pre ponovnog slanja.</string>
@@ -200,6 +226,13 @@
     <string name="indoor_down_bulb_3">Sijalica 3</string>
 
     <!-- Indoor up / AC -->
+    <string name="house_temperature">Temperatura</string>
+    <string name="house_humidity">Vlažnost</string>
+    <string name="house_air_quality">Kvalitet vazduha</string>
+    <string name="house_air_short">Vazduh</string>
+    <string name="house_ac_on">Uključena</string>
+    <string name="house_ac_off">Isključena</string>
+    <string name="house_ac_hint">Promena režima ili temperature šalje komandu klimi.</string>
     <string name="ac_title">Klima uređaj</string>
     <string name="ac_power_on">Uključi</string>
     <string name="ac_power_off">Isključi</string>
@@ -219,6 +252,7 @@
     <string name="co2_level">CO2</string>
 
     <!-- Small home / shed -->
+    <string name="small_home_not_in_use">Šupa se trenutno ne koristi (čvor node7 je isključen).</string>
     <string name="small_home_door">Vrata</string>
     <string name="small_home_bulb_1">Sijalica 1</string>
     <string name="small_home_bulb_2">Sijalica 2</string>

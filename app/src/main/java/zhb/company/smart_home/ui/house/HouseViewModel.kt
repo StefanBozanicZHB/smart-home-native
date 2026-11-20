@@ -2,37 +2,33 @@ package zhb.company.smart_home.ui.house
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.AcCommandBuilder
 import zhb.company.smart_home.domain.model.AcFanSpeed
 import zhb.company.smart_home.domain.model.AcMode
+import zhb.company.smart_home.ui.format.Readings
 
 class HouseViewModel(private val repository: SmartHomeRepository) : ViewModel() {
 
-    private val _plusMenuExpanded = MutableStateFlow(false)
-
-    val state: StateFlow<HouseState> = combine(repository.state, _plusMenuExpanded) { home, expanded ->
+    val state: StateFlow<HouseState> = repository.state.map { home ->
         HouseState(
             groundOnline = home.isNodeOnline(4),
-            groundTemperature = home.temperatureLivingRoomDown,
-            groundHumidity = home.humidityLivingRoomDown,
+            groundTemperature = Readings.temperature(home.temperatureLivingRoomDown),
+            groundHumidity = Readings.percent(home.humidityLivingRoomDown),
             upperOnline = home.isNodeOnline(8),
-            upperTemperature = home.temperatureLivingRoomUp,
-            upperHumidity = home.humidityLivingRoomUp,
+            upperTemperature = Readings.temperature(home.temperatureLivingRoomUp),
+            upperHumidity = Readings.percent(home.humidityLivingRoomUp),
             co2 = home.gasLivingRoomUp,
             acOn = home.acOn,
             acMode = home.acMode,
             acFanSpeed = home.acFanSpeed,
             acTemp = home.acTemp,
-            plusMenuExpanded = expanded,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HouseState())
 
@@ -56,7 +52,6 @@ class HouseViewModel(private val repository: SmartHomeRepository) : ViewModel() 
             }
             HouseIntent.IncreaseTemp -> changeTemp(1)
             HouseIntent.DecreaseTemp -> changeTemp(-1)
-            HouseIntent.TogglePlusMenu -> _plusMenuExpanded.update { !it }
         }
     }
 
