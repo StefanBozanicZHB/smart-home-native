@@ -10,7 +10,9 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Warehouse
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,11 +34,18 @@ import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.theme.AppTheme
 import zhb.company.smart_home.ui.settings.ConnectionsList
 import zhb.company.smart_home.ui.settings.ConnectionsState
 import zhb.company.smart_home.ui.settings.ConnectionsViewModel
 import zhb.company.smart_home.ui.settings.NodeRow
 import zhb.company.smart_home.ui.settings.SystemSettingsDialog
+import zhb.company.smart_home.data.history.HistoryPeriod
+import zhb.company.smart_home.ui.history.HistoryAutoLoad
+import zhb.company.smart_home.ui.history.HistoryState
+import zhb.company.smart_home.ui.history.HistoryViewModel
+import zhb.company.smart_home.ui.history.AvailabilityCard
+import zhb.company.smart_home.ui.history.loggerStatusText
 
 /** Nodes (status, signal, firmware), broker connection and the entry to settings. */
 @Composable
@@ -45,8 +54,11 @@ fun SystemScreen(
     onOpenNode: (String) -> Unit,
     viewModel: ConnectionsViewModel = koinViewModel(),
     repository: SmartHomeRepository = koinInject(),
+    historyViewModel: HistoryViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val history by historyViewModel.state.collectAsStateWithLifecycle()
+    HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.MONTH), withMeta = true)
     val connection by repository.connectionState.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
 
@@ -56,6 +68,7 @@ fun SystemScreen(
         onOpenSettings = { showSettings = true },
         onOpenShed = onOpenShed,
         onOpenNode = onOpenNode,
+        history = history,
     )
     if (showSettings) SystemSettingsDialog(onDismiss = { showSettings = false })
 }
@@ -67,6 +80,7 @@ private fun SystemContent(
     onOpenSettings: () -> Unit,
     onOpenShed: () -> Unit,
     onOpenNode: (String) -> Unit = {},
+    history: HistoryState = HistoryState(),
 ) {
     // Nodes not in use (the shed) are left out of the count and the list; the shed has its own row.
     val nodes = state.nodes.filter { it.nodeId !in NodeLabels.NOT_IN_USE }
@@ -93,6 +107,13 @@ private fun SystemContent(
                         if (connected) Tone.ACTIVE else Tone.DANGER,
                     )
                 }
+                loggerStatusText(history.meta)?.let { (text, ok) ->
+                    Text(
+                        text,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (ok) MaterialTheme.colorScheme.onSurfaceVariant else AppTheme.status.warning,
+                    )
+                }
             }
         }
         item {
@@ -101,6 +122,8 @@ private fun SystemContent(
                 ConnectionsList(ConnectionsState(nodes), onNodeClick = onOpenNode)
             }
         }
+        // Only nodes with a heartbeat have availability history; the card shows those.
+        item { AvailabilityCard(history, nodes.map { it.nodeId to NodeLabels.of(it.nodeId) }) }
         item { CompactRow(Icons.Outlined.Warehouse, stringResource(R.string.system_shed), onClick = onOpenShed) }
     }
 }

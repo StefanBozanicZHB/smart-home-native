@@ -58,6 +58,11 @@ import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.format.NO_VALUE
 import zhb.company.smart_home.ui.heating.HeatPumpStatusLine
+import zhb.company.smart_home.data.history.HistoryPeriod
+import zhb.company.smart_home.ui.history.HistoryAutoLoad
+import zhb.company.smart_home.ui.history.HistoryState
+import zhb.company.smart_home.ui.history.HistoryViewModel
+import zhb.company.smart_home.ui.history.RoomTrend
 
 @Composable
 fun HomeScreen(
@@ -65,8 +70,12 @@ fun HomeScreen(
     onOpenGarden: () -> Unit,
     onOpenHouse: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
+    historyViewModel: HistoryViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val history by historyViewModel.state.collectAsStateWithLifecycle()
+    // Only the winter heating card has a chart.
+    if (HomeSection.HEATING_HERO in state.sections) HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.DAY))
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -77,7 +86,7 @@ fun HomeScreen(
         }
     }
 
-    HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse)
+    HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse, history = history)
 
     if (state.showDevicesOnDialog) DevicesOnDialog(state.devicesOnList) { viewModel.onIntent(HomeIntent.DismissDevicesOnDialog) }
     if (state.showUnlockConfirm) UnlockDialog(viewModel::onIntent)
@@ -91,6 +100,7 @@ private fun HomeContent(
     onOpenGarden: () -> Unit,
     onOpenHouse: () -> Unit,
     now: LocalDateTime = LocalDateTime.now(),
+    history: HistoryState = HistoryState(),
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -102,7 +112,7 @@ private fun HomeContent(
         state.sections.forEach { section ->
             item(key = section.name) {
                 when (section) {
-                    HomeSection.HEATING_HERO -> HeatingHeroCard(state.heating, onOpenHeating)
+                    HomeSection.HEATING_HERO -> HeatingHeroCard(state.heating, onOpenHeating, history)
                     HomeSection.GARDEN_HERO -> GardenHeroCard(state, onOpenGarden)
                     HomeSection.SUMMER_TILES -> SummerTiles(state, onOpenGarden, onOpenHouse)
                     HomeSection.ROOM_TEMPS -> RoomTemps(state, showOutdoor = HomeSection.GARDEN_HERO !in state.sections)
@@ -188,7 +198,7 @@ private fun zoneLabel(id: String): String = when (id) {
 }
 
 @Composable
-private fun HeatingHeroCard(heating: HeatingSummary, onOpen: () -> Unit) {
+private fun HeatingHeroCard(heating: HeatingSummary, onOpen: () -> Unit, history: HistoryState = HistoryState()) {
     DashboardCard(onClick = onOpen) {
         CardHeader(Icons.Outlined.LocalFireDepartment, stringResource(R.string.home_heating))
         HeatPumpStatusLine(heating.status)
@@ -212,6 +222,7 @@ private fun HeatingHeroCard(heating: HeatingSummary, onOpen: () -> Unit) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        RoomTrend(history)
     }
 }
 

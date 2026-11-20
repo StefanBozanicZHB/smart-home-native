@@ -72,6 +72,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
+import zhb.company.smart_home.data.history.HistoryPeriod
+import zhb.company.smart_home.ui.history.HistoryAutoLoad
+import zhb.company.smart_home.ui.history.HistoryState
+import zhb.company.smart_home.ui.history.HistoryViewModel
+import zhb.company.smart_home.ui.history.PumpRunCard
 import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.heating.DayType
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
@@ -103,8 +108,11 @@ fun HeatingScreen(
     onOpenSensors: () -> Unit,
     onOpenReports: () -> Unit = {},
     viewModel: HeatingViewModel = koinViewModel(),
+    historyViewModel: HistoryViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val history by historyViewModel.state.collectAsStateWithLifecycle()
+    HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.DAY, HistoryPeriod.MONTH))
     // Leaving drops the view model and with it every unsaved schedule draft, so ask first.
     BackHandler(enabled = state.hasUnsavedDrafts) { viewModel.onIntent(HeatingIntent.RequestLeave) }
     val snackbar = remember { SnackbarHostState() }
@@ -123,7 +131,7 @@ fun HeatingScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HeatingContent(state, viewModel::onIntent, onOpenSensors = onOpenSensors, onOpenReports = onOpenReports)
+        HeatingContent(state, viewModel::onIntent, onOpenSensors = onOpenSensors, onOpenReports = onOpenReports, history = history)
         SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 
@@ -152,6 +160,7 @@ private fun HeatingContent(
     initiallyEditing: Boolean = false,
     onOpenSensors: () -> Unit = {},
     onOpenReports: () -> Unit = {},
+    history: HistoryState = HistoryState(),
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -170,6 +179,7 @@ private fun HeatingContent(
         if (!state.loading) item { ScheduleCard(state, onIntent, initiallyEditing) }
         // The flow temperature is already in the heat pump card; outdoor explains how hard it works.
         item { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
+        item { PumpRunCard(history) }
     }
 }
 

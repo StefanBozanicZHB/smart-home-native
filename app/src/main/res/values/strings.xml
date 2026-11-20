@@ -478,4 +478,34 @@
     <string name="reports_safe_mode">Bezbedni režim ukupno %1$s</string>
     <string name="reports_data">Podaci</string>
     <string name="reports_data_detail">Potpunost %1$s (%2$d od %3$d uzoraka node5/state), restartova čvora: %4$d</string>
+
+    <!-- History charts (RPi logger aggregates in Firebase: history/v1) -->
+    <string name="history_24h">24h</string>
+    <string name="history_7d">7d</string>
+    <string name="history_30d">30d</string>
+    <string name="history_room_trend_caption">24 h · senčeno = pumpa radi · isprekidano = cilj</string>
+    <string name="history_room_trend_description">Sobna temperatura u poslednja 24 sata, sa periodima rada pumpe</string>
+    <string name="history_pump_title">Rad pumpe</string>
+    <string name="history_pump_description">Rad toplotne pumpe i spoljna temperatura</string>
+    <string name="history_pump_legend_minutes">minuta rada po satu</string>
+    <string name="history_pump_legend_hours">sati rada po danu</string>
+    <string name="history_pump_total">Ukupno: %1$s</string>
+    <string name="history_outdoor">Napolju</string>
+    <string name="history_outdoor_value">napolju %1$s</string>
+    <string name="history_climate_title">Temperatura i vlažnost</string>
+    <string name="history_climate_description">Temperatura i vlažnost: %1$s</string>
+    <string name="history_temperature">°C</string>
+    <string name="history_humidity">vlažnost %</string>
+    <string name="history_band_hint">Senka: najniža i najviša temperatura</string>
+    <string name="history_availability_title">Dostupnost · 7 dana</string>
+    <string name="history_availability_caption">%1$s: prosečno %2$s %% onlajn · žuto = dan sa prekidima</string>
+    <string name="history_no_data">nema podataka</string>
+    <string name="history_loading">Učitavanje istorije…</string>
+    <string name="history_empty">Još nema podataka. RPi upisuje istoriju na 10 minuta.</string>
+    <string name="history_error_permission">Istorija nije dostupna: u Firebase pravilima treba dozvoliti čitanje putanje history.</string>
+    <string name="history_error_network">Istorija trenutno nije dostupna (mreža).</string>
+    <string name="history_logger_ok">logger radi</string>
+    <string name="history_logger_silent">logger ne beleži već %1$s</string>
+    <string name="history_logger_empty">logger još nema podataka</string>
+    <string name="history_rpi_stale">istorija sa RPi-ja stara %1$s</string>
 </resources>

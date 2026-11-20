@@ -45,15 +45,22 @@ import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.format.NO_VALUE
+import zhb.company.smart_home.data.history.HistoryPeriod
+import zhb.company.smart_home.ui.history.HistoryAutoLoad
+import zhb.company.smart_home.ui.history.HistoryState
+import zhb.company.smart_home.ui.history.HistoryViewModel
+import zhb.company.smart_home.ui.history.ClimateHistoryCard
 
 @Composable
-fun HouseScreen(viewModel: HouseViewModel = koinViewModel()) {
+fun HouseScreen(viewModel: HouseViewModel = koinViewModel(), historyViewModel: HistoryViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HouseContent(state, viewModel::onIntent)
+    val history by historyViewModel.state.collectAsStateWithLifecycle()
+    HistoryAutoLoad(historyViewModel, HistoryPeriod.entries.toSet())
+    HouseContent(state, viewModel::onIntent, history)
 }
 
 @Composable
-private fun HouseContent(state: HouseState, onIntent: (HouseIntent) -> Unit) {
+private fun HouseContent(state: HouseState, onIntent: (HouseIntent) -> Unit, history: HistoryState = HistoryState()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
@@ -81,6 +88,7 @@ private fun HouseContent(state: HouseState, onIntent: (HouseIntent) -> Unit) {
             )
         }
         item { AcCard(state, onIntent) }
+        item { ClimateHistoryCard(history) }
     }
 }
 

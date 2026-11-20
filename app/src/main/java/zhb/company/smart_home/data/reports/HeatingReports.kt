@@ -1,18 +1,12 @@
 package zhb.company.smart_home.data.reports
 
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-import zhb.company.smart_home.data.remote.FirebaseUrls
-import zhb.company.smart_home.data.repository.AuthRepository
+import zhb.company.smart_home.data.remote.RtdbError
+import zhb.company.smart_home.data.remote.RtdbReader
 
 /**
  * Daily heating reports written by the RPi (`das_report.py` in the DAS repository) to Firebase
@@ -21,11 +15,11 @@ import zhb.company.smart_home.data.repository.AuthRepository
  * - `reports/heating/<yyyy-MM-dd>`: the full [HeatingReport].
  * Days without heating have no report.
  */
-class HeatingReportsApi(private val httpClient: HttpClient, private val auth: AuthRepository) {
+class HeatingReportsApi(private val reader: RtdbReader) {
 
     /** Newest first. */
     suspend fun list(limit: Int = 60): Result<List<ReportSummary>> = runCatching {
-        val obj = fetch("reports/heating_index") {
+        val obj = reader.get("reports/heating_index") {
             parameter("orderBy", "\"\$key\"")
             parameter("limitToLast", limit)
         } as? JsonObject ?: return@runCatching emptyList()
@@ -35,32 +29,15 @@ class HeatingReportsApi(private val httpClient: HttpClient, private val auth: Au
     }
 
     suspend fun get(date: String): Result<HeatingReport?> = runCatching {
-        (fetch("reports/heating/$date") as? JsonObject)?.let { json.decodeFromJsonElement<HeatingReport>(it) }
-    }
-
-    private suspend fun fetch(path: String, params: io.ktor.client.request.HttpRequestBuilder.() -> Unit = {}): kotlinx.serialization.json.JsonElement {
-        val token = auth.freshIdToken() ?: throw ReportsException(ReportsError.NOT_SIGNED_IN)
-        val response = httpClient.get("${FirebaseUrls.RTDB}/$path.json") {
-            parameter("auth", token)
-            params()
-        }
-        when (response.status) {
-            HttpStatusCode.OK -> Unit
-            HttpStatusCode.Unauthorized -> throw ReportsException(ReportsError.PERMISSION_DENIED)
-            else -> throw ReportsException(ReportsError.HTTP, "HTTP ${response.status.value}")
-        }
-        val text = response.bodyAsText()
-        return if (text.isBlank()) JsonNull else json.parseToJsonElement(text)
+        (reader.get("reports/heating/$date") as? JsonObject)?.let { json.decodeFromJsonElement<HeatingReport>(it) }
     }
 
     private companion object {
-        val json = Json { ignoreUnknownKeys = true; explicitNulls = false; coerceInputValues = true }
+        val json = RtdbReader.json
     }
 }
 
-enum class ReportsError { NOT_SIGNED_IN, PERMISSION_DENIED, HTTP }
-
-class ReportsException(val error: ReportsError, message: String? = null) : Exception(message ?: error.name)
+typealias ReportsError = RtdbError
 
 @Serializable
 data class ReportSummary(

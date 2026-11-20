@@ -11,7 +11,7 @@ import zhb.company.smart_home.data.reports.HeatingReport
 import zhb.company.smart_home.data.reports.HeatingReportsApi
 import zhb.company.smart_home.data.reports.ReportSummary
 import zhb.company.smart_home.data.reports.ReportsError
-import zhb.company.smart_home.data.reports.ReportsException
+import zhb.company.smart_home.data.remote.toRtdbError
 
 data class ReportsState(
     val loading: Boolean = true,
@@ -32,7 +32,7 @@ class ReportsViewModel(private val api: HeatingReportsApi) : ViewModel() {
         viewModelScope.launch {
             api.list().fold(
                 onSuccess = { items -> _state.value = ReportsState(loading = false, items = items) },
-                onFailure = { e -> _state.update { it.copy(loading = false, error = e.toReportsError()) } },
+                onFailure = { e -> _state.update { it.copy(loading = false, error = e.toRtdbError()) } },
             )
         }
     }
@@ -59,10 +59,9 @@ class ReportDetailViewModel(private val date: String, private val api: HeatingRe
         viewModelScope.launch {
             api.get(date).fold(
                 onSuccess = { r -> _state.value = ReportDetailState(loading = false, report = r, missing = r == null) },
-                onFailure = { e -> _state.update { it.copy(loading = false, error = e.toReportsError()) } },
+                onFailure = { e -> _state.update { it.copy(loading = false, error = e.toRtdbError()) } },
             )
         }
     }
 }
 
-private fun Throwable.toReportsError(): ReportsError = (this as? ReportsException)?.error ?: ReportsError.HTTP
