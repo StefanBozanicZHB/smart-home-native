@@ -131,7 +131,7 @@ class HomeViewModel(
             else -> return listOf(HomeAlert.NotConnected)
         }
         val offline = home.nodeHealth.values
-            .filter { it.status == NodeStatus.OFFLINE && it.nodeId !in NodeLabels.NOT_IN_USE }
+            .filter { it.status == NodeStatus.OFFLINE && NodeLabels.isActive(it.nodeId) }
             .sortedBy { it.nodeId }
             .map { HomeAlert.NodeOffline(NodeLabels.of(it.nodeId), lastWill = it.offlineReason == OfflineReason.LAST_WILL) }
         val safe = heating.safeMode

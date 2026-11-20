@@ -17,4 +17,12 @@ object NodeLabels {
     val NOT_IN_USE = setOf("node7", "node9")
 
     fun of(nodeId: String): String = LABELS[nodeId] ?: nodeId
+
+    /**
+     * Nodes in the house that are in use. Anything else on the broker (an old test board's
+     * retained `status`, a retired node) is not shown and does not raise alerts.
+     */
+    val ACTIVE: List<String> = LABELS.keys.filter { it !in NOT_IN_USE }.sorted()
+
+    fun isActive(nodeId: String): Boolean = nodeId in ACTIVE
 }

@@ -28,8 +28,9 @@ class ConnectionsViewModel(repository: SmartHomeRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectionsState())
 
     private fun rows(home: SmartHomeState): ConnectionsState {
-        // node1..node8 always (node0 is retired), plus any other node that announced itself.
-        val ids = ((1..8).map { "node$it" } + home.nodeHealth.keys.sorted()).distinct()
+        // The nodes of the house (node0 is retired); other ids on the broker, e.g. an old test
+        // board's retained status, are left out.
+        val ids = (1..8).map { "node$it" }
         return ConnectionsState(ids.map { id -> NodeRow(id, NodeLabels.of(id), home.nodeStatus(id), home.nodeHealth[id]) })
     }
 }
