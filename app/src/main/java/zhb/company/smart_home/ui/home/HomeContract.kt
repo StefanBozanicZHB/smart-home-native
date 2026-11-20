@@ -66,6 +66,7 @@ data class HomeState(
     val fountainNodeOnline: Boolean = false,
     val poolNodeOnline: Boolean = false,
     val doorNodeOnline: Boolean = false,
+    val frontDoor: FrontDoorUi = FrontDoorUi(),
 
     val devicesOnList: List<String> = emptyList(),
     val showDevicesOnDialog: Boolean = false,
@@ -89,3 +90,13 @@ sealed interface HomeIntent {
 sealed interface HomeEffect {
     data class ShowToast(@androidx.annotation.StringRes val messageRes: Int) : HomeEffect
 }
+
+/** Front door (Node 3): lock state, card reader health and the last access attempt. */
+data class FrontDoorUi(
+    val open: Boolean = false,
+    /** False when the RC522 card reader stopped answering. */
+    val readerOk: Boolean = true,
+    val lastAccess: zhb.company.smart_home.domain.door.AccessEvent? = null,
+    /** How long before the node's last state the attempt happened, if known. */
+    val lastAccessSecondsAgo: Long? = null,
+)

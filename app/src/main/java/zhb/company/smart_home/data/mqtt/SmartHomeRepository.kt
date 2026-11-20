@@ -285,7 +285,6 @@ class SmartHomeRepository(
         return when {
             topic == MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload))
 
-            topic == MqttTopics.NODE3_DOOR_STATUS -> state.copy(mainDoor = onOff)
 
             topic == MqttTopics.NODE4_TEMPERATURE -> state.copy(temperatureLivingRoomDown = formatTemperature(payload))
             topic == MqttTopics.NODE4_HUMIDITY -> state.copy(humidityLivingRoomDown = payload)

@@ -34,10 +34,10 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 |---|---|---|---|
 | Temperatures (yard, ground floor, upper floor), connected/disconnected status | ✓ | ✓ | ✅ |
 | Room cards with online dot | ✓ | ✓ | ✅ |
-| Front door unlock / gate (`node3/vrata`) | ✓ | ✓ | ✅ |
+| Front door unlock / gate | `node3/vrata` (old API) | `node3/door/open` with confirmation from the node; lock state, card reader health, last access attempt (Node 3 v2 API) | ✅ (new API) |
 | Shortcuts: LED strip, sprinklers, fountain, pool pump, pool heater | ✓ | ✓ | ✅ |
 | "Devices on" count + list dialog | ✓ | ✓ | ✅ |
-| GoodNight | turns off everything incl. `node3/vrata` and heating | doors/gate excluded on purpose; heating excluded since `18ce72e` | ⚠️ intentional difference |
+| GoodNight | turns off everything incl. the front door and heating | doors/gate excluded on purpose; heating excluded since `18ce72e` | ⚠️ intentional difference |
 | Heating card | tube temp, relay, main switch (old API) | flow temp, pump, main switch (Node 5 v2 API) | ✅ (new API) |
 
 ### Garden / yard (node1, node2, node6; node0 retired)
@@ -84,8 +84,8 @@ Flutter app can control the real heating.
 
 Only in Flutter: all old Node 5 and Node 1 topics and every `node0/*` topic (intentionally removed:
 `node1-2.0.0` and `node5-2.0.0` replaced them, Node 0 is retired), `node8/ac/{temp,fan,mode}` (B1).
-Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1, Node 2 and Node 5 v2 topics under `node1/`, `node2/`, `node5/`.
-Everything else (nodes 3, 4, 6–8) matches.
+Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1, 2, 3 and 5 v2 topics under `node1/`, `node2/`, `node3/`, `node5/`.
+Everything else (nodes 4, 6–8) matches.
 
 ## 4. Improvements that are not Flutter parity
 

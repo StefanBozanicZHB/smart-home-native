@@ -19,9 +19,7 @@ object MqttTopics {
     // the JSON API, see data/garden/Node2Repository.kt.
     const val NODE2_TEMPERATURE = "$BASE/node2/temperature"
 
-    // node3 - main door
-    const val NODE3_DOOR_CONTROL = "$BASE/node3/vrata"
-    const val NODE3_DOOR_STATUS = "$BASE/node3/vrata/stanje"
+    // node3 - front door: JSON API (node3-2.0.0), see data/door/Node3Repository.kt.
 
     // node4 - ground floor living room
     const val NODE4_HUMIDITY = "$BASE/node4/humidity"

@@ -15,9 +15,6 @@ data class SmartHomeState(
     // node2 - yard: outdoor temperature ("" while the node has withdrawn it); lights in data/garden/Node2Repository
     val temperatureOutdoor: String = "--",
 
-    // node3 - main / front door
-    val mainDoor: Boolean = false,
-
     // node4 - ground floor living room
     val temperatureLivingRoomDown: String = "--",
     val humidityLivingRoomDown: String = "--",

@@ -25,7 +25,7 @@ import zhb.company.smart_home.ui.smallhome.SmallHomeViewModel
 val viewModelModule = module {
     viewModel { AuthViewModel(get()) }
     viewModel { MqttConnectViewModel(get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { GardenViewModel(get(), get(), get()) }
     viewModel { IrrigationPlanViewModel(get(), get()) }
     viewModel { HeatingViewModel(get(), get()) }

@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import zhb.company.smart_home.R
 import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.data.door.Node3Repository
+import zhb.company.smart_home.data.door.Node3Snapshot
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
 import zhb.company.smart_home.data.garden.Node2Repository
@@ -39,6 +41,7 @@ class HomeViewModel(
     private val node5: Node5Repository,
     private val node1: Node1Repository,
     private val node2: Node2Repository,
+    private val node3: Node3Repository,
 ) : ViewModel() {
 
     private data class UiExtras(val showDevicesOnDialog: Boolean = false, val showUnlockConfirm: Boolean = false)
@@ -54,6 +57,7 @@ class HomeViewModel(
         node5.snapshot,
         node1.snapshot,
         node2.state,
+        node3.snapshot,
         extras,
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -63,7 +67,8 @@ class HomeViewModel(
             values[2] as Node5Snapshot,
             values[3] as Node1Snapshot,
             values[4] as Node2State?,
-            values[5] as UiExtras,
+            values[5] as Node3Snapshot,
+            values[6] as UiExtras,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
@@ -73,6 +78,7 @@ class HomeViewModel(
         heating: Node5Snapshot,
         yard: Node1Snapshot,
         lights: Node2State?,
+        door: Node3Snapshot,
         ui: UiExtras,
     ): HomeState {
         val connected = connection is MqttConnectionState.Connected
@@ -114,6 +120,12 @@ class HomeViewModel(
             fountainNodeOnline = home.isNodeOnline(1),
             poolNodeOnline = home.isNodeOnline(6),
             doorNodeOnline = home.isNodeOnline(3),
+            frontDoor = FrontDoorUi(
+                open = door.state?.lockOpen ?: false,
+                readerOk = door.state?.readerOk != false,
+                lastAccess = door.lastAccess,
+                lastAccessSecondsAgo = door.lastAccess?.secondsBefore(door.state),
+            ),
             devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState) + Node2Devices.onLabels(lights),
             showDevicesOnDialog = ui.showDevicesOnDialog,
             showUnlockConfirm = ui.showUnlockConfirm,
@@ -165,7 +177,15 @@ class HomeViewModel(
             HomeIntent.DismissUnlockFrontDoor -> extras.update { it.copy(showUnlockConfirm = false) }
             HomeIntent.ConfirmUnlockFrontDoor -> {
                 extras.update { it.copy(showUnlockConfirm = false) }
-                publish(MqttTopics.NODE3_DOOR_CONTROL, "1")
+                viewModelScope.launch {
+                    val message = when (node3.openDoor()) {
+                        is CommandOutcome.Accepted -> R.string.home_door_opened
+                        is CommandOutcome.Rejected -> R.string.garden_msg_failed
+                        CommandOutcome.Timeout -> R.string.heating_msg_timeout
+                        CommandOutcome.NotConnected -> R.string.heating_msg_not_connected
+                    }
+                    _effects.send(HomeEffect.ShowToast(message))
+                }
             }
             is HomeIntent.ToggleLedStrip -> viewModelScope.launch {
                 val outcome = node2.setNeon(intent.on)

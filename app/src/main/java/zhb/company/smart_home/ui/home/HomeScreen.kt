@@ -15,20 +15,18 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.DoorFront
 import androidx.compose.material.icons.outlined.Grass
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Pool
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material.icons.outlined.WaterDrop
-import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Water
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.outlined.Notifications
-import org.koin.compose.koinInject
-import zhb.company.smart_home.data.notifications.NotificationInbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -47,7 +45,10 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import zhb.company.smart_home.R
+import zhb.company.smart_home.data.history.HistoryPeriod
+import zhb.company.smart_home.data.notifications.NotificationInbox
 import zhb.company.smart_home.domain.model.AcMode
 import zhb.company.smart_home.ui.components.ActionTile
 import zhb.company.smart_home.ui.components.AlertBanner
@@ -60,16 +61,16 @@ import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatTile
 import zhb.company.smart_home.ui.components.StatusChip
-import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.TileGrid
+import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.format.NO_VALUE
 import zhb.company.smart_home.ui.heating.HeatPumpStatusLine
-import zhb.company.smart_home.data.history.HistoryPeriod
 import zhb.company.smart_home.ui.history.HistoryAutoLoad
 import zhb.company.smart_home.ui.history.HistoryState
 import zhb.company.smart_home.ui.history.HistoryViewModel
 import zhb.company.smart_home.ui.history.RoomTrend
+import zhb.company.smart_home.ui.theme.AppTheme
 
 @Composable
 fun HomeScreen(
@@ -100,7 +101,7 @@ fun HomeScreen(
     HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse, history = history, toLabel = toLabel, onOpenNotifications = onOpenNotifications)
 
     if (state.showDevicesOnDialog) DevicesOnDialog(state.devicesOnList) { viewModel.onIntent(HomeIntent.DismissDevicesOnDialog) }
-    if (state.showUnlockConfirm) UnlockDialog(viewModel::onIntent)
+    if (state.showUnlockConfirm) UnlockDialog(state.frontDoor, viewModel::onIntent)
 }
 
 @Composable
@@ -354,7 +355,12 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
                         Icons.Outlined.DoorFront, stringResource(R.string.home_front_door),
                         onClick = { if (state.doorNodeOnline) onIntent(HomeIntent.RequestUnlockFrontDoor) },
                         modifier = m,
-                        detail = if (state.doorNodeOnline) stringResource(R.string.home_unlock) else offline,
+                        detail = when {
+                            !state.doorNodeOnline -> offline
+                            state.frontDoor.open -> stringResource(R.string.home_door_open)
+                            !state.frontDoor.readerOk -> stringResource(R.string.home_door_reader_down)
+                            else -> stringResource(R.string.home_unlock)
+                        },
                     )
                 },
             ),
@@ -377,14 +383,37 @@ private fun DevicesOnDialog(devices: List<String>, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun UnlockDialog(onIntent: (HomeIntent) -> Unit) {
+private fun UnlockDialog(door: FrontDoorUi, onIntent: (HomeIntent) -> Unit) {
     AlertDialog(
         onDismissRequest = { onIntent(HomeIntent.DismissUnlockFrontDoor) },
         title = { Text(stringResource(R.string.home_unlock_title)) },
-        text = { Text(stringResource(R.string.home_unlock_text)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.home_unlock_text))
+                if (!door.readerOk) Text(stringResource(R.string.home_door_reader_down_long), color = AppTheme.status.warning)
+                door.lastAccess?.let {
+                    Text(lastAccessText(it, door.lastAccessSecondsAgo), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
         confirmButton = { TextButton(onClick = { onIntent(HomeIntent.ConfirmUnlockFrontDoor) }) { Text(stringResource(R.string.home_unlock_confirm)) } },
         dismissButton = { OutlinedButton(onClick = { onIntent(HomeIntent.DismissUnlockFrontDoor) }) { Text(stringResource(R.string.home_cancel)) } },
     )
+}
+
+/** "Poslednji ulaz: Stefan (kartica), pre 12 min" / "Odbijena nepoznata kartica …3344, pre 2 min". */
+@Composable
+private fun lastAccessText(event: zhb.company.smart_home.domain.door.AccessEvent, secondsAgo: Long?): String {
+    val who = when (event.method) {
+        zhb.company.smart_home.domain.door.AccessMethod.TAG ->
+            if (event.granted) stringResource(R.string.home_door_by_tag, event.name ?: "…${event.uidEnd.orEmpty()}")
+            else stringResource(R.string.home_door_denied_tag, event.uidEnd.orEmpty())
+        zhb.company.smart_home.domain.door.AccessMethod.BUTTON -> stringResource(R.string.home_door_by_button)
+        zhb.company.smart_home.domain.door.AccessMethod.APP -> stringResource(R.string.home_door_by_app)
+        null -> stringResource(R.string.home_door_by_unknown)
+    }
+    val ago = secondsAgo?.let { stringResource(R.string.home_door_ago, zhb.company.smart_home.ui.format.Durations.compact(it)) }
+    return stringResource(if (event.granted) R.string.home_door_last else R.string.home_door_last_denied, listOfNotNull(who, ago).joinToString(", "))
 }
 
 // ---- previews ------------------------------------------------------------------------------------
