@@ -8,7 +8,7 @@ import zhb.company.smart_home.domain.heating.ScheduleProblem
 import zhb.company.smart_home.domain.heating.ScheduleSegment
 
 data class HeatingState(
-    /** MQTT node id in use; `testnode5` means the bench-test board. */
+    /** MQTT node id (shown in the "waiting for node" message). */
     val nodeId: String = "node5",
     val connected: Boolean = false,
     /** Node 5 Last Will status: true online, false offline, null not heard yet. */

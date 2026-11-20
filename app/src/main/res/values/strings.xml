@@ -143,7 +143,6 @@
     <string name="heating_outdoor_temp">Spoljna temperatura</string>
     <string name="heating_settings_title">Podešavanja grejanja</string>
     <string name="heating_pick_time">Izaberite vreme</string>
-    <string name="heating_test_board">TEST</string>
     <string name="heating_heat_pump">Toplotna pumpa</string>
     <string name="heating_main_switch">Glavni prekidač</string>
     <string name="heating_pump_running">Radi</string>
@@ -285,7 +284,6 @@
     <string name="heating_msg_rejected">Čvor je odbio izmenu: %1$s</string>
     <string name="heating_msg_timeout">Čvor nije odgovorio (10 s). Proveri stanje pre ponovnog slanja.</string>
     <string name="heating_msg_not_connected">Nema veze sa serverom, izmena nije poslata.</string>
-    <string name="settings_node5_test_board">Grejanje: test ploča (testnode5)</string>
 
     <!-- Indoor down -->
     <string name="indoor_down_bulb_1">Sijalica 1</string>

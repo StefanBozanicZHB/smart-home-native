@@ -1,10 +1,7 @@
 package zhb.company.smart_home.data.heating
 
-/**
- * Node 5 topics under a switchable node id: `node5` (the real heat pump) or `testnode5`
- * (the bench-test board built with `pio run -e node5_bench`).
- */
-class Node5Topics(val nodeId: String) {
+/** Node 5 topics (`bozaSub/kuca/node5/...`). */
+class Node5Topics(val nodeId: String = REAL) {
     val base = "bozaSub/kuca/$nodeId/"
 
     // commands (JSON, never retained)
@@ -18,8 +15,6 @@ class Node5Topics(val nodeId: String) {
 
     companion object {
         const val REAL = "node5"
-        const val BENCH = "testnode5"
-        val ALLOWED = setOf(REAL, BENCH)
 
         // relative state/answer paths (retained unless noted)
         const val CONFIG = "config"

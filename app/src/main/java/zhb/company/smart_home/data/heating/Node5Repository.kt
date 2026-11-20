@@ -4,12 +4,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -51,13 +50,9 @@ sealed interface CommandOutcome {
 /**
  * Node 5 heating API on top of the shared MQTT connection: keeps [snapshot] up to date from
  * the node's retained topics and sends commands, matching each answer on `result` by `id`.
- *
- * The node id ([nodeIds]: `node5` or `testnode5`) can change at runtime; the snapshot is then
- * cleared and the new node is asked to republish its state (`config/get`).
  */
 class Node5Repository(
     private val mqtt: SmartHomeRepository,
-    nodeIds: Flow<String>,
     scope: CoroutineScope,
     private val commandTimeoutMs: Long = 10_000,
     private val newId: () -> String = defaultIdGenerator(),
@@ -65,26 +60,19 @@ class Node5Repository(
     private val _snapshot = MutableStateFlow(Node5Snapshot())
     val snapshot: StateFlow<Node5Snapshot> = _snapshot.asStateFlow()
 
-    @Volatile
-    private var topics = Node5Topics(Node5Topics.REAL)
+    private val topics = Node5Topics()
 
     private val pending = ConcurrentHashMap<String, CompletableDeferred<Node5CommandResult>>()
 
     init {
         mqtt.addMessageListener(::onMessage)
         scope.launch {
-            combine(
-                nodeIds.distinctUntilChanged(),
-                mqtt.connectionState,
-            ) { nodeId, connection -> nodeId to (connection is MqttConnectionState.Connected) }
+            mqtt.connectionState
+                .map { it is MqttConnectionState.Connected }
                 .distinctUntilChanged()
-                .collect { (nodeId, connected) ->
-                    if (nodeId != topics.nodeId) {
-                        topics = Node5Topics(nodeId)
-                        _snapshot.value = Node5Snapshot(nodeId = nodeId)
-                    }
-                    // Retained topics arrive on subscribe anyway; this also covers a node id
-                    // switch while connected and a node that restarted without retained data.
+                .collect { connected ->
+                    // Retained topics arrive on subscribe anyway; this also covers a node that
+                    // restarted without retained data.
                     if (connected) requestState()
                 }
         }

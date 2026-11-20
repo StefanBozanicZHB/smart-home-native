@@ -28,7 +28,7 @@ class ConnectionsViewModel(repository: SmartHomeRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectionsState())
 
     private fun rows(home: SmartHomeState): ConnectionsState {
-        // node0..node8 always, plus any other node that announced itself (e.g. the bench board).
+        // node0..node8 always, plus any other node that announced itself.
         val ids = ((0..8).map { "node$it" } + home.nodeHealth.keys.sorted()).distinct()
         return ConnectionsState(ids.map { id -> NodeRow(id, NodeLabels.of(id), home.nodeStatus(id), home.nodeHealth[id]) })
     }

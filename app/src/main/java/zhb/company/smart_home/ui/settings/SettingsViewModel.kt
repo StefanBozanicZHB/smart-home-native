@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.heating.Node5Topics
 import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
@@ -34,14 +33,12 @@ class SettingsViewModel(
     val state: StateFlow<SettingsState> = combine(
         repository.state,
         preferences.isDarkTheme,
-        preferences.node5Id,
         preferences.notificationsEnabled,
         _pending,
-    ) { home, darkTheme, node5Id, notifications, pending ->
+    ) { home, darkTheme, notifications, pending ->
         SettingsState(
             darkTheme = darkTheme,
             notifications = notifications,
-            node5TestBoard = node5Id == Node5Topics.BENCH,
             sprinklerAuto = pending.auto ?: home.sprinklerTimerAuto,
             sprinklerStartTime = pending.startTime ?: home.sprinklerStartTime,
             sprinklerOnMinutes = pending.onMinutes ?: home.sprinklerDurationOnMinutes,
@@ -59,9 +56,6 @@ class SettingsViewModel(
             is SettingsIntent.ToggleNotifications -> viewModelScope.launch { preferences.setNotificationsEnabled(intent.enabled) }
             is SettingsIntent.SetQuietHours -> viewModelScope.launch {
                 runCatching { preferences.setQuietHours(intent.enabled, intent.start, intent.end) }
-            }
-            is SettingsIntent.ToggleNode5TestBoard -> viewModelScope.launch {
-                preferences.setNode5Id(if (intent.enabled) Node5Topics.BENCH else Node5Topics.REAL)
             }
             is SettingsIntent.ToggleSprinklerAuto -> _pending.update { it.copy(auto = intent.enabled) }
             is SettingsIntent.SetStartTime -> _pending.update { it.copy(startTime = intent.time) }

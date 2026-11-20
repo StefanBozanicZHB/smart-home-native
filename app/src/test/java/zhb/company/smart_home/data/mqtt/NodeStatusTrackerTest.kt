@@ -65,8 +65,8 @@ class NodeStatusTrackerTest {
 
     @Test
     fun `retained offline on connect is offline`() {
-        tracker.onMessage("bozaSub/kuca/testnode5/status", "offline", retained = true, nowMs = t0)
-        assertEquals(NodeStatus.OFFLINE, status("testnode5", t0)?.status)
+        tracker.onMessage("bozaSub/kuca/node6/status", "offline", retained = true, nowMs = t0)
+        assertEquals(NodeStatus.OFFLINE, status("node6", t0)?.status)
     }
 
     @Test

@@ -12,7 +12,6 @@ object NodeLabels {
         "node6" to "Bazen",
         "node7" to "Šupa",
         "node8" to "Dnevni boravak (sprat)",
-        "testnode5" to "Grejanje – test ploča",
     )
 
     /** Nodes that exist but are not in use (smart-home-mcu docs/nodes.md). */

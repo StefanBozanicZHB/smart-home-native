@@ -64,7 +64,6 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 |---|---|---|---|
 | Old API: heating type, pellet level, alarm level, full/empty calibration, `glavniPrekidac`, `planogram`, one-digit hysteresis | ✓ | removed | 🗑️ replaced by `node5-2.0.0` |
 | New API: main switch, per-zone workday/weekend schedule (0.1 °C, ≤ 8 segments), hysteresis, safe mode, pump events, command results by `id` | — | ✓ | native only |
-| Switch `node5` / `testnode5` | — | ✓ (settings) | native only |
 
 Note: the house still runs the **old** Node 5 firmware. Until `node5-2.0.0` is installed, only the
 Flutter app can control the real heating.
@@ -85,7 +84,7 @@ Flutter app can control the real heating.
 
 Only in Flutter: all old Node 5 topics (intentionally removed), `node0/sprinkler/auto/enable` (constant
 defined but never used in Flutter either), `node8/ac/{temp,fan,mode}` (B1).
-Only in native: `node8/acTemp|acFan|acMode` (B1), Node 5 v2 topics under `node5/` or `testnode5/`.
+Only in native: `node8/acTemp|acFan|acMode` (B1), Node 5 v2 topics under `node5/`.
 Everything else (nodes 0–4, 6–8) matches.
 
 ## 4. Improvements that are not Flutter parity

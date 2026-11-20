@@ -118,7 +118,6 @@ private fun PipeSensorsContent(state: PipeSensorsState, onIntent: (PipeSensorsIn
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                if (state.nodeId != "node5") StatusChip(stringResource(R.string.heating_test_board), Tone.WARNING)
                 IconButton(onClick = { onIntent(PipeSensorsIntent.Refresh) }, enabled = state.connected) {
                     Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.sensors_refresh))
                 }
@@ -301,7 +300,7 @@ private fun PipeSensorsDialogs(state: PipeSensorsState, onIntent: (PipeSensorsIn
 // ---- previews ------------------------------------------------------------------------------------
 
 private val PreviewSensors = PipeSensorsState(
-    nodeId = "testnode5", connected = true, loading = false,
+    nodeId = "node5", connected = true, loading = false,
     pipes = listOf(
         PipeRowUi(Pipe.SUPPLY, "28FF4C1D6116038F", -12, temperature = "34.3", rawTemperature = "34.4"),
         PipeRowUi(Pipe.RETURN, "28AA01020304A169", 0, temperature = null, missingOnBus = true),

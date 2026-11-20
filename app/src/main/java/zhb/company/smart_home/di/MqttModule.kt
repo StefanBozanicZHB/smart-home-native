@@ -35,7 +35,6 @@ val mqttModule = module {
     single(createdAtStart = true) {
         Node5Repository(
             mqtt = get(),
-            nodeIds = get<AppPreferences>().node5Id,
             scope = get(named(APP_SCOPE)),
         )
     }

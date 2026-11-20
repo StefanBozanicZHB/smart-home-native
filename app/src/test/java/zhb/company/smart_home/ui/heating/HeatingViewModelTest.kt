@@ -2,7 +2,6 @@ package zhb.company.smart_home.ui.heating
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -39,7 +38,7 @@ class HeatingViewModelTest {
             UnconfinedTestDispatcher(scope.testScheduler),
         )
         private var ids = 0
-        val node5 = Node5Repository(mqtt, flowOf("node5"), scope.backgroundScope, newId = { "id-${++ids}" })
+        val node5 = Node5Repository(mqtt, scope.backgroundScope, newId = { "id-${++ids}" })
         val vm = HeatingViewModel(mqtt, node5)
 
         fun deliver(topic: String, payload: String) = mqtt.handleMessage("bozaSub/kuca/node5/$topic", payload, retained = false)

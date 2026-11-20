@@ -180,7 +180,6 @@ private fun HeatingHeader(state: HeatingState, onIntent: (HeatingIntent) -> Unit
         stringResource(R.string.heating_node_time, time, dayLabel)
     }
     ScreenHeader(title = stringResource(R.string.menu_heating), subtitle = subtitle, horizontalPadding = 0.dp) {
-        if (state.nodeId != "node5") StatusChip(stringResource(R.string.heating_test_board), Tone.WARNING, Modifier.padding(end = 6.dp))
         StatusChip(
             text = stringResource(
                 when (state.online) {
@@ -818,14 +817,14 @@ private fun HeatingFuturePreview() {
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Heating - bench board, safe mode", heightDp = 1250)
+@androidx.compose.ui.tooling.preview.Preview(name = "Heating - safe mode", heightDp = 1250)
 @Composable
 private fun HeatingSafeModePreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
         Surface {
             HeatingContent(
                 PreviewToday.copy(
-                    nodeId = "testnode5", pump = false, demand = false, flowTemp = "--", pipes = PipeTemps(),
+                    pump = false, demand = false, flowTemp = "--", pipes = PipeTemps(),
                     nodeIsWeekend = true, selectedDay = DayType.WEEKEND, nextChange = null,
                     safeMode = SafeModeUi("no_schedule", "ground"),
                     pumpStatus = HeatPumpStatus.SafeMode("no_schedule"),

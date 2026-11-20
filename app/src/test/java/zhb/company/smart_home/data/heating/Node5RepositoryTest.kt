@@ -2,7 +2,6 @@ package zhb.company.smart_home.data.heating
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -28,9 +27,8 @@ class Node5RepositoryTest {
     private val config = """{"rev":9,"main_switch":true,"zones":["ground"],"min_on_s":600,"min_off_s":600,""" +
         """"limits":{"temp_min":5.0,"temp_max":30.0,"step_max":2.0,"segments_max":8}}"""
 
-    private class Fixture(scope: TestScope, initialNodeId: String = Node5Topics.REAL) {
+    private class Fixture(scope: TestScope) {
         val connector = FakeMqttConnector()
-        val nodeId = MutableStateFlow(initialNodeId)
         val dispatcher = UnconfinedTestDispatcher(scope.testScheduler)
         val mqtt = SmartHomeRepository(
             MqttConfigSource { Result.success(MqttClientConfigDto(mqttServer = "broker", mqttPort = "1883")) },
@@ -40,7 +38,6 @@ class Node5RepositoryTest {
         private var ids = 0
         val node5 = Node5Repository(
             mqtt = mqtt,
-            nodeIds = nodeId,
             scope = scope.backgroundScope,
             commandTimeoutMs = 10_000,
             newId = { "id-${++ids}" },
@@ -51,7 +48,7 @@ class Node5RepositoryTest {
     }
 
     @Test
-    fun `retained topics of the selected node fill the snapshot`() = runTest {
+    fun `retained topics fill the snapshot`() = runTest {
         val f = Fixture(this)
         f.deliver("bozaSub/kuca/node5/config", config)
         f.deliver(
@@ -68,9 +65,9 @@ class Node5RepositoryTest {
     }
 
     @Test
-    fun `messages of the other node id and command echoes are ignored`() = runTest {
+    fun `messages of other nodes and command echoes are ignored`() = runTest {
         val f = Fixture(this)
-        f.deliver("bozaSub/kuca/testnode5/config", config)
+        f.deliver("bozaSub/kuca/node6/config", config)
         f.deliver("bozaSub/kuca/node5/zones/ground/set", """{"hysteresis":{"lower":0.1,"upper":0.1},"workday":[],"weekend":[]}""")
         f.deliver("bozaSub/kuca/node5/config", "garbage")
 
@@ -85,22 +82,6 @@ class Node5RepositoryTest {
         runCurrent()
 
         assertTrue(f.published().any { it.topic == "bozaSub/kuca/node5/config/get" })
-    }
-
-    @Test
-    fun `switching node id clears the snapshot and requests the new node`() = runTest {
-        val f = Fixture(this)
-        f.mqtt.connect("token")
-        f.deliver("bozaSub/kuca/node5/config", config)
-
-        f.nodeId.value = Node5Topics.BENCH
-        runCurrent()
-
-        assertEquals(Node5Topics.BENCH, f.node5.snapshot.value.nodeId)
-        assertNull(f.node5.snapshot.value.config)
-        assertTrue(f.published().any { it.topic == "bozaSub/kuca/testnode5/config/get" })
-        f.deliver("bozaSub/kuca/testnode5/config", config)
-        assertEquals(9L, f.node5.snapshot.value.config?.rev)
     }
 
     @Test
@@ -146,12 +127,12 @@ class Node5RepositoryTest {
     }
 
     @Test
-    fun `pipe sensors on the bench board - read and assign with an id`() = runTest {
-        val f = Fixture(this, initialNodeId = Node5Topics.BENCH)
+    fun `pipe sensors - read and assign with an id`() = runTest {
+        val f = Fixture(this)
         f.mqtt.connect("token")
         runCurrent() // let the connect-time config/get go out first
         f.deliver(
-            "bozaSub/kuca/testnode5/sensors",
+            "bozaSub/kuca/node5/sensors",
             """{"rev":3,"pipes":{"supply":null,"return":null,"well_in":null,"well_out":null},"fallback":true,""" +
                 """"bus":[{"addr":"28AA01020304A169","t":21.06,"pipe":null}]}""",
         )
@@ -160,9 +141,9 @@ class Node5RepositoryTest {
         val outcome = async { f.node5.updateSensors(mapOf(Pipe.SUPPLY to PipeAssignment("28AA01020304A169"))) }
         runCurrent()
         val sent = f.published().last()
-        assertEquals("bozaSub/kuca/testnode5/sensors/set", sent.topic)
+        assertEquals("bozaSub/kuca/node5/sensors/set", sent.topic)
         assertEquals("""{"pipes":{"supply":{"addr":"28AA01020304A169","offset":0.0}},"id":"id-1"}""", sent.payload)
-        f.deliver("bozaSub/kuca/testnode5/result", """{"cmd":"sensors/set","id":"id-1","ok":false,"error":"supply: bad address CRC"}""", retained = false)
+        f.deliver("bozaSub/kuca/node5/result", """{"cmd":"sensors/set","id":"id-1","ok":false,"error":"supply: bad address CRC"}""", retained = false)
         assertEquals(CommandOutcome.Rejected("supply: bad address CRC"), outcome.await())
     }
 

@@ -178,7 +178,7 @@ private fun ConnectionsDialogPreview() {
                     NodeRow("node2", "Dvorište", NodeStatus.ONLINE, health("node2", NodeStatus.ONLINE, null, "node2-2.0.0", -76)),
                     NodeRow("node6", "Bazen", NodeStatus.ONLINE, health("node6", NodeStatus.ONLINE, null, "node6-2.0.0", -86)),
                     NodeRow("node5", "Grejanje", NodeStatus.OFFLINE, health("node5", NodeStatus.OFFLINE, OfflineReason.NO_HEARTBEAT, "node5-2.0.0", -70)),
-                    NodeRow("testnode5", "Grejanje – test ploča", NodeStatus.OFFLINE, health("testnode5", NodeStatus.OFFLINE, OfflineReason.LAST_WILL, "node5-2.0.0", null)),
+                    NodeRow("node8", "Dnevni boravak (sprat)", NodeStatus.OFFLINE, health("node8", NodeStatus.OFFLINE, OfflineReason.LAST_WILL, "node8-2.0.0", null)),
                 ),
             ),
         )
