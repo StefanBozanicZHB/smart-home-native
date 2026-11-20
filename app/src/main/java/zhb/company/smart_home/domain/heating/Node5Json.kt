@@ -68,7 +68,7 @@ object Node5Json {
             pump = o.bool("pump") ?: return null,
             demand = o.bool("demand") ?: false,
             safeReason = o.string("safe"),
-            flowTemp = o.double("flow_t"),
+            pipes = parsePipes(o),
             configRev = o.long("cfg_rev"),
             zones = o.obj("zones")?.mapNotNull { (id, value) ->
                 val z = value as? JsonObject ?: return@mapNotNull null
@@ -89,7 +89,7 @@ object Node5Json {
             atUptimeSeconds = o.long("at") ?: return null,
             pump = o.bool("pump") ?: return null,
             source = o.string("src") ?: "",
-            flowTemp = o.double("flow_t"),
+            pipes = parsePipes(o),
         )
     }
 
@@ -99,6 +99,28 @@ object Node5Json {
             reason = o.string("reason"),
             zone = o.string("zone"),
             atUptimeSeconds = o.long("at"),
+        )
+    }
+
+    fun parseSensors(payload: String): PipeSensors? = parseObject(payload)?.let { o ->
+        val pipes = o.obj("pipes") ?: return null
+        PipeSensors(
+            rev = o.long("rev"),
+            assignments = Pipe.entries.associateWith { pipe ->
+                (pipes[pipe.key] as? JsonObject)?.let { a ->
+                    val address = a.string("addr") ?: return@let null
+                    PipeAssignment(address.uppercase(), a.double("offset")?.let { (it * 100).roundToInt() } ?: 0)
+                }
+            },
+            fallback = o.bool("fallback") ?: false,
+            bus = (o["bus"] as? JsonArray)?.mapNotNull { item ->
+                val s = item as? JsonObject ?: return@mapNotNull null
+                BusSensor(
+                    address = s.string("addr")?.uppercase() ?: return@mapNotNull null,
+                    rawTemp = s.double("t"),
+                    pipe = Pipe.fromKey(s.string("pipe")),
+                )
+            }.orEmpty(),
         )
     }
 
@@ -113,10 +135,48 @@ object Node5Json {
         )
     }
 
+    /**
+     * `pipes` (firmware with pipe sensors). A build that still sends the single `flow_t` (the
+     * first node5-2.0.0 commit, tag node5-v2.0.0) is read as the supply pipe.
+     */
+    private fun parsePipes(o: JsonObject): PipeReadings {
+        val pipes = o.obj("pipes") ?: return PipeReadings(supply = o.double("flow_t"))
+        return PipeReadings(
+            supply = pipes.double(Pipe.SUPPLY.key),
+            ret = pipes.double(Pipe.RETURN.key),
+            wellIn = pipes.double(Pipe.WELL_IN.key),
+            wellOut = pipes.double(Pipe.WELL_OUT.key),
+        )
+    }
+
     // ---- commands ----------------------------------------------------------------------------
 
     fun mainSwitchCommand(on: Boolean, id: String): String = buildJsonObject {
         put("on", on)
+        put("id", id)
+    }.toString()
+
+    /** Pipe sensor patch: only the pipes in [changes] are sent; a null value removes the sensor. */
+    fun sensorsSetCommand(id: String, changes: Map<Pipe, PipeAssignment?>): String = buildJsonObject {
+        put(
+            "pipes",
+            buildJsonObject {
+                Pipe.entries.filter { it in changes }.forEach { pipe ->
+                    val a = changes[pipe]
+                    if (a == null) {
+                        put(pipe.key, JsonNull)
+                    } else {
+                        put(
+                            pipe.key,
+                            buildJsonObject {
+                                put("addr", a.address)
+                                put("offset", a.offsetHundredths / 100.0)
+                            },
+                        )
+                    }
+                }
+            },
+        )
         put("id", id)
     }.toString()
 

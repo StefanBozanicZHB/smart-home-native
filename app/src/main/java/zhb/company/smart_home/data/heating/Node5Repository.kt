@@ -21,6 +21,9 @@ import zhb.company.smart_home.domain.heating.Node5CommandResult
 import zhb.company.smart_home.domain.heating.Node5Config
 import zhb.company.smart_home.domain.heating.Node5Json
 import zhb.company.smart_home.domain.heating.Node5LiveState
+import zhb.company.smart_home.domain.heating.Pipe
+import zhb.company.smart_home.domain.heating.PipeAssignment
+import zhb.company.smart_home.domain.heating.PipeSensors
 import zhb.company.smart_home.domain.heating.PumpEvent
 import zhb.company.smart_home.domain.heating.SafeModeState
 import zhb.company.smart_home.domain.heating.ScheduleSegment
@@ -34,6 +37,8 @@ data class Node5Snapshot(
     val live: Node5LiveState? = null,
     val pump: PumpEvent? = null,
     val safeMode: SafeModeState? = null,
+    /** `sensors`: pipe sensor assignment and sensors on the bus (firmware with pipe sensors). */
+    val sensors: PipeSensors? = null,
 )
 
 sealed interface CommandOutcome {
@@ -100,6 +105,10 @@ class Node5Repository(
         weekend: List<ScheduleSegment>? = null,
     ): CommandOutcome = send(topics.zoneSet(zone)) { id -> Node5Json.zoneSetCommand(id, hysteresis, workday, weekend) }
 
+    /** Assigns, moves or removes pipe sensors; pipes not in [changes] keep their sensor. */
+    suspend fun updateSensors(changes: Map<Pipe, PipeAssignment?>): CommandOutcome =
+        send(topics.sensorsSet) { id -> Node5Json.sensorsSetCommand(id, changes) }
+
     private suspend fun send(topic: String, payload: (id: String) -> String): CommandOutcome {
         if (mqtt.connectionState.value !is MqttConnectionState.Connected) return CommandOutcome.NotConnected
         val id = newId()
@@ -129,6 +138,7 @@ class Node5Repository(
             path == Node5Topics.STATE -> Node5Json.parseState(payload)?.let { s -> _snapshot.update { it.copy(live = s) } }
             path == Node5Topics.PUMP -> Node5Json.parsePump(payload)?.let { p -> _snapshot.update { it.copy(pump = p) } }
             path == Node5Topics.SAFE_MODE -> Node5Json.parseSafeMode(payload)?.let { m -> _snapshot.update { it.copy(safeMode = m) } }
+            path == Node5Topics.SENSORS -> Node5Json.parseSensors(payload)?.let { s -> _snapshot.update { it.copy(sensors = s) } }
             path.startsWith(Node5Topics.ZONES_PREFIX) && !path.endsWith("/set") -> {
                 val zone = path.removePrefix(Node5Topics.ZONES_PREFIX)
                 if (zone.isNotEmpty() && '/' !in zone) {

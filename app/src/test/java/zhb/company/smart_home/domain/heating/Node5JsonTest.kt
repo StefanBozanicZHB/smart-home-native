@@ -46,7 +46,7 @@ class Node5JsonTest {
     fun `parses state with zones, nulls and safe mode reason`() {
         val state = Node5Json.parseState(
             """{"seq":1234,"up":12340,"time":"21:35","weekend":false,"main_switch":true,"main_relay":true,""" +
-                """"thermo_relay":false,"pump":false,"demand":false,"safe":null,"flow_t":34.25,"cfg_rev":9,""" +
+                """"thermo_relay":false,"pump":false,"demand":false,"safe":null,"pipes":{"supply":34.25,"return":29.70,"well_in":11.20,"well_out":8.10},"cfg_rev":9,""" +
                 """"zones":{"ground":{"room_t":21.48,"room_age":6,"target":21.5,"demand":false,"fault":null}}}""",
         )!!
         assertEquals(1234L, state.seq)
@@ -55,24 +55,43 @@ class Node5JsonTest {
         assertTrue(state.mainSwitch)
         assertFalse(state.pump)
         assertNull(state.safeReason)
-        assertEquals(34.25, state.flowTemp!!, 0.0)
+        assertEquals(PipeReadings(supply = 34.25, ret = 29.70, wellIn = 11.20, wellOut = 8.10), state.pipes)
         assertEquals(ZoneLiveState(21.48, 6, 215, false, null), state.zones["ground"])
 
         val beforeNtp = Node5Json.parseState(
             """{"seq":1,"up":3,"time":null,"weekend":null,"main_switch":false,"pump":false,"safe":"startup",""" +
-                """"flow_t":null,"zones":{"ground":{"room_t":null,"room_age":null,"target":null,"demand":false,"fault":"room_temp_stale"}}}""",
+                """"pipes":{"supply":null,"return":null,"well_in":null,"well_out":null},"zones":{"ground":{"room_t":null,"room_age":null,"target":null,"demand":false,"fault":"room_temp_stale"}}}""",
         )!!
         assertNull(beforeNtp.time)
-        assertNull(beforeNtp.flowTemp)
+        assertEquals(PipeReadings(), beforeNtp.pipes)
         assertEquals("startup", beforeNtp.safeReason)
         assertEquals(ZoneLiveState(null, null, null, false, "room_temp_stale"), beforeNtp.zones["ground"])
     }
 
     @Test
+    fun `a build that still sends flow_t is read as the supply pipe`() {
+        val state = Node5Json.parseState("""{"seq":1,"up":3,"main_switch":true,"pump":true,"flow_t":34.25,"zones":{}}""")!!
+        assertEquals(PipeReadings(supply = 34.25), state.pipes)
+        val pump = Node5Json.parsePump("""{"seq":1,"at":3,"pump":true,"src":"boot","flow_t":null}""")!!
+        assertEquals(PipeReadings(), pump.pipes)
+    }
+
+    @Test
+    fun `missing pipe values stay null`() {
+        val state = Node5Json.parseState("""{"seq":1,"up":3,"main_switch":true,"pump":false,"pipes":{"supply":30.5,"return":null}}""")!!
+        assertEquals(PipeReadings(supply = 30.5), state.pipes)
+        assertEquals(30.5, state.pipes[Pipe.SUPPLY]!!, 0.0)
+        assertNull(state.pipes[Pipe.WELL_OUT])
+    }
+
+    @Test
     fun `parses pump event and safe mode`() {
         assertEquals(
-            PumpEvent(3, 5400, true, "thermostat", 31.5),
-            Node5Json.parsePump("""{"seq":3,"at":5400,"pump":true,"src":"thermostat","flow_t":31.50,"zones":{}}"""),
+            PumpEvent(3, 5400, true, "thermostat", PipeReadings(supply = 31.5, ret = 29.1, wellIn = 11.3, wellOut = 10.9)),
+            Node5Json.parsePump(
+                """{"seq":3,"at":5400,"pump":true,"src":"thermostat",""" +
+                    """"pipes":{"supply":31.50,"return":29.10,"well_in":11.30,"well_out":10.90},"zones":{}}""",
+            ),
         )
         assertEquals(
             SafeModeState(true, "room_temp_stale", "ground", 7200),

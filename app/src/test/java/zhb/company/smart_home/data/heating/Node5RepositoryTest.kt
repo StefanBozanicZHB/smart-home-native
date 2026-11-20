@@ -18,6 +18,8 @@ import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto
 import zhb.company.smart_home.domain.heating.Hysteresis
+import zhb.company.smart_home.domain.heating.Pipe
+import zhb.company.smart_home.domain.heating.PipeAssignment
 import zhb.company.smart_home.domain.heating.ScheduleSegment
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -141,6 +143,27 @@ class Node5RepositoryTest {
             retained = false,
         )
         assertEquals(CommandOutcome.Rejected("weekend: start times must rise"), outcome.await())
+    }
+
+    @Test
+    fun `pipe sensors on the bench board - read and assign with an id`() = runTest {
+        val f = Fixture(this, initialNodeId = Node5Topics.BENCH)
+        f.mqtt.connect("token")
+        runCurrent() // let the connect-time config/get go out first
+        f.deliver(
+            "bozaSub/kuca/testnode5/sensors",
+            """{"rev":3,"pipes":{"supply":null,"return":null,"well_in":null,"well_out":null},"fallback":true,""" +
+                """"bus":[{"addr":"28AA01020304A169","t":21.06,"pipe":null}]}""",
+        )
+        assertTrue(f.node5.snapshot.value.sensors!!.fallback)
+
+        val outcome = async { f.node5.updateSensors(mapOf(Pipe.SUPPLY to PipeAssignment("28AA01020304A169"))) }
+        runCurrent()
+        val sent = f.published().last()
+        assertEquals("bozaSub/kuca/testnode5/sensors/set", sent.topic)
+        assertEquals("""{"pipes":{"supply":{"addr":"28AA01020304A169","offset":0.0}},"id":"id-1"}""", sent.payload)
+        f.deliver("bozaSub/kuca/testnode5/result", """{"cmd":"sensors/set","id":"id-1","ok":false,"error":"supply: bad address CRC"}""", retained = false)
+        assertEquals(CommandOutcome.Rejected("supply: bad address CRC"), outcome.await())
     }
 
     @Test

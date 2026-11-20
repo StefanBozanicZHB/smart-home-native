@@ -100,7 +100,7 @@ class HomeViewModel(
             online = home.nodeStatus(heating.nodeId) == NodeStatus.ONLINE,
             mainSwitch = heating.config?.mainSwitch ?: live?.mainSwitch ?: false,
             pump = live?.pump ?: false,
-            flowTemp = Readings.temperature(live?.flowTemp),
+            flowTemp = Readings.temperature(live?.pipes?.supply),
             zones = zoneIds.map { id ->
                 val z = live?.zones?.get(id)
                 ZoneSummary(

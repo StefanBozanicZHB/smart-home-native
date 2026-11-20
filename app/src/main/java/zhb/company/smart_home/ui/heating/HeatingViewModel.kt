@@ -82,8 +82,15 @@ class HeatingViewModel(
             mainSwitch = config?.mainSwitch ?: live?.mainSwitch ?: false,
             pump = live?.pump ?: false,
             demand = live?.demand ?: false,
-            flowTemp = Readings.temperature(live?.flowTemp),
-            pipes = PipeTemps(supply = live?.flowTemp?.let(Readings::temperature)),
+            flowTemp = Readings.temperature(live?.pipes?.supply),
+            pipes = live?.pipes?.let { p ->
+                PipeTemps(
+                    wellIn = p.wellIn?.let(Readings::temperature),
+                    wellOut = p.wellOut?.let(Readings::temperature),
+                    supply = p.supply?.let(Readings::temperature),
+                    ret = p.ret?.let(Readings::temperature),
+                )
+            } ?: PipeTemps(),
             nextChange = nextChange(snapshot, zone),
             nodeTime = live?.time,
             nodeIsWeekend = live?.weekend,

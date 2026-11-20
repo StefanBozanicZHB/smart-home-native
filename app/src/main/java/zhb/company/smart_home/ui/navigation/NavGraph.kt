@@ -33,6 +33,8 @@ import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.ui.auth.AuthScreen
 import zhb.company.smart_home.ui.garden.GardenScreen
 import zhb.company.smart_home.ui.heating.HeatingScreen
+import zhb.company.smart_home.ui.heating.PipeCalibrationScreen
+import zhb.company.smart_home.ui.heating.PipeSensorsScreen
 import zhb.company.smart_home.ui.home.HomeScreen
 import zhb.company.smart_home.ui.house.HouseScreen
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectScreen
@@ -89,7 +91,11 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
         }
     }
     // The shed is opened from the system tab, so that tab stays selected there.
-    val selectedRoute = if (currentRoute == Destination.SmallHome.route) Destination.System.route else currentRoute
+    val selectedRoute = when (currentRoute) {
+        Destination.SmallHome.route -> Destination.System.route
+        Destination.HeatingSensors.route, Destination.HeatingCalibration.route -> Destination.Heating.route
+        else -> currentRoute
+    }
     val tab: (Destination) -> Unit = { navController.navigateToTab(it.route) }
 
     Scaffold(
@@ -142,10 +148,22 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
                 GardenScreen()
             }
             composable(Destination.Heating.route) {
-                HeatingScreen(onBack = { navController.popBackStack() })
+                HeatingScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenSensors = { navController.navigate(Destination.HeatingSensors.route) },
+                )
             }
             composable(Destination.House.route) {
                 HouseScreen()
+            }
+            composable(Destination.HeatingSensors.route) {
+                PipeSensorsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenCalibration = { navController.navigate(Destination.HeatingCalibration.route) },
+                )
+            }
+            composable(Destination.HeatingCalibration.route) {
+                PipeCalibrationScreen(onDone = { navController.popBackStack() })
             }
             composable(Destination.System.route) {
                 SystemScreen(onOpenShed = { navController.navigate(Destination.SmallHome.route) })

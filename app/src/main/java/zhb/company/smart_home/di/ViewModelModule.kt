@@ -6,6 +6,8 @@ import zhb.company.smart_home.ui.ThemeStateHolder
 import zhb.company.smart_home.ui.auth.AuthViewModel
 import zhb.company.smart_home.ui.garden.GardenViewModel
 import zhb.company.smart_home.ui.heating.HeatingViewModel
+import zhb.company.smart_home.ui.heating.PipeCalibrationViewModel
+import zhb.company.smart_home.ui.heating.PipeSensorsViewModel
 import zhb.company.smart_home.ui.home.HomeViewModel
 import zhb.company.smart_home.ui.house.HouseViewModel
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectViewModel
@@ -19,6 +21,8 @@ val viewModelModule = module {
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { GardenViewModel(get()) }
     viewModel { HeatingViewModel(get(), get()) }
+    viewModel { PipeSensorsViewModel(get(), get()) }
+    viewModel { PipeCalibrationViewModel(get()) }
     viewModel { HouseViewModel(get()) }
     viewModel { SmallHomeViewModel(get()) }
     viewModel { SettingsViewModel(get(), get()) }

@@ -96,7 +96,7 @@ import zhb.company.smart_home.ui.theme.AppTheme
 private const val TEMP_STEP_TENTHS = 1
 
 @Composable
-fun HeatingScreen(onBack: () -> Unit, viewModel: HeatingViewModel = koinViewModel()) {
+fun HeatingScreen(onBack: () -> Unit, onOpenSensors: () -> Unit, viewModel: HeatingViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Leaving drops the view model and with it every unsaved schedule draft, so ask first.
     BackHandler(enabled = state.hasUnsavedDrafts) { viewModel.onIntent(HeatingIntent.RequestLeave) }
@@ -116,7 +116,7 @@ fun HeatingScreen(onBack: () -> Unit, viewModel: HeatingViewModel = koinViewMode
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HeatingContent(state, viewModel::onIntent)
+        HeatingContent(state, viewModel::onIntent, onOpenSensors = onOpenSensors)
         SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 
@@ -139,7 +139,12 @@ fun HeatingScreen(onBack: () -> Unit, viewModel: HeatingViewModel = koinViewMode
 }
 
 @Composable
-private fun HeatingContent(state: HeatingState, onIntent: (HeatingIntent) -> Unit, initiallyEditing: Boolean = false) {
+private fun HeatingContent(
+    state: HeatingState,
+    onIntent: (HeatingIntent) -> Unit,
+    initiallyEditing: Boolean = false,
+    onOpenSensors: () -> Unit = {},
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
@@ -152,7 +157,7 @@ private fun HeatingContent(state: HeatingState, onIntent: (HeatingIntent) -> Uni
             if (state.zones.size > 1) item { ZoneSelector(state, onIntent) }
             item { ZoneCard(state) }
         }
-        item { HeatPumpCard(state, onIntent) }
+        item { HeatPumpCard(state, onIntent, onOpenSensors) }
         if (!state.loading) item { ScheduleCard(state, onIntent, initiallyEditing) }
         // The flow temperature is already in the heat pump card; outdoor explains how hard it works.
         item { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
@@ -302,9 +307,10 @@ private fun RoomVsTargetRing(room: Double?, targetTenths: Int?, roomText: String
 
 /** Heat pump: running state, main switch, last change and the four pipes (well side, heating side). */
 @Composable
-private fun HeatPumpCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
+private fun HeatPumpCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit, onOpenSensors: () -> Unit) {
     DashboardCard {
         CardHeader(Icons.Outlined.SwapVert, stringResource(R.string.heating_heat_pump)) {
+            TextButton(onClick = onOpenSensors) { Text(stringResource(R.string.sensors_open)) }
             StatusChip(
                 stringResource(if (state.pump) R.string.heating_pump_running else R.string.heating_pump_idle),
                 if (state.pump) Tone.ACTIVE else Tone.NEUTRAL,

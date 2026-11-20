@@ -51,6 +51,44 @@ data class ZoneSettings(
     }
 }
 
+/** The four pipes of the water-to-water heat pump. */
+enum class Pipe(val key: String) {
+    /** Heating side, heat pump → house. */
+    SUPPLY("supply"),
+
+    /** Heating side, house → heat pump. */
+    RETURN("return"),
+
+    /** Ground water into the heat pump. */
+    WELL_IN("well_in"),
+
+    /** Cooled ground water out of the heat pump. */
+    WELL_OUT("well_out"),
+    ;
+
+    companion object {
+        fun fromKey(key: String?): Pipe? = entries.firstOrNull { it.key == key }
+    }
+}
+
+/**
+ * Pipe temperatures in °C with the calibration offset applied; null = no sensor assigned, sensor
+ * missing or read failed.
+ */
+data class PipeReadings(
+    val supply: Double? = null,
+    val ret: Double? = null,
+    val wellIn: Double? = null,
+    val wellOut: Double? = null,
+) {
+    operator fun get(pipe: Pipe): Double? = when (pipe) {
+        Pipe.SUPPLY -> supply
+        Pipe.RETURN -> ret
+        Pipe.WELL_IN -> wellIn
+        Pipe.WELL_OUT -> wellOut
+    }
+}
+
 /** `node5/state` → `zones.<zone>`. */
 data class ZoneLiveState(
     val roomTemp: Double?,
@@ -77,7 +115,7 @@ data class Node5LiveState(
     val demand: Boolean,
     /** Safe mode reason, null in normal operation. */
     val safeReason: String?,
-    val flowTemp: Double?,
+    val pipes: PipeReadings,
     val configRev: Long?,
     val zones: Map<String, ZoneLiveState>,
 )
@@ -89,7 +127,7 @@ data class PumpEvent(
     val pump: Boolean,
     /** `thermostat`, `schedule`, `app`, `safe_mode` or `boot`. */
     val source: String,
-    val flowTemp: Double?,
+    val pipes: PipeReadings,
 )
 
 /** `node5/safe_mode` (retained). */
@@ -109,3 +147,31 @@ data class Node5CommandResult(
     val rev: Long?,
     val error: String?,
 )
+
+/** A sensor assigned to a pipe; the offset (°C × 100, −500…500) is added to its raw reading. */
+data class PipeAssignment(val address: String, val offsetHundredths: Int = 0)
+
+/** A DS18B20 found on the node's OneWire bus. */
+data class BusSensor(
+    /** 64-bit address, 16 hex digits. */
+    val address: String,
+    /** Raw reading (no offset) when the node published the list; null if the read failed. */
+    val rawTemp: Double?,
+    /** Pipe it is assigned to, or null. */
+    val pipe: Pipe?,
+)
+
+/** `node5/sensors` (retained): pipe sensor assignment and every sensor found on the bus. */
+data class PipeSensors(
+    val rev: Long?,
+    val assignments: Map<Pipe, PipeAssignment?>,
+    /** Nothing assigned and exactly one sensor on the bus: the node uses it as the supply pipe. */
+    val fallback: Boolean,
+    val bus: List<BusSensor>,
+) {
+    fun assignment(pipe: Pipe): PipeAssignment? = assignments[pipe]
+
+    fun pipeOf(address: String): Pipe? = assignments.entries.firstOrNull { it.value?.address.equals(address, ignoreCase = true) }?.key
+
+    fun onBus(address: String): Boolean = bus.any { it.address.equals(address, ignoreCase = true) }
+}
