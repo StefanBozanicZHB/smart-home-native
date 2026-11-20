@@ -112,11 +112,15 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
             navController = navController,
             startDestination = Destination.Auth.route,
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
-            // Plain cross-fades; the pop pair also drives the predictive back gesture.
+            // Plain cross-fades everywhere. The predictive back gesture has its own pair, whose
+            // default shrinks the leaving screen toward the center; it fades here too.
             enterTransition = { fadeIn(tween(FADE_MS)) },
             exitTransition = { fadeOut(tween(FADE_MS)) },
             popEnterTransition = { fadeIn(tween(FADE_MS)) },
             popExitTransition = { fadeOut(tween(FADE_MS)) },
+            predictivePopEnterTransition = { _ -> fadeIn(tween(FADE_MS)) },
+            predictivePopExitTransition = { _ -> fadeOut(tween(FADE_MS)) },
+            sizeTransform = null,
         ) {
             composable(Destination.Auth.route) {
                 AuthScreen(onAuthenticated = { navController.navigateReplacing(Destination.MqttConnect.route) })
