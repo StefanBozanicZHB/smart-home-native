@@ -61,6 +61,8 @@
     <string name="home_gate">Kapija</string>
     <string name="home_alert_not_connected">Nema veze sa serverom</string>
     <string name="home_alert_not_connected_detail">Prikazani podaci možda nisu tačni.</string>
+    <string name="home_alert_reconnecting">Veza je prekinuta, ponovo se povezujem…</string>
+    <string name="home_alert_reconnecting_attempt">Pokušaj %1$d. Podaci se osvežavaju kad se veza vrati.</string>
     <string name="home_alert_node_offline">%1$s: čvor se ne javlja</string>
     <string name="home_alert_node_last_will">%1$s: veza prekinuta</string>
     <string name="home_alert_safe_mode">Grejanje je u bezbednom režimu, pumpa ne radi</string>
@@ -214,6 +216,9 @@
     <string name="heating_pipes_pending">Ostali senzori stižu sa proširenjem Node 5.</string>
     <string name="heating_edit">Izmeni</string>
     <string name="heating_done">Gotovo</string>
+    <string name="heating_leave_title">Odbaciti nesačuvane izmene?</string>
+    <string name="heating_leave_text">Izmene rasporeda nisu poslate čvoru.</string>
+    <string name="heating_leave_keep">Nastavi izmenu</string>
     <string name="heating_msg_saved">Sačuvano na čvoru.</string>
     <string name="heating_msg_rejected">Čvor je odbio izmenu: %1$s</string>
     <string name="heating_msg_timeout">Čvor nije odgovorio (10 s). Proveri stanje pre ponovnog slanja.</string>

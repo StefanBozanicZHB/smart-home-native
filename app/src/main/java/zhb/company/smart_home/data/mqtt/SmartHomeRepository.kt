@@ -5,6 +5,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,13 +25,25 @@ import zhb.company.smart_home.domain.model.SmartHomeState
  * Single source of truth for the live house state, connecting to the MQTT
  * broker and dispatching every incoming message into [state]. Mirrors the
  * Flutter app's `Mqtt` provider + `Parameters` ChangeNotifier combined.
+ *
+ * Connection lifecycle:
+ * - [connect] after sign-in fetches the broker config (primary + backup) and connects once;
+ * - if the connection later drops, it reconnects by itself with growing pauses
+ *   ([RECONNECT_DELAYS_MS]), trying the primary then the backup broker each time;
+ * - [pause] (app in the background) disconnects on purpose and stops reconnecting; [resume]
+ *   reconnects at once; [onNetworkAvailable] skips the current pause when the network returns;
+ * - [disconnect] (sign-out) forgets the session.
+ * Every new connection resubscribes, so retained messages refresh the whole state.
  */
 class SmartHomeRepository(
     private val configSource: MqttConfigSource,
     private val connector: MqttConnector,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    /** Background scope for the periodic node health check; null (tests) = call [refreshNodeHealth] manually. */
-    healthScope: CoroutineScope? = null,
+    /**
+     * Background scope for the node health check and automatic reconnects. Null in tests that
+     * call [refreshNodeHealth] themselves and do not need reconnects.
+     */
+    private val scope: CoroutineScope? = null,
     private val clock: () -> Long = System::currentTimeMillis,
     private val nodeStatus: NodeStatusTracker = NodeStatusTracker(),
     healthCheckIntervalMs: Long = 15_000,
@@ -44,6 +57,22 @@ class SmartHomeRepository(
     @Volatile
     private var connection: MqttConnection? = null
 
+    /** Brokers from the last successful config fetch; empty = no session (signed out or new process). */
+    @Volatile
+    private var endpoints: List<MqttEndpoint> = emptyList()
+
+    @Volatile
+    private var paused = false
+
+    private var reconnectJob: Job? = null
+
+    @Volatile
+    private var attemptInProgress = false
+    private var lastNetworkRetryMs = Long.MIN_VALUE / 2
+
+    /** True once the user has signed in and the broker config is known in this process. */
+    val hasSession: Boolean get() = endpoints.isNotEmpty()
+
     private val messageListeners = CopyOnWriteArrayList<(topic: String, payload: String, retained: Boolean) -> Unit>()
 
     /** Extra consumers of raw messages (e.g. the Node 5 repository). Called on the MQTT client thread. */
@@ -52,7 +81,7 @@ class SmartHomeRepository(
     }
 
     init {
-        healthScope?.launch {
+        scope?.launch {
             while (isActive) {
                 delay(healthCheckIntervalMs)
                 refreshNodeHealth()
@@ -61,33 +90,120 @@ class SmartHomeRepository(
     }
 
     suspend fun connect(idToken: String) {
+        cancelReconnect()
+        paused = false
         _connectionState.value = MqttConnectionState.Connecting
         clearNodeStatus()
         val config = configSource.fetchMqttClientConfig(idToken).getOrElse {
             _connectionState.value = MqttConnectionState.Failed(it.message ?: "Konfiguracija nije pronađena")
             return
         }
-        val primary = MqttEndpoint.parse(config.mqttServer, config.mqttPort, config.mqttUsername, config.mqttPassword)
-        val backup = MqttEndpoint.parse(
-            config.backupMqttServer, config.backupMqttPort, config.backupMqttUsername, config.backupMqttPassword,
+        endpoints = listOfNotNull(
+            MqttEndpoint.parse(config.mqttServer, config.mqttPort, config.mqttUsername, config.mqttPassword),
+            MqttEndpoint.parse(config.backupMqttServer, config.backupMqttPort, config.backupMqttUsername, config.backupMqttPassword),
         )
-        withContext(ioDispatcher) {
-            val connected = primary?.let(::tryConnect) ?: backup?.let(::tryConnect)
-            if (connected == null) {
-                _connectionState.value = MqttConnectionState.Failed("Konektivnost sa serverom ne postoji!")
-                return@withContext
-            }
-            connection = connected
-            _connectionState.value = MqttConnectionState.Connected
-            connected.publish(MqttTopics.NODE1_REQUEST_STATUS, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
+        if (!connectToAnyEndpoint()) {
+            _connectionState.value = MqttConnectionState.Failed("Konektivnost sa serverom ne postoji!")
         }
     }
 
+    /** Sign-out: close the connection and forget the session. */
     fun disconnect() {
-        connection?.disconnect()
+        cancelReconnect()
+        endpoints = emptyList()
+        paused = false
+        closeConnection()
+        _connectionState.value = MqttConnectionState.Idle
+    }
+
+    /** App went to the background: disconnect on purpose, no reconnects until [resume]. */
+    fun pause() {
+        if (!hasSession || paused) return
+        paused = true
+        cancelReconnect()
+        closeConnection()
+        _connectionState.value = MqttConnectionState.Paused
+    }
+
+    /** App is visible again: reconnect at once if needed. */
+    fun resume() {
+        paused = false
+        if (hasSession && connection == null) reconnectNow()
+    }
+
+    /** The device got a working network: do not wait for the current reconnect pause. */
+    fun onNetworkAvailable() {
+        if (!hasSession || paused || connection != null || attemptInProgress) return
+        // The system reports network changes often (e.g. signal strength); retry at most every 5 s.
+        val now = clock()
+        if (now - lastNetworkRetryMs < NETWORK_RETRY_MIN_INTERVAL_MS) return
+        lastNetworkRetryMs = now
+        reconnectNow()
+    }
+
+    private fun closeConnection() {
+        val current = connection
+        connection = null // set first, so the listener ignores the disconnect event we cause
+        current?.disconnect()
+        clearNodeStatus()
+    }
+
+    @Synchronized
+    private fun cancelReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+    }
+
+    /** Connection lost unexpectedly (network, broker restart): report it and start reconnecting. */
+    private fun onConnectionLost(cause: String?) {
         connection = null
         clearNodeStatus()
-        _connectionState.value = MqttConnectionState.Idle
+        _connectionState.value = MqttConnectionState.Disconnected(cause ?: "Veza sa serverom je prekinuta")
+        if (!paused) startReconnectLoop(immediate = false)
+    }
+
+    private fun reconnectNow() = startReconnectLoop(immediate = true)
+
+    @Synchronized
+    private fun startReconnectLoop(immediate: Boolean) {
+        val scope = scope ?: return
+        cancelReconnect()
+        reconnectJob = scope.launch {
+            var attempt = 0
+            while (isActive && !paused && hasSession && connection == null) {
+                if (attempt > 0 || !immediate) delay(RECONNECT_DELAYS_MS[minOf(attempt, RECONNECT_DELAYS_MS.lastIndex)])
+                if (!isActive || paused || !hasSession) return@launch
+                attempt++
+                _connectionState.value = MqttConnectionState.Reconnecting(attempt)
+                if (connectToAnyEndpoint()) return@launch
+            }
+        }
+    }
+
+    /** Tries the brokers in order; on success the state is [MqttConnectionState.Connected]. */
+    private suspend fun connectToAnyEndpoint(): Boolean = withContext(ioDispatcher) {
+        attemptInProgress = true
+        try {
+            connectOnce()
+        } finally {
+            attemptInProgress = false
+        }
+    }
+
+    private fun connectOnce(): Boolean {
+        for (endpoint in endpoints) {
+            val connected = tryConnect(endpoint) ?: continue
+            if (paused) {
+                connected.disconnect()
+                return false
+            }
+            connection = connected
+            _connectionState.value = MqttConnectionState.Connected
+            // Legacy nodes publish their state on request (nodes with the new firmware use retained topics).
+            connected.publish(MqttTopics.NODE1_REQUEST_STATUS, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
+            return true
+        }
+        return false
     }
 
     private fun tryConnect(endpoint: MqttEndpoint): MqttConnection? {
@@ -106,11 +222,7 @@ class SmartHomeRepository(
             }
 
             override fun onDisconnected(cause: String?) {
-                if (attempt != null && connection === attempt) {
-                    connection = null
-                    clearNodeStatus()
-                    _connectionState.value = MqttConnectionState.Disconnected(cause ?: "Veza sa serverom je prekinuta")
-                }
+                if (attempt != null && connection === attempt) onConnectionLost(cause)
             }
         }
         return connector.connect(endpoint, MqttTopics.SUBSCRIBE_ALL, listener).also { attempt = it }
@@ -272,3 +384,9 @@ class SmartHomeRepository(
         return withSprinklers.copy(sprinklerPower = activeIndex)
     }
 }
+
+/** Pauses between automatic reconnect attempts; the last one repeats. */
+internal val RECONNECT_DELAYS_MS = longArrayOf(1_000, 2_000, 5_000, 10_000, 30_000)
+
+/** Network-change events closer together than this do not trigger another immediate reconnect. */
+internal const val NETWORK_RETRY_MIN_INTERVAL_MS = 5_000L

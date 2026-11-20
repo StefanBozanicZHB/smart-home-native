@@ -1,5 +1,8 @@
 package zhb.company.smart_home.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -14,6 +17,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -24,6 +28,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import zhb.company.smart_home.R
+import org.koin.compose.koinInject
+import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.ui.auth.AuthScreen
 import zhb.company.smart_home.ui.garden.GardenScreen
 import zhb.company.smart_home.ui.heating.HeatingScreen
@@ -64,14 +70,24 @@ private val TABS = listOf(
     Tab(Destination.System, Icons.Outlined.Memory, R.string.home_tab_system),
 )
 
+private const val FADE_MS = 220
+
 /** Routes without the bottom bar (sign-in flow). */
 private val FLOW_ROUTES = setOf(Destination.Auth.route, Destination.MqttConnect.route)
 
 @Composable
-fun SmartHomeNavGraph() {
+fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    // After the system kills the process, Android restores the screens but not the sign-in
+    // session (token, broker config live only in memory): start again from sign-in.
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != null && currentRoute !in FLOW_ROUTES && !repository.hasSession) {
+            navController.navigateReplacing(Destination.Auth.route)
+        }
+    }
     // The shed is opened from the system tab, so that tab stays selected there.
     val selectedRoute = if (currentRoute == Destination.SmallHome.route) Destination.System.route else currentRoute
     val tab: (Destination) -> Unit = { navController.navigateToTab(it.route) }
@@ -96,12 +112,20 @@ fun SmartHomeNavGraph() {
             navController = navController,
             startDestination = Destination.Auth.route,
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+            // Plain cross-fades; the pop pair also drives the predictive back gesture.
+            enterTransition = { fadeIn(tween(FADE_MS)) },
+            exitTransition = { fadeOut(tween(FADE_MS)) },
+            popEnterTransition = { fadeIn(tween(FADE_MS)) },
+            popExitTransition = { fadeOut(tween(FADE_MS)) },
         ) {
             composable(Destination.Auth.route) {
                 AuthScreen(onAuthenticated = { navController.navigateReplacing(Destination.MqttConnect.route) })
             }
             composable(Destination.MqttConnect.route) {
-                MqttConnectScreen(onConnected = { navController.navigateReplacing(Destination.Home.route) })
+                MqttConnectScreen(
+                    onConnected = { navController.navigateReplacing(Destination.Home.route) },
+                    onSignInAgain = { navController.navigateReplacing(Destination.Auth.route) },
+                )
             }
             composable(Destination.Home.route) {
                 HomeScreen(
@@ -114,7 +138,7 @@ fun SmartHomeNavGraph() {
                 GardenScreen()
             }
             composable(Destination.Heating.route) {
-                HeatingScreen()
+                HeatingScreen(onBack = { navController.popBackStack() })
             }
             composable(Destination.House.route) {
                 HouseScreen()

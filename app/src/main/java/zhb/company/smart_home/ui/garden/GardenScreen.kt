@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,6 +72,8 @@ import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.TileGrid
+import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.settings.SettingsDialog
 import zhb.company.smart_home.ui.theme.AppTheme
 
@@ -104,32 +107,15 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
         item { SoilMoistureCard() }
         item { SectionLabel(stringResource(R.string.garden_fountain_and_lights)) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DeviceTile(
-                    Icons.Outlined.Water, stringResource(R.string.garden_fountain_pump), state.fountainPumpOn,
-                    { onIntent(GardenIntent.ToggleFountainPump(it)) }, Modifier.weight(1f),
-                    enabled = state.fountainOnline, disabledReason = offline,
-                )
-                DeviceTile(
-                    Icons.Outlined.Light, stringResource(R.string.garden_fountain_light), state.fountainLightOn,
-                    { onIntent(GardenIntent.ToggleFountainLight(it)) }, Modifier.weight(1f),
-                    enabled = state.fountainOnline, disabledReason = offline,
-                )
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DeviceTile(
-                    Icons.Outlined.Lightbulb, stringResource(R.string.garden_led_strip), state.ledStripOn,
-                    { onIntent(GardenIntent.ToggleLedStrip(it)) }, Modifier.weight(1f),
-                    enabled = state.yardOnline, disabledReason = offline,
-                )
-                DeviceTile(
-                    Icons.Outlined.WbIncandescent, stringResource(R.string.garden_bulb), state.bulbOn,
-                    { onIntent(GardenIntent.ToggleBulb(it)) }, Modifier.weight(1f),
-                    enabled = state.yardOnline, disabledReason = offline,
-                )
-            }
+            TileGrid(
+                columns = adaptiveColumns(2),
+                tiles = listOf(
+                    { m -> DeviceTile(Icons.Outlined.Water, stringResource(R.string.garden_fountain_pump), state.fountainPumpOn, { onIntent(GardenIntent.ToggleFountainPump(it)) }, m, enabled = state.fountainOnline, disabledReason = offline) },
+                    { m -> DeviceTile(Icons.Outlined.Light, stringResource(R.string.garden_fountain_light), state.fountainLightOn, { onIntent(GardenIntent.ToggleFountainLight(it)) }, m, enabled = state.fountainOnline, disabledReason = offline) },
+                    { m -> DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.garden_led_strip), state.ledStripOn, { onIntent(GardenIntent.ToggleLedStrip(it)) }, m, enabled = state.yardOnline, disabledReason = offline) },
+                    { m -> DeviceTile(Icons.Outlined.WbIncandescent, stringResource(R.string.garden_bulb), state.bulbOn, { onIntent(GardenIntent.ToggleBulb(it)) }, m, enabled = state.yardOnline, disabledReason = offline) },
+                ),
+            )
         }
         item { PoolCard(state, onIntent) }
     }
@@ -157,7 +143,7 @@ private fun SprinklerCard(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                     enabled = state.sprinklerTimerOnline,
                     shape = TileShape,
                     color = if (active) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    modifier = Modifier.weight(1f).height(44.dp).semantics {
+                    modifier = Modifier.weight(1f).heightIn(min = 44.dp).semantics {
                         contentDescription = description
                         stateDescription = if (active) "uključeno" else "isključeno"
                     },
@@ -317,6 +303,7 @@ private fun LocationDialog(activeIndex: Int, onDismiss: () -> Unit) {
 // ---- previews ------------------------------------------------------------------------------------
 
 @androidx.compose.ui.tooling.preview.Preview(name = "Garden - summer evening", heightDp = 1100)
+@androidx.compose.ui.tooling.preview.Preview(name = "Garden - font 200%", heightDp = 2300, fontScale = 2f)
 @Composable
 private fun GardenPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {

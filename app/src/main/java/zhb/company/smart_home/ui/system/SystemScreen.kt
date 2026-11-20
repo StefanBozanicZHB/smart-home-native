@@ -98,6 +98,7 @@ private fun SystemContent(state: ConnectionsState, connected: Boolean, onOpenSet
 }
 
 @androidx.compose.ui.tooling.preview.Preview(name = "System", heightDp = 900)
+@androidx.compose.ui.tooling.preview.Preview(name = "System - font 200%", heightDp = 2000, fontScale = 2f)
 @Composable
 private fun SystemPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {

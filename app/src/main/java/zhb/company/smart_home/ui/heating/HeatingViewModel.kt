@@ -41,6 +41,7 @@ class HeatingViewModel(
         val sending: Boolean = false,
         val showSettingsDialog: Boolean = false,
         val showMainSwitchOffConfirm: Boolean = false,
+        val showDiscardDraftsConfirm: Boolean = false,
         val message: HeatingMessage? = null,
     )
 
@@ -113,6 +114,8 @@ class HeatingViewModel(
             editorSegments = segments,
             dayNotSet = zoneSettings != null && nodeDay.isEmpty(),
             scheduleDirty = draft != null && draft.segments != nodeDay,
+            hasUnsavedDrafts = ui.drafts.any { (key, d) -> key.nodeId == snapshot.nodeId && d.segments != snapshot.zones[key.zone]?.day(key.day).orEmpty() },
+            showDiscardDraftsConfirm = ui.showDiscardDraftsConfirm,
             scheduleProblem = ScheduleRules.validateDay(segments, limits),
             remoteChangedWhileEditing = draft != null && draft.baseRev != zoneSettings?.rev,
             hysteresis = zoneSettings?.hysteresis,
@@ -173,6 +176,9 @@ class HeatingViewModel(
             }
             HeatingIntent.Refresh -> viewModelScope.launch { node5.requestState() }
             HeatingIntent.MessageShown -> extras.update { it.copy(message = null) }
+            HeatingIntent.RequestLeave -> extras.update { it.copy(showDiscardDraftsConfirm = true) }
+            HeatingIntent.KeepEditing -> extras.update { it.copy(showDiscardDraftsConfirm = false) }
+            HeatingIntent.DiscardAllDrafts -> extras.update { it.copy(drafts = emptyMap(), showDiscardDraftsConfirm = false) }
         }
     }
 

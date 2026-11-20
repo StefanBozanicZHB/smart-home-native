@@ -39,6 +39,9 @@ data class HeatingState(
     /** The node has no program for the selected day yet (it is in safe mode `no_schedule`). */
     val dayNotSet: Boolean = false,
     val scheduleDirty: Boolean = false,
+    /** Some zone/day (not only the one shown) has edits that were not saved to the node. */
+    val hasUnsavedDrafts: Boolean = false,
+    val showDiscardDraftsConfirm: Boolean = false,
     val scheduleProblem: ScheduleProblem? = null,
     /** The zone changed on the node (another phone, a command) while a draft was open. */
     val remoteChangedWhileEditing: Boolean = false,
@@ -107,6 +110,10 @@ sealed interface HeatingIntent {
     data class RemoveSegment(val index: Int) : HeatingIntent
     data object SaveSchedule : HeatingIntent
     data object DiscardSchedule : HeatingIntent
+    /** Back pressed with unsaved drafts: ask before leaving. */
+    data object RequestLeave : HeatingIntent
+    data object KeepEditing : HeatingIntent
+    data object DiscardAllDrafts : HeatingIntent
 
     data object OpenSettingsDialog : HeatingIntent
     data object DismissSettingsDialog : HeatingIntent

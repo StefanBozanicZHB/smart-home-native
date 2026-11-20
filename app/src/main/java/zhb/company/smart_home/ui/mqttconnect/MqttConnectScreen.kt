@@ -1,5 +1,6 @@
 package zhb.company.smart_home.ui.mqttconnect
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,13 +32,16 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.ui.theme.AppTheme
 
 @Composable
-fun MqttConnectScreen(viewModel: MqttConnectViewModel = koinViewModel(), onConnected: () -> Unit) {
+fun MqttConnectScreen(viewModel: MqttConnectViewModel = koinViewModel(), onConnected: () -> Unit, onSignInAgain: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Back goes to sign-in (e.g. to use another account) instead of leaving the app.
+    BackHandler(onBack = onSignInAgain)
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 MqttConnectEffect.NavigateToHome -> onConnected()
+                MqttConnectEffect.NavigateToAuth -> onSignInAgain()
             }
         }
     }

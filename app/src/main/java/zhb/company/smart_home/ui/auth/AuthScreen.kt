@@ -191,6 +191,7 @@ private fun errorMessageFor(code: String): String = when {
 }
 
 @androidx.compose.ui.tooling.preview.Preview(name = "Sign in - wrong password", heightDp = 800)
+@androidx.compose.ui.tooling.preview.Preview(name = "Sign in - font 200%", heightDp = 1500, fontScale = 2f)
 @Composable
 private fun AuthPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {

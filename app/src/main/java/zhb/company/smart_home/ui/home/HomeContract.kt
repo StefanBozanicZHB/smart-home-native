@@ -6,6 +6,9 @@ import zhb.company.smart_home.ui.format.NO_VALUE
 /** Something wrong right now; shown at the top of the home screen until it is resolved. */
 sealed interface HomeAlert {
     data object NotConnected : HomeAlert
+
+    /** The connection dropped and the app is reconnecting by itself. */
+    data class Reconnecting(val attempt: Int) : HomeAlert
     data class NodeOffline(val label: String, val lastWill: Boolean) : HomeAlert
 
     /** Heating is in safe mode (pump off); [reason] is the firmware reason code. */

@@ -54,6 +54,8 @@ import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatTile
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.TileGrid
+import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.format.NO_VALUE
 
 @Composable
@@ -157,6 +159,12 @@ private fun HomeAlertBanner(alert: HomeAlert) {
             Tone.DANGER,
             detail = stringResource(R.string.home_alert_not_connected_detail),
         )
+        is HomeAlert.Reconnecting -> AlertBanner(
+            Icons.Outlined.CloudOff,
+            stringResource(R.string.home_alert_reconnecting),
+            Tone.WARNING,
+            detail = if (alert.attempt > 1) stringResource(R.string.home_alert_reconnecting_attempt, alert.attempt) else null,
+        )
         is HomeAlert.NodeOffline -> AlertBanner(
             Icons.Outlined.WarningAmber,
             stringResource(if (alert.lastWill) R.string.home_alert_node_last_will else R.string.home_alert_node_offline, alert.label),
@@ -241,26 +249,27 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
 
 @Composable
 private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit, onOpenHouse: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        if (state.poolPumpOn || state.poolHeaterOn) {
+    val tiles = buildList<@Composable (Modifier) -> Unit> {
+        if (state.poolPumpOn || state.poolHeaterOn) add { m ->
             ActionTile(
                 icon = Icons.Outlined.Pool,
                 label = "${stringResource(R.string.garden_pool)} · ${state.poolTemp}°",
                 detail = stringResource(if (state.poolHeaterOn) R.string.home_pool_heating_on else R.string.home_pool_running),
                 onClick = onOpenGarden,
-                modifier = Modifier.weight(1f),
+                modifier = m,
             )
         }
-        if (state.acOn) {
+        if (state.acOn) add { m ->
             ActionTile(
                 icon = Icons.Outlined.AcUnit,
                 label = "${stringResource(R.string.ac_title)} · ${state.acTemp}°",
                 detail = stringResource(acModeLabel(state.acMode)),
                 onClick = onOpenHouse,
-                modifier = Modifier.weight(1f),
+                modifier = m,
             )
         }
     }
+    TileGrid(columns = adaptiveColumns(2), tiles = tiles)
 }
 
 private fun acModeLabel(mode: AcMode): Int = when (mode) {
@@ -272,17 +281,19 @@ private fun acModeLabel(mode: AcMode): Int = when (mode) {
 
 @Composable
 private fun RoomTemps(state: HomeState, showOutdoor: Boolean) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+    val tiles = buildList<@Composable (Modifier) -> Unit> {
         // In summer the yard card already shows the outdoor reading.
-        if (showOutdoor) StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.weight(1f), detail = stringResource(R.string.home_humidity, state.outdoorHumidity))
-        StatTile(stringResource(R.string.home_room_ground), "${state.groundTemp}°", Modifier.weight(1f), detail = stringResource(R.string.home_humidity, state.groundHumidity))
-        StatTile(stringResource(R.string.home_room_upper), "${state.upperTemp}°", Modifier.weight(1f), detail = stringResource(R.string.home_humidity, state.upperHumidity))
+        if (showOutdoor) add { m -> StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", m, detail = stringResource(R.string.home_humidity, state.outdoorHumidity)) }
+        add { m -> StatTile(stringResource(R.string.home_room_ground), "${state.groundTemp}°", m, detail = stringResource(R.string.home_humidity, state.groundHumidity)) }
+        add { m -> StatTile(stringResource(R.string.home_room_upper), "${state.upperTemp}°", m, detail = stringResource(R.string.home_humidity, state.upperHumidity)) }
     }
+    TileGrid(columns = adaptiveColumns(tiles.size), tiles = tiles)
 }
 
 @Composable
 private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
     val offline = stringResource(R.string.home_node_offline_tile)
+    val yard = stringResource(R.string.home_tab_garden)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         val onCount = state.devicesOnList.size
         SectionLabel(if (onCount > 0) stringResource(R.string.home_on_count, onCount) else stringResource(R.string.home_devices)) {
@@ -290,31 +301,40 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
                 TextButton(onClick = { onIntent(HomeIntent.ShowDevicesOnDialog) }) { Text(stringResource(R.string.home_all_devices)) }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DeviceTile(
-                Icons.Outlined.Lightbulb, stringResource(R.string.home_led_strip), state.ledStripOn,
-                { onIntent(HomeIntent.ToggleLedStrip(it)) }, Modifier.weight(1f),
-                detail = stringResource(R.string.home_tab_garden), enabled = state.yardNodeOnline, disabledReason = offline,
-            )
-            DeviceTile(
-                Icons.Outlined.Water, stringResource(R.string.home_fountain), state.fountainOn,
-                { onIntent(HomeIntent.ToggleFountain(it)) }, Modifier.weight(1f),
-                enabled = state.fountainNodeOnline, disabledReason = offline,
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DeviceTile(
-                Icons.Outlined.Pool, stringResource(R.string.home_pool_pump), state.poolPumpOn,
-                { onIntent(HomeIntent.TogglePoolPump(it)) }, Modifier.weight(1f),
-                detail = "${state.poolTemp}°", enabled = state.poolNodeOnline, disabledReason = offline,
-            )
-            ActionTile(
-                Icons.Outlined.DoorFront, stringResource(R.string.home_front_door),
-                onClick = { if (state.doorNodeOnline) onIntent(HomeIntent.RequestUnlockFrontDoor) },
-                modifier = Modifier.weight(1f),
-                detail = if (state.doorNodeOnline) stringResource(R.string.home_unlock) else offline,
-            )
-        }
+        TileGrid(
+            columns = adaptiveColumns(2),
+            tiles = listOf(
+                { m ->
+                    DeviceTile(
+                        Icons.Outlined.Lightbulb, stringResource(R.string.home_led_strip), state.ledStripOn,
+                        { onIntent(HomeIntent.ToggleLedStrip(it)) }, m,
+                        detail = yard, enabled = state.yardNodeOnline, disabledReason = offline,
+                    )
+                },
+                { m ->
+                    DeviceTile(
+                        Icons.Outlined.Water, stringResource(R.string.home_fountain), state.fountainOn,
+                        { onIntent(HomeIntent.ToggleFountain(it)) }, m,
+                        detail = yard, enabled = state.fountainNodeOnline, disabledReason = offline,
+                    )
+                },
+                { m ->
+                    DeviceTile(
+                        Icons.Outlined.Pool, stringResource(R.string.home_pool_pump), state.poolPumpOn,
+                        { onIntent(HomeIntent.TogglePoolPump(it)) }, m,
+                        detail = "${state.poolTemp}°", enabled = state.poolNodeOnline, disabledReason = offline,
+                    )
+                },
+                { m ->
+                    ActionTile(
+                        Icons.Outlined.DoorFront, stringResource(R.string.home_front_door),
+                        onClick = { if (state.doorNodeOnline) onIntent(HomeIntent.RequestUnlockFrontDoor) },
+                        modifier = m,
+                        detail = if (state.doorNodeOnline) stringResource(R.string.home_unlock) else offline,
+                    )
+                },
+            ),
+        )
     }
 }
 
@@ -369,6 +389,7 @@ private val PreviewSummer = HomeState(
 )
 
 @androidx.compose.ui.tooling.preview.Preview(name = "Home - winter", heightDp = 900)
+@androidx.compose.ui.tooling.preview.Preview(name = "Home - winter, font 200%", heightDp = 1800, fontScale = 2f)
 @Composable
 private fun HomeWinterPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {

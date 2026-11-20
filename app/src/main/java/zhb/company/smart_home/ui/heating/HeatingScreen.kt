@@ -1,5 +1,6 @@
 package zhb.company.smart_home.ui.heating
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,13 +90,16 @@ import zhb.company.smart_home.ui.components.StatTile
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.isLargeFont
 import zhb.company.smart_home.ui.theme.AppTheme
 
 private const val TEMP_STEP_TENTHS = 1
 
 @Composable
-fun HeatingScreen(viewModel: HeatingViewModel = koinViewModel()) {
+fun HeatingScreen(onBack: () -> Unit, viewModel: HeatingViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Leaving drops the view model and with it every unsaved schedule draft, so ask first.
+    BackHandler(enabled = state.hasUnsavedDrafts) { viewModel.onIntent(HeatingIntent.RequestLeave) }
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -117,6 +122,20 @@ fun HeatingScreen(viewModel: HeatingViewModel = koinViewModel()) {
 
     if (state.showSettingsDialog) HeatingSettingsDialog(state, viewModel::onIntent)
     if (state.showMainSwitchOffConfirm) MainSwitchOffDialog(viewModel::onIntent)
+    if (state.showDiscardDraftsConfirm) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onIntent(HeatingIntent.KeepEditing) },
+            title = { Text(stringResource(R.string.heating_leave_title)) },
+            text = { Text(stringResource(R.string.heating_leave_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onIntent(HeatingIntent.DiscardAllDrafts)
+                    onBack()
+                }) { Text(stringResource(R.string.heating_discard), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { viewModel.onIntent(HeatingIntent.KeepEditing) }) { Text(stringResource(R.string.heating_leave_keep)) } },
+        )
+    }
 }
 
 @Composable
@@ -210,9 +229,9 @@ private fun ZoneSelector(state: HeatingState, onIntent: (HeatingIntent) -> Unit)
 private fun ZoneCard(state: HeatingState) {
     val zone = state.zones.firstOrNull { it.id == state.selectedZone } ?: return
     DashboardCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            RoomVsTargetRing(zone.roomTempValue, zone.targetTenths, zone.roomTemp, zone.target, warm = zone.demand)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
+        val ring: @Composable () -> Unit = { RoomVsTargetRing(zone.roomTempValue, zone.targetTenths, zone.roomTemp, zone.target, warm = zone.demand) }
+        val details: @Composable (Modifier) -> Unit = { m ->
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = m) {
                 Text(zoneName(zone.id), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (zone.demand) StatusChip(stringResource(R.string.heating_demand), Tone.ACTIVE)
@@ -233,6 +252,18 @@ private fun ZoneCard(state: HeatingState) {
                 }
             }
         }
+        // With a large system font the ring goes above the text instead of next to it.
+        if (isLargeFont()) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                ring()
+                details(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ring()
+                details(Modifier.weight(1f))
+            }
+        }
     }
 }
 
@@ -248,7 +279,9 @@ private fun RoomVsTargetRing(room: Double?, targetTenths: Int?, roomText: String
         val low = targetTenths / 10.0 - 2.0
         ((room - low) / 3.0).coerceIn(0.0, 1.0).toFloat()
     } else 0f
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(104.dp)) {
+    // The ring grows with the system font so the temperature always fits inside.
+    val ringSize = 104.dp * LocalDensity.current.fontScale.coerceIn(1f, 2f)
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ringSize)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = 10.dp.toPx()
             val inset = stroke / 2
@@ -365,6 +398,8 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
     var editingStartIndex by remember { mutableStateOf<Int?>(null) }
     var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
     val showEditor = editing || state.scheduleDirty || state.dayNotSet
+    // Back first closes an open editor without changes; with a draft the screen asks instead.
+    BackHandler(enabled = editing && !state.scheduleDirty) { editing = false }
     val segments = state.editorSegments
 
     DashboardCard {
@@ -375,6 +410,7 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
                 }
             }
         }
+        val largeFont = isLargeFont()
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             DayType.entries.forEachIndexed { index, day ->
                 val isToday = state.nodeIsWeekend != null && state.nodeIsWeekend == (day == DayType.WEEKEND)
@@ -383,7 +419,8 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
                     selected = state.selectedDay == day,
                     onClick = { onIntent(HeatingIntent.SelectDay(day)) },
                     shape = SegmentedButtonDefaults.itemShape(index, DayType.entries.size),
-                    label = { Text(if (isToday) "$label (${stringResource(R.string.heating_today)})" else label) },
+                    // "(danas)" is left out with a large font; the time marker on the timeline shows today.
+                    label = { Text(if (isToday && !largeFont) "$label (${stringResource(R.string.heating_today)})" else label, maxLines = 1) },
                 )
             }
         }
@@ -744,6 +781,7 @@ private val PreviewToday = HeatingState(
 )
 
 @androidx.compose.ui.tooling.preview.Preview(name = "Heating - today (flow pipe only)", heightDp = 1250)
+@androidx.compose.ui.tooling.preview.Preview(name = "Heating - font 200%", heightDp = 2600, fontScale = 2f)
 @Composable
 private fun HeatingTodayPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {

@@ -45,15 +45,16 @@ class HomeViewModel(
         node5.snapshot,
         extras,
     ) { home, connection, heating, ui ->
-        mapState(home, connection is MqttConnectionState.Connected, heating, ui)
+        mapState(home, connection, heating, ui)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeState())
 
-    private fun mapState(home: SmartHomeState, connected: Boolean, heating: Node5Snapshot, ui: UiExtras): HomeState {
+    private fun mapState(home: SmartHomeState, connection: MqttConnectionState, heating: Node5Snapshot, ui: UiExtras): HomeState {
+        val connected = connection is MqttConnectionState.Connected
         val heatingSummary = heatingSummary(home, heating)
         val sprinklerRunning = home.sprinklerAll || home.sprinklerPower != -1
         return HomeState(
             connected = connected,
-            alerts = alerts(home, connected, heating),
+            alerts = alerts(home, connection, heating),
             sections = HomeLayout.sections(
                 HomeSignals(
                     heatingMainSwitch = heatingSummary.mainSwitch,
@@ -113,8 +114,13 @@ class HomeViewModel(
     }
 
     /** Most fundamental first: no connection hides everything else, it would all be stale. */
-    private fun alerts(home: SmartHomeState, connected: Boolean, heating: Node5Snapshot): List<HomeAlert> {
-        if (!connected) return listOf(HomeAlert.NotConnected)
+    private fun alerts(home: SmartHomeState, connection: MqttConnectionState, heating: Node5Snapshot): List<HomeAlert> {
+        when (connection) {
+            is MqttConnectionState.Reconnecting -> return listOf(HomeAlert.Reconnecting(connection.attempt))
+            is MqttConnectionState.Disconnected, MqttConnectionState.Paused -> return listOf(HomeAlert.Reconnecting(0))
+            MqttConnectionState.Connected -> Unit
+            else -> return listOf(HomeAlert.NotConnected)
+        }
         val offline = home.nodeHealth.values
             .filter { it.status == NodeStatus.OFFLINE && it.nodeId !in NodeLabels.NOT_IN_USE }
             .sortedBy { it.nodeId }

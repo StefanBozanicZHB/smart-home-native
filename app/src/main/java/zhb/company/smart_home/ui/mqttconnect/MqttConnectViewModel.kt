@@ -35,7 +35,10 @@ class MqttConnectViewModel(
     }
 
     private fun connect() {
-        val idToken = authRepository.idToken ?: return
+        val idToken = authRepository.idToken ?: run {
+            viewModelScope.launch { _effects.send(MqttConnectEffect.NavigateToAuth) }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(isConnecting = true, isFailed = false) }
             repository.connect(idToken)

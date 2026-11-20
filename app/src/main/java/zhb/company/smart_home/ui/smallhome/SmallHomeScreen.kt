@@ -40,6 +40,8 @@ import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.DeviceTile
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.TileGrid
+import zhb.company.smart_home.ui.components.adaptiveColumns
 
 /** Shed (node7). The node is not in use (smart-home-mcu docs/nodes.md); the screen stays for when it returns. */
 @Composable
@@ -59,16 +61,15 @@ private fun SmallHomeContent(state: SmallHomeState, onIntent: (SmallHomeIntent) 
         item { ScreenHeader(title = stringResource(R.string.menu_house), horizontalPadding = 0.dp) }
         if (!state.online) item { AlertBanner(Icons.Outlined.Info, stringResource(R.string.small_home_not_in_use), Tone.NEUTRAL) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DeviceTile(Icons.Outlined.SensorDoor, stringResource(R.string.small_home_door), state.doorOn, { onIntent(SmallHomeIntent.ToggleDoor(it)) }, Modifier.weight(1f), enabled = state.online, disabledReason = offline)
-                DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.small_home_bulb_1), state.bulb1, { onIntent(SmallHomeIntent.ToggleBulb1(it)) }, Modifier.weight(1f), enabled = state.online, disabledReason = offline)
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.small_home_bulb_2), state.bulb2, { onIntent(SmallHomeIntent.ToggleBulb2(it)) }, Modifier.weight(1f), enabled = state.online, disabledReason = offline)
-                DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.small_home_bulb_3), state.bulb3, { onIntent(SmallHomeIntent.ToggleBulb3(it)) }, Modifier.weight(1f), enabled = state.online, disabledReason = offline)
-            }
+            TileGrid(
+                columns = adaptiveColumns(2),
+                tiles = listOf(
+                    { m -> DeviceTile(Icons.Outlined.SensorDoor, stringResource(R.string.small_home_door), state.doorOn, { onIntent(SmallHomeIntent.ToggleDoor(it)) }, m, enabled = state.online, disabledReason = offline) },
+                    { m -> DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.small_home_bulb_1), state.bulb1, { onIntent(SmallHomeIntent.ToggleBulb1(it)) }, m, enabled = state.online, disabledReason = offline) },
+                    { m -> DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.small_home_bulb_2), state.bulb2, { onIntent(SmallHomeIntent.ToggleBulb2(it)) }, m, enabled = state.online, disabledReason = offline) },
+                    { m -> DeviceTile(Icons.Outlined.Lightbulb, stringResource(R.string.small_home_bulb_3), state.bulb3, { onIntent(SmallHomeIntent.ToggleBulb3(it)) }, m, enabled = state.online, disabledReason = offline) },
+                ),
+            )
         }
         item {
             DashboardCard {

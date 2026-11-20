@@ -2,18 +2,26 @@ package zhb.company.smart_home.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -25,8 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,6 +51,7 @@ import zhb.company.smart_home.ui.theme.AppTheme
 
 val CardShape = RoundedCornerShape(16.dp)
 val TileShape = RoundedCornerShape(12.dp)
+private val SwitchRowHeight = 32.dp
 
 /** Screen title row used under the status bar on every main tab. */
 @Composable
@@ -131,7 +142,7 @@ fun StatusChip(text: String, tone: Tone, modifier: Modifier = Modifier) {
 fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail: String? = null, valueColor: Color = Color.Unspecified) {
     Surface(shape = TileShape, color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
             Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = valueColor, maxLines = 1)
             if (detail != null) {
                 Text(detail, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -173,12 +184,12 @@ fun DeviceTile(
             .clickable(enabled = enabled, role = Role.Switch) { onToggle(!on) },
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(SwitchRowHeight)) {
                 Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(checked = on, onCheckedChange = null, enabled = enabled, modifier = Modifier.scale(0.8f))
             }
-            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val second = if (!enabled) disabledReason else detail
             if (second != null) {
                 Text(
@@ -198,8 +209,11 @@ fun DeviceTile(
 fun ActionTile(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, detail: String? = null) {
     Surface(onClick = onClick, shape = TileShape, color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Same height as the switch row of DeviceTile, so labels line up across a row of tiles.
+            Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.height(SwitchRowHeight)) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (detail != null) {
                 Text(detail, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
@@ -256,5 +270,100 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: @Composa
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
         trailing()
+    }
+}
+
+/**
+ * How many tiles fit side by side for the current font size: [max] normally, fewer when the user
+ * enlarges the system font, so labels and values keep room instead of being cut off.
+ */
+@Composable
+fun adaptiveColumns(max: Int): Int {
+    val fontScale = LocalDensity.current.fontScale
+    return when {
+        fontScale >= 1.8f -> 1
+        fontScale >= 1.3f -> minOf(max, 2)
+        else -> max
+    }.coerceAtLeast(1)
+}
+
+/**
+ * Tiles in rows of [columns]; every tile in a row gets the same height (the tallest one's), and a
+ * short last row keeps the same tile width.
+ */
+@Composable
+fun TileGrid(
+    columns: Int,
+    tiles: List<@Composable (Modifier) -> Unit>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        tiles.chunked(columns).forEach { row ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            ) {
+                row.forEach { tile -> tile(Modifier.weight(1f).fillMaxHeight()) }
+                repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** True when the system font is enlarged enough that side-by-side layouts should stack. */
+@Composable
+fun isLargeFont(): Boolean = LocalDensity.current.fontScale >= 1.3f
+
+/**
+ * Pick one of a few options. A segmented row while the labels fit; with a large system font the
+ * options become a two-column grid of tiles so no label is cut off.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> ChoiceGroup(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    if (!isLargeFont()) {
+        SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth()) {
+            options.forEachIndexed { i, (value, label) ->
+                SegmentedButton(
+                    selected = value == selected,
+                    onClick = { onSelect(value) },
+                    enabled = enabled,
+                    shape = SegmentedButtonDefaults.itemShape(i, options.size),
+                    icon = {},
+                    label = { Text(label, maxLines = 1) },
+                )
+            }
+        }
+    } else {
+        TileGrid(
+            columns = 2,
+            modifier = modifier,
+            tiles = options.map { (value, label) ->
+                { m: Modifier ->
+                    val isSelected = value == selected
+                    Surface(
+                        onClick = { onSelect(value) },
+                        enabled = enabled,
+                        shape = TileShape,
+                        color = if (isSelected) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        modifier = m.semantics { this.selected = isSelected },
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp)) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (isSelected) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                }
+            },
+        )
     }
 }

@@ -35,12 +35,15 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.AcCommandBuilder
 import zhb.company.smart_home.domain.model.AcFanSpeed
 import zhb.company.smart_home.domain.model.AcMode
+import zhb.company.smart_home.ui.components.ChoiceGroup
 import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.StatTile
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.TileGrid
+import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.format.NO_VALUE
 
 @Composable
@@ -59,6 +62,16 @@ private fun HouseContent(state: HouseState, onIntent: (HouseIntent) -> Unit) {
         item { ScreenHeader(title = stringResource(R.string.menu_house_combined), horizontalPadding = 0.dp) }
         item {
             FloorCard(
+                icon = Icons.Outlined.Weekend,
+                title = stringResource(R.string.home_room_ground),
+                online = state.groundOnline,
+                temperature = state.groundTemperature,
+                humidity = state.groundHumidity,
+                air = null,
+            )
+        }
+        item {
+            FloorCard(
                 icon = Icons.Outlined.Chair,
                 title = stringResource(R.string.home_room_upper),
                 online = state.upperOnline,
@@ -68,16 +81,6 @@ private fun HouseContent(state: HouseState, onIntent: (HouseIntent) -> Unit) {
             )
         }
         item { AcCard(state, onIntent) }
-        item {
-            FloorCard(
-                icon = Icons.Outlined.Weekend,
-                title = stringResource(R.string.home_room_ground),
-                online = state.groundOnline,
-                temperature = state.groundTemperature,
-                humidity = state.groundHumidity,
-                air = null,
-            )
-        }
     }
 }
 
@@ -87,11 +90,12 @@ private fun FloorCard(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
         CardHeader(icon, title) {
             if (!online) StatusChip(stringResource(R.string.home_node_offline_tile), Tone.DANGER)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatTile(stringResource(R.string.house_temperature), "$temperature°", Modifier.weight(1f))
-            StatTile(stringResource(R.string.house_humidity), stringResource(R.string.home_humidity, humidity), Modifier.weight(1f))
-            if (air != null) StatTile(stringResource(R.string.house_air_short), air, Modifier.weight(1f))
+        val tiles = buildList<@Composable (Modifier) -> Unit> {
+            add { m -> StatTile(stringResource(R.string.house_temperature), "$temperature°", m) }
+            add { m -> StatTile(stringResource(R.string.house_humidity), stringResource(R.string.home_humidity, humidity), m) }
+            if (air != null) add { m -> StatTile(stringResource(R.string.house_air_short), air, m) }
         }
+        TileGrid(columns = adaptiveColumns(tiles.size), tiles = tiles)
     }
 }
 
@@ -122,32 +126,20 @@ private fun AcCard(state: HouseState, onIntent: (HouseIntent) -> Unit) {
         }
         Text(stringResource(R.string.ac_mode_caption), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val modes = listOf(AcMode.AUTO to R.string.ac_fan_auto, AcMode.COOL to R.string.ac_mode_cool, AcMode.HEAT to R.string.ac_mode_heat, AcMode.FAN to R.string.ac_mode_fan)
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            modes.forEachIndexed { i, (mode, label) ->
-                SegmentedButton(
-                    selected = state.acMode == mode,
-                    onClick = { onIntent(HouseIntent.SelectMode(mode)) },
-                    enabled = state.upperOnline,
-                    shape = SegmentedButtonDefaults.itemShape(i, modes.size),
-                    icon = {},
-                    label = { Text(stringResource(label), maxLines = 1, style = MaterialTheme.typography.labelMedium) },
-                )
-            }
-        }
+        ChoiceGroup(
+            options = modes.map { (mode, label) -> mode to stringResource(label) },
+            selected = state.acMode,
+            onSelect = { onIntent(HouseIntent.SelectMode(it)) },
+            enabled = state.upperOnline,
+        )
         Text(stringResource(R.string.ac_fan_caption), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val fans = listOf(AcFanSpeed.AUTO to R.string.ac_fan_auto, AcFanSpeed.MIN to R.string.ac_fan_min, AcFanSpeed.MED to R.string.ac_fan_med, AcFanSpeed.MAX to R.string.ac_fan_max)
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            fans.forEachIndexed { i, (fan, label) ->
-                SegmentedButton(
-                    selected = state.acFanSpeed == fan,
-                    onClick = { onIntent(HouseIntent.SelectFanSpeed(fan)) },
-                    enabled = state.upperOnline,
-                    shape = SegmentedButtonDefaults.itemShape(i, fans.size),
-                    icon = {},
-                    label = { Text(stringResource(label), maxLines = 1) },
-                )
-            }
-        }
+        ChoiceGroup(
+            options = fans.map { (fan, label) -> fan to stringResource(label) },
+            selected = state.acFanSpeed,
+            onSelect = { onIntent(HouseIntent.SelectFanSpeed(it)) },
+            enabled = state.upperOnline,
+        )
         Text(stringResource(R.string.house_ac_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -155,6 +147,7 @@ private fun AcCard(state: HouseState, onIntent: (HouseIntent) -> Unit) {
 // ---- previews ------------------------------------------------------------------------------------
 
 @androidx.compose.ui.tooling.preview.Preview(name = "House", heightDp = 1100)
+@androidx.compose.ui.tooling.preview.Preview(name = "House - font 200%", heightDp = 2300, fontScale = 2f)
 @Composable
 private fun HousePreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {

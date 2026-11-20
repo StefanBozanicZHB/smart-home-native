@@ -2,8 +2,11 @@ package zhb.company.smart_home.data.mqtt
 
 /** In-memory [MqttConnector]: hosts in [unreachableHosts] fail, every other host connects. */
 class FakeMqttConnector(
-    private val unreachableHosts: Set<String> = emptySet(),
+    unreachableHosts: Set<String> = emptySet(),
 ) : MqttConnector {
+
+    /** Hosts that refuse connections; tests change it to simulate a broker going down or up. */
+    var unreachableHosts: Set<String> = unreachableHosts
 
     val attempts = mutableListOf<MqttEndpoint>()
     val listeners = mutableListOf<MqttConnectionListener>()
