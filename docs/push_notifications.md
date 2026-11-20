@@ -38,3 +38,17 @@ Messages carry a `notification` part (title, body, `android.notification.channel
 
 Channel ids and the topic name must match the notifier config (`[fcm] topic`) and
 `CHANNEL_NODES` / `CHANNEL_HEATING` / `CHANNEL_SYSTEM` in `das_notifier.py`.
+
+## Daily heating reports
+
+The RPi (`das_report.py`) writes a report per heated day to Realtime Database
+(`reports/heating/<yyyy-MM-dd>`, list in `reports/heating_index`) and sends a silent notification on
+the `reports` channel with data `type=report`, `kind=heating`, `date`. A tap opens that day:
+`PendingNavigation` reads the extras (FCM puts them on the launch intent; the foreground path
+copies them in `HomeAlertMessagingService`) and the nav graph opens `heating_report/{date}` once
+sign-in is done. The list is behind the report icon in the heating header.
+
+Reading uses the signed-in user's ID token (`AuthRepository.freshIdToken`, re-signs in after the
+one-hour expiry), so the database rules must allow `reports` reads for authenticated users.
+`HeatingReportJsonTest` decodes a report produced by the Python generator.
+

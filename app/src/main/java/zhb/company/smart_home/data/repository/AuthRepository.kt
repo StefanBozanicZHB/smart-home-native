@@ -30,9 +30,23 @@ class AuthRepository(
         )
     }
 
+    /**
+     * A valid ID token for Firebase REST calls: the current one, or a new sign-in with the saved
+     * credentials once it has expired (tokens last one hour). Null if that is not possible.
+     */
+    suspend fun freshIdToken(): String? {
+        if (idToken != null && System.currentTimeMillis() < expiryEpochMillis - TOKEN_MARGIN_MS) return idToken
+        val (user, pass) = trySavedCredentials() ?: return null
+        return login(user, pass).fold(onSuccess = { idToken }, onFailure = { null })
+    }
+
     suspend fun trySavedCredentials(): Pair<String, String>? {
         val user = preferences.savedUsername()
         val pass = preferences.savedPassword()
         return if (!user.isNullOrBlank() && !pass.isNullOrBlank()) user to pass else null
+    }
+
+    private companion object {
+        const val TOKEN_MARGIN_MS = 60_000L
     }
 }

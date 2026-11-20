@@ -11,6 +11,11 @@ sealed class Destination(val route: String) {
     data object System : Destination("system")
     data object HeatingSensors : Destination("heating_sensors")
     data object HeatingCalibration : Destination("heating_calibration")
+    data object Reports : Destination("heating_reports")
+    data object ReportDetail : Destination("heating_report/{date}") {
+        const val ARG = "date"
+        fun of(date: String) = "heating_report/$date"
+    }
     data object NodeDetail : Destination("node/{nodeId}") {
         const val ARG = "nodeId"
         fun of(nodeId: String) = "node/$nodeId"

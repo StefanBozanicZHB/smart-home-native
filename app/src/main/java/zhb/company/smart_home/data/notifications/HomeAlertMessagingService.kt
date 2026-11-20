@@ -32,14 +32,18 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
         val channel = n?.channelId ?: when (data["type"]) {
             "node_status" -> PushNotifications.CHANNEL_NODES
             "heating" -> PushNotifications.CHANNEL_HEATING
+            "report" -> PushNotifications.CHANNEL_REPORTS
             else -> PushNotifications.CHANNEL_SYSTEM
         }
         val tag = n?.tag ?: data["node"]?.let { "node-$it" }
 
         val open = PendingIntent.getActivity(
             this,
-            0,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            (tag ?: title).hashCode(),
+            // Same extras as FCM puts on the launch intent, so a tap opens the same screen.
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .apply { message.data.forEach { (k, v) -> putExtra(k, v) } },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(this, channel)

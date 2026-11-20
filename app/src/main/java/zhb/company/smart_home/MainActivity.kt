@@ -1,6 +1,7 @@
 package zhb.company.smart_home
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,12 +18,14 @@ import org.koin.androidx.compose.koinViewModel
 import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.notifications.PushNotifications
 import zhb.company.smart_home.ui.ThemeStateHolder
+import zhb.company.smart_home.ui.navigation.PendingNavigation
 import zhb.company.smart_home.ui.navigation.SmartHomeNavGraph
 import zhb.company.smart_home.ui.theme.SmartHomeTheme
 
 class MainActivity : FragmentActivity() {
     private val preferences: AppPreferences by inject()
     private val push: PushNotifications by inject()
+    private val pendingNavigation: PendingNavigation by inject()
 
     // Result is not needed: without the permission Android simply does not show notifications,
     // and the settings dialog explains it.
@@ -32,6 +35,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         askForNotificationPermissionOnce()
+        if (savedInstanceState == null) pendingNavigation.handle(intent)
         setContent {
             val themeViewModel: ThemeStateHolder = koinViewModel()
             val darkTheme by themeViewModel.isDarkTheme.collectAsState(initial = false)
@@ -39,6 +43,11 @@ class MainActivity : FragmentActivity() {
                 SmartHomeNavGraph()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        pendingNavigation.handle(intent)
     }
 
     /** Asks once, on the first start with notifications on; later only from the settings switch. */

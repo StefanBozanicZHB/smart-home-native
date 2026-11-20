@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
@@ -97,7 +98,12 @@ import zhb.company.smart_home.ui.theme.AppTheme
 private const val TEMP_STEP_TENTHS = 1
 
 @Composable
-fun HeatingScreen(onBack: () -> Unit, onOpenSensors: () -> Unit, viewModel: HeatingViewModel = koinViewModel()) {
+fun HeatingScreen(
+    onBack: () -> Unit,
+    onOpenSensors: () -> Unit,
+    onOpenReports: () -> Unit = {},
+    viewModel: HeatingViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Leaving drops the view model and with it every unsaved schedule draft, so ask first.
     BackHandler(enabled = state.hasUnsavedDrafts) { viewModel.onIntent(HeatingIntent.RequestLeave) }
@@ -117,7 +123,7 @@ fun HeatingScreen(onBack: () -> Unit, onOpenSensors: () -> Unit, viewModel: Heat
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HeatingContent(state, viewModel::onIntent, onOpenSensors = onOpenSensors)
+        HeatingContent(state, viewModel::onIntent, onOpenSensors = onOpenSensors, onOpenReports = onOpenReports)
         SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 
@@ -145,13 +151,14 @@ private fun HeatingContent(
     onIntent: (HeatingIntent) -> Unit,
     initiallyEditing: Boolean = false,
     onOpenSensors: () -> Unit = {},
+    onOpenReports: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { HeatingHeader(state, onIntent) }
+        item { HeatingHeader(state, onIntent, onOpenReports) }
         if (state.sending) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         item { StatusBanners(state, onIntent) }
         item { HeatPumpStatusCard(state.pumpStatus, onTurnOn = { onIntent(HeatingIntent.ToggleMainSwitch(true)) }.takeIf { state.connected && !state.sending }) }
@@ -167,7 +174,7 @@ private fun HeatingContent(
 }
 
 @Composable
-private fun HeatingHeader(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
+private fun HeatingHeader(state: HeatingState, onIntent: (HeatingIntent) -> Unit, onOpenReports: () -> Unit = {}) {
     val subtitle = state.nodeTime?.let { time ->
         val dayLabel = stringResource(if (state.nodeIsWeekend == true) R.string.heating_weekend else R.string.heating_workday)
         stringResource(R.string.heating_node_time, time, dayLabel)
@@ -188,6 +195,9 @@ private fun HeatingHeader(state: HeatingState, onIntent: (HeatingIntent) -> Unit
                 null -> Tone.NEUTRAL
             },
         )
+        IconButton(onClick = onOpenReports) {
+            Icon(Icons.Outlined.Assessment, contentDescription = stringResource(R.string.reports_title))
+        }
         IconButton(onClick = { onIntent(HeatingIntent.OpenSettingsDialog) }, enabled = !state.loading) {
             Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.heating_settings_title))
         }

@@ -21,7 +21,7 @@ class FirebaseRtdbApi(private val httpClient: HttpClient) : MqttConfigSource {
     override suspend fun fetchMqttClientConfig(idToken: String): Result<MqttClientConfigDto> {
         return runCatching {
             val body: JsonElement = httpClient.get(
-                "https://smart-home-bozanic-default-rtdb.firebaseio.com/clients.json?auth=$idToken"
+                "${FirebaseUrls.RTDB}/clients.json?auth=$idToken"
             ).body()
 
             val firstEntry: JsonObject = when (body) {

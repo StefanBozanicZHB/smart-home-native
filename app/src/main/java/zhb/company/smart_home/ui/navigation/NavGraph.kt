@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +39,8 @@ import zhb.company.smart_home.ui.heating.PipeSensorsScreen
 import zhb.company.smart_home.ui.home.HomeScreen
 import zhb.company.smart_home.ui.house.HouseScreen
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectScreen
+import zhb.company.smart_home.ui.reports.ReportDetailScreen
+import zhb.company.smart_home.ui.reports.ReportsScreen
 import zhb.company.smart_home.ui.smallhome.SmallHomeScreen
 import zhb.company.smart_home.ui.system.NodeDetailScreen
 import zhb.company.smart_home.ui.system.SystemScreen
@@ -79,10 +82,21 @@ private const val FADE_MS = 220
 private val FLOW_ROUTES = setOf(Destination.Auth.route, Destination.MqttConnect.route)
 
 @Composable
-fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
+fun SmartHomeNavGraph(
+    repository: SmartHomeRepository = koinInject(),
+    pendingNavigation: PendingNavigation = koinInject(),
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val pendingRoute by pendingNavigation.route.collectAsState()
+
+    // A screen requested from outside (tapped notification) opens once sign-in is done.
+    LaunchedEffect(currentRoute, pendingRoute) {
+        if (pendingRoute != null && currentRoute != null && currentRoute !in FLOW_ROUTES && repository.hasSession) {
+            pendingNavigation.consume()?.let { navController.navigate(it) { launchSingleTop = true } }
+        }
+    }
 
     // After the system kills the process, Android restores the screens but not the sign-in
     // session (token, broker config live only in memory): start again from sign-in.
@@ -94,7 +108,8 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
     // The shed is opened from the system tab, so that tab stays selected there.
     val selectedRoute = when (currentRoute) {
         Destination.SmallHome.route, Destination.NodeDetail.route -> Destination.System.route
-        Destination.HeatingSensors.route, Destination.HeatingCalibration.route -> Destination.Heating.route
+        Destination.HeatingSensors.route, Destination.HeatingCalibration.route,
+        Destination.Reports.route, Destination.ReportDetail.route -> Destination.Heating.route
         else -> currentRoute
     }
     val tab: (Destination) -> Unit = { navController.navigateToTab(it.route) }
@@ -152,7 +167,14 @@ fun SmartHomeNavGraph(repository: SmartHomeRepository = koinInject()) {
                 HeatingScreen(
                     onBack = { navController.popBackStack() },
                     onOpenSensors = { navController.navigate(Destination.HeatingSensors.route) },
+                    onOpenReports = { navController.navigate(Destination.Reports.route) },
                 )
+            }
+            composable(Destination.Reports.route) {
+                ReportsScreen(onOpen = { navController.navigate(Destination.ReportDetail.of(it)) })
+            }
+            composable(Destination.ReportDetail.route) { entry ->
+                ReportDetailScreen(date = entry.arguments?.getString(Destination.ReportDetail.ARG).orEmpty())
             }
             composable(Destination.House.route) {
                 HouseScreen()
