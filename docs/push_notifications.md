@@ -27,14 +27,14 @@ Project settings → Your apps → Android). The Android API key is different fr
 
 | Piece | Role |
 |---|---|
-| `data/notifications/PushNotifications` | creates channels `node_status` (high) and `system_status` (default); subscribes to / unsubscribes from the topic following the setting |
+| `data/notifications/PushNotifications` | creates channels `node_status` (high), `heating_alerts` (high) and `system_status` (default); subscribes to / unsubscribes from the topic following the setting |
 | `data/notifications/HomeAlertMessagingService` | shows messages that arrive while the app is in the foreground, with the same channel and tag as the system would |
-| Settings dialog → "Obaveštenja (čvor nije dostupan)" | on/off (default on); asks for `POST_NOTIFICATIONS` on Android 13+, links to system settings if denied |
+| Settings dialog → "Obaveštenja iz kućnog sistema" | on/off (default on); asks for `POST_NOTIFICATIONS` on Android 13+, links to system settings if denied |
 | `MainActivity` | asks for the permission once, on the first start |
 
 Messages carry a `notification` part (title, body, `android.notification.channel_id`, `tag`) and a
-`data` part (`type` = `node_status` or `system`, `node`, `state`, `since_ms`, `at_ms`). The tag is
+`data` part (`type` = `node_status`, `heating` or `system`, `event`, `node`, `state`, `since_ms`, `at_ms`). The tag is
 `node-<id>`, so "back online" replaces the "offline" notification of the same node.
 
 Channel ids and the topic name must match the notifier config (`[fcm] topic`) and
-`CHANNEL_NODES` / `CHANNEL_SYSTEM` in `das_notifier.py`.
+`CHANNEL_NODES` / `CHANNEL_HEATING` / `CHANNEL_SYSTEM` in `das_notifier.py`.

@@ -417,9 +417,11 @@
     <!-- Push notifications (RPi notifier -> FCM) -->
     <string name="notification_channel_nodes">Dostupnost čvorova</string>
     <string name="notification_channel_nodes_description">Čvor nije dostupan ili ponovo radi.</string>
+    <string name="notification_channel_heating">Grejanje</string>
+    <string name="notification_channel_heating_description">Grejanje u bezbednom režimu i povratak u normalan rad.</string>
     <string name="notification_channel_system">Sistem</string>
-    <string name="notification_channel_system_description">Raspberry Pi, MQTT broker i probna obaveštenja.</string>
-    <string name="settings_notifications">Obaveštenja (čvor nije dostupan)</string>
+    <string name="notification_channel_system_description">Raspberry Pi, MQTT broker, logger i probna obaveštenja.</string>
+    <string name="settings_notifications">Obaveštenja iz kućnog sistema</string>
     <string name="settings_notifications_no_permission">Android ne dozvoljava obaveštenja ovoj aplikaciji.</string>
     <string name="settings_notifications_open_system">Otvori podešavanja</string>
 </resources>

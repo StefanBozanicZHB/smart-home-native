@@ -29,7 +29,11 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
         val data = message.data
         val title = n?.title ?: data["title"] ?: return
         val body = n?.body ?: data["body"]
-        val channel = n?.channelId ?: if (data["type"] == "node_status") PushNotifications.CHANNEL_NODES else PushNotifications.CHANNEL_SYSTEM
+        val channel = n?.channelId ?: when (data["type"]) {
+            "node_status" -> PushNotifications.CHANNEL_NODES
+            "heating" -> PushNotifications.CHANNEL_HEATING
+            else -> PushNotifications.CHANNEL_SYSTEM
+        }
         val tag = n?.tag ?: data["node"]?.let { "node-$it" }
 
         val open = PendingIntent.getActivity(

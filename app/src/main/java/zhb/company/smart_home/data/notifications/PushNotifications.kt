@@ -61,6 +61,11 @@ class PushNotifications(
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply { description = context.getString(R.string.notification_channel_nodes_description) },
                 NotificationChannel(
+                    CHANNEL_HEATING,
+                    context.getString(R.string.notification_channel_heating),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply { description = context.getString(R.string.notification_channel_heating_description) },
+                NotificationChannel(
                     CHANNEL_SYSTEM,
                     context.getString(R.string.notification_channel_system),
                     NotificationManager.IMPORTANCE_DEFAULT,
@@ -77,6 +82,7 @@ class PushNotifications(
 
         /** Channel ids the notifier puts in `android.notification.channel_id`. */
         const val CHANNEL_NODES = "node_status"
+        const val CHANNEL_HEATING = "heating_alerts"
         const val CHANNEL_SYSTEM = "system_status"
     }
 }
