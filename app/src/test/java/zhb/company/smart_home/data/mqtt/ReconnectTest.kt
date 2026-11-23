@@ -45,7 +45,7 @@ class ReconnectTest {
         assertEquals(MqttConnectionState.Connected, repo.connectionState.value)
         val second = connector.lastConnection!!
         assertTrue(second !== first)
-        assertEquals(MqttTopics.NODE1_REQUEST_STATUS, second.published.single().topic)
+        assertEquals(MqttTopics.LEGACY_STATE_REQUEST, second.published.single().topic)
     }
 
     @Test

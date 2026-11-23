@@ -202,8 +202,8 @@ class SmartHomeRepository(
             }
             connection = connected
             _connectionState.value = MqttConnectionState.Connected
-            // Legacy nodes publish their state on request (nodes with the new firmware use retained topics).
-            connected.publish(MqttTopics.NODE1_REQUEST_STATUS, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
+            // node7 and node8 (old firmware) publish their state on request; the others use retained topics.
+            connected.publish(MqttTopics.LEGACY_STATE_REQUEST, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
             return true
         }
         return false

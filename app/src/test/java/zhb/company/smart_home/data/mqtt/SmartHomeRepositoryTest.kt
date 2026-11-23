@@ -36,7 +36,7 @@ class SmartHomeRepositoryTest {
         assertEquals(listOf(MqttEndpoint("primary", 1883, "u", "p")), connector.attempts)
         val connection = connector.lastConnection!!
         assertEquals(MqttTopics.SUBSCRIBE_ALL, connection.topicFilter)
-        assertEquals(MqttTopics.NODE1_REQUEST_STATUS, connection.published.single().topic)
+        assertEquals(MqttTopics.LEGACY_STATE_REQUEST, connection.published.single().topic)
         assertEquals("s", connection.published.single().payload)
     }
 
@@ -139,7 +139,6 @@ class SmartHomeRepositoryTest {
     fun `node6 water temperature from the English topic, a withdrawn value shows as missing`() {
         val repo = repository(FakeMqttConnector())
         repo.handleMessage("bozaSub/kuca/node6/temperature", "24.31", retained = true)
-        repo.handleMessage("bozaSub/kuca/node6/pool/temperature", "-127", retained = true)
         assertEquals("24.31", repo.state.value.temperaturePool)
         repo.handleMessage("bozaSub/kuca/node6/temperature", "", retained = true)
         assertEquals("--", zhb.company.smart_home.ui.format.Readings.temperature(repo.state.value.temperaturePool))
@@ -150,7 +149,6 @@ class SmartHomeRepositoryTest {
         val repo = repository(FakeMqttConnector())
 
         repo.handleMessage("bozaSub/kuca/node2/temperature", "11.94", retained = true)
-        repo.handleMessage("bozaSub/kuca/node2/dvoriste/temperatura", "30", retained = true)
         assertEquals("11.94", repo.state.value.temperatureOutdoor)
 
         // DS18B20 failed for 5 min: the node deletes the retained value.
@@ -239,21 +237,11 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
-    fun `stale node4 light states are ignored (node4 is sensor-only)`() {
-        val repo = repository(FakeMqttConnector())
-
-        repo.handleMessage("bozaSub/kuca/node4/dnevniBoravak/sijalica1/stanje", "1", retained = true)
-
-        assertTrue(repo.state.value.listPowerDevice.isEmpty())
-    }
-
-    @Test
     fun `node4 room climate comes from the English topics, deleted value shows as missing`() {
         val repo = repository(FakeMqttConnector())
 
         repo.handleMessage("bozaSub/kuca/node4/temperature", "21.53", retained = true)
         repo.handleMessage("bozaSub/kuca/node4/humidity", "45.2", retained = true)
-        repo.handleMessage("bozaSub/kuca/node4/dnevniBoravak/temperatura", "19.00", retained = true)
         assertEquals("21.53", repo.state.value.temperatureLivingRoomDown)
         assertEquals("45.2", repo.state.value.humidityLivingRoomDown)
 

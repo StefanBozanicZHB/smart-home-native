@@ -126,12 +126,9 @@ object Node5Json {
 
     fun parseResult(payload: String): Node5CommandResult? = zhb.company.smart_home.domain.node.NodeCommandResult.parse(payload)
 
-    /**
-     * `pipes` (firmware with pipe sensors). A build that still sends the single `flow_t` (the
-     * first node5-2.0.0 commit, tag node5-v2.0.0) is read as the supply pipe.
-     */
+    /** `pipes`: the four pipe temperatures; missing pipes are null. */
     private fun parsePipes(o: JsonObject): PipeReadings {
-        val pipes = o.obj("pipes") ?: return PipeReadings(supply = o.double("flow_t"))
+        val pipes = o.obj("pipes") ?: return PipeReadings()
         return PipeReadings(
             supply = pipes.double(Pipe.SUPPLY.key),
             ret = pipes.double(Pipe.RETURN.key),

@@ -55,7 +55,7 @@ class Node2Repository(
         mqtt.publish(Node2Topics.CONFIG_GET, "{}", qos = MqttQualityOfService.AT_LEAST_ONCE)
     }
 
-    /** The light the old app called "neonka" (LED strip on the terrace). */
+    /** The LED strip on the terrace (`neon` in the firmware). */
     suspend fun setNeon(on: Boolean, minutes: Int? = null): CommandOutcome =
         commands.send(Node2Topics.NEON_SET) { id -> NodeJson.switchCommand(id, on, minutes) }
 

@@ -27,7 +27,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Biometric unlock | `local_auth` | `BiometricPrompt` | ✅ |
 | Broker config from Firebase RTDB, primary + backup broker | ✓ | ✓ | ✅ |
 | Connection error screen with retry | ✓ | ✓ | ✅ |
-| Request legacy node state (`node1/stanje` = `s`) after connect | ✓ | ✓ | ✅ (still needed until nodes 0–3, 6, 8 are migrated) |
+| Request legacy node state (`node1/stanje` = `s`) after connect | ✓ | ✓ | ✅ (only for node7 and node8, still on old firmware) |
 
 ### Home
 | Feature | Flutter | Native | Status |
@@ -40,14 +40,14 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | GoodNight | turns off everything incl. the front door and heating | doors/gate excluded on purpose; heating excluded since `18ce72e` | ⚠️ intentional difference |
 | Heating card | tube temp, relay, main switch (old API) | flow temp, pump, main switch (Node 5 v2 API) | ✅ (new API) |
 
-### Garden / yard (node1, node2, node6; node0 retired)
+### Garden / yard (node1, node2, node6)
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Yard temperature and humidity | ✓ (old topics) | temperature from `node2/temperature` (DS18B20); humidity no longer measured (`node2-2.0.0`) | ✅ (new API) |
 | LED strip, lamp (`neonka`, `sijalica`) | ✓ (old topics) | `node2/neon/set`, `node2/lamp/set` with automatic switch-off (Node 2 v2 API) | ✅ (new API) |
 | Fountain pump and light | ✓ | ✓, plus automatic switch-off after 30 min – 4 h (Node 1 v2 API) | ✅ (new API) |
 | Sprinklers 1–6 manual, all on/off, "currently running" | ✓ (old API) | manual run of one zone or all, stop, zone/phase/time left, queued zones, last run event (Node 1 v2 API) | ✅ (new API) |
-| Sprinkler schedule | Node 0 timer: start, on, off, sets, auto | "Plan zalivanja" on Node 1: days, up to 4 start times, minutes per zone, soak cycles, rain pause | ✅ (new API, Node 0 retired) |
+| Sprinkler schedule | old timer: start, on, off, sets, auto | "Plan zalivanja" on Node 1: days, up to 4 start times, minutes per zone, soak cycles, rain pause | ✅ (new API) |
 | Pool pump, pool heating, pool temperature | ✓ (old topics; heating had no firmware behind it) | pump via `node6/pump/set` with automatic switch-off, water temperature from `node6/temperature`; heating removed (Node 6 v2 API) | ✅ (new API) |
 | Sprinkler location map ("Pregled prskalica") | ✓ | ✓ (location dialog) | ✅ |
 
@@ -65,8 +65,8 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Old API: heating type, pellet level, alarm level, full/empty calibration, `glavniPrekidac`, `planogram`, one-digit hysteresis | ✓ | removed | 🗑️ replaced by `node5-2.0.0` |
 | New API: main switch, per-zone workday/weekend schedule (0.1 °C, ≤ 8 segments), hysteresis, safe mode, pump events, command results by `id` | — | ✓ | native only |
 
-Note: the house still runs the **old** Node 5 firmware. Until `node5-2.0.0` is installed, only the
-Flutter app can control the real heating.
+Note: the native app supports only the new firmware of nodes 1–6 (`-2.0.0`); node7 and node8 still
+run their old firmware.
 
 ### Shed (node7)
 | Feature | Flutter | Native | Status |
@@ -77,13 +77,13 @@ Flutter app can control the real heating.
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Light/dark theme | ✓ | ✓ | ✅ |
-| Microcontroller overview (node0–8 online) | ✓ | node1–8 (node0 retired) | ✅ |
+| Microcontroller overview (nodes online) | ✓ | node1–8 | ✅ |
 | Warning instead of a switch when the device's node is offline ("Mikrokontroler … nije povezan") | ✓ (switch replaced by a warning icon, toast) | online dot only; switches stay active and publish into the void | ❌ |
 
 ## 3. Topic diff summary
 
-Only in Flutter: all old Node 5 and Node 1 topics and every `node0/*` topic (intentionally removed:
-`node1-2.0.0` and `node5-2.0.0` replaced them, Node 0 is retired), `node8/ac/{temp,fan,mode}` (B1).
+Only in Flutter: all old Serbian topics of nodes 1–6 (intentionally removed: the `-2.0.0` firmware of
+each node replaced them), `node8/ac/{temp,fan,mode}` (B1).
 Only in native: `node8/acTemp|acFan|acMode` (B1), Node 1, 2, 3, 5 and 6 v2 topics under `node1/`, `node2/`, `node3/`, `node5/`, `node6/`.
 Everything else (nodes 4, 7, 8) matches.
 
@@ -94,7 +94,6 @@ Everything else (nodes 4, 7, 8) matches.
 | S1 | Store the Firebase password encrypted (Android Keystore) or keep only the refresh token | Plain text in DataStore today, same as Flutter. |
 | S2 | ~~Online state from `<node>/status` (retained Last Will) for migrated nodes~~ | Done: `NodeStatusTracker` (status + 3 min heartbeat timeout, unknown while the app is disconnected); legacy nodes keep the old rule until migrated. |
 | S3 | Hide or mark the shed screen (node7) and drop node9 references | Nodes are not in use. |
-| S4 | Node 0's daily heating report (Telegram) reads `node5/grejanjeTemp/stanje`, which `node5-2.0.0` no longer publishes | Firmware side (`smart-home-mcu`), not the app; listed so it is not forgotten when Node 5 v2 is installed. |
 | S5 | Replace deprecated Compose APIs (`Slider` in settings, `PasswordVisualTransformation` in auth) | Compiler warnings after the Compose 1.13 upgrade. |
 
 ## 5. Before the Flutter app can be retired
@@ -104,4 +103,4 @@ Everything else (nodes 4, 7, 8) matches.
 3. Disable or warn on switches whose node is offline.
 4. Install `node5-2.0.0` on the real Node 5 (only then can native control the heating).
 5. Decide on the shed screen (S3).
-6. Clear the obsolete retained topics on the broker (old Node 5 topics, `node4/…/sijalicaN/stanje`, `node8/acTemp|acFan|acMode`).
+6. Clear the obsolete retained topics on the broker (old Serbian topics of nodes 1–6, `node0/*`, `node4/…/sijalicaN/stanje`, `node8/acTemp|acFan|acMode`).

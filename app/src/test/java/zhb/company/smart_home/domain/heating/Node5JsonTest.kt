@@ -69,14 +69,6 @@ class Node5JsonTest {
     }
 
     @Test
-    fun `a build that still sends flow_t is read as the supply pipe`() {
-        val state = Node5Json.parseState("""{"seq":1,"up":3,"main_switch":true,"pump":true,"flow_t":34.25,"zones":{}}""")!!
-        assertEquals(PipeReadings(supply = 34.25), state.pipes)
-        val pump = Node5Json.parsePump("""{"seq":1,"at":3,"pump":true,"src":"boot","flow_t":null}""")!!
-        assertEquals(PipeReadings(), pump.pipes)
-    }
-
-    @Test
     fun `missing pipe values stay null`() {
         val state = Node5Json.parseState("""{"seq":1,"up":3,"main_switch":true,"pump":false,"pipes":{"supply":30.5,"return":null}}""")!!
         assertEquals(PipeReadings(supply = 30.5), state.pipes)

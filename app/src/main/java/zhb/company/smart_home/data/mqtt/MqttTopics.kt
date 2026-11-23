@@ -5,14 +5,13 @@ object MqttTopics {
     const val SUBSCRIBE_ALL = "bozaSub/#"
     private const val BASE = "bozaSub/kuca"
 
-    // node0 retired with node1-2.0.0 (its sprinkler schedule runs on Node 1).
     // node1 - fountain and sprinklers: new JSON API, see data/garden/Node1Repository.kt.
 
     /**
-     * `s` = legacy nodes (2, 3, 6, 8) publish their state. Migrated nodes ignore it and publish
-     * retained states instead; sent on every connect until every node is migrated.
+     * `s` on this topic: the nodes still on old firmware (node7 shed, node8 upper floor) publish
+     * their state. Nodes with the new firmware ignore it. Remove once node7 and node8 are migrated.
      */
-    const val NODE1_REQUEST_STATUS = "$BASE/node1/stanje"
+    const val LEGACY_STATE_REQUEST = "$BASE/node1/stanje"
 
     // node2 - yard (node2-2.0.0): outdoor temperature from a DS18B20, °C; deleted (empty retained
     // message) after 5 min without a valid reading. Humidity is no longer measured. The lights use

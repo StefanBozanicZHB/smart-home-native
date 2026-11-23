@@ -85,8 +85,8 @@ class NodeStatusTrackerTest {
 
     @Test
     fun `legacy nodes and unrelated topics are not tracked`() {
-        assertFalse(tracker.onMessage("bozaSub/kuca/node2/neonka", "1", retained = false, nowMs = t0))
-        assertFalse(tracker.onMessage("bozaSub/kuca/node0/sprinkler/status", "{}", retained = false, nowMs = t0))
+        assertFalse(tracker.onMessage("bozaSub/kuca/node8/temp", "28.25", retained = false, nowMs = t0))
+        assertFalse(tracker.onMessage("bozaSub/kuca/node7/vrata/stanje", "1", retained = false, nowMs = t0))
         assertFalse(tracker.onMessage("bozaSub/kuca/node2/heartbeat", "{}", retained = false, nowMs = t0))
         assertTrue(tracker.snapshot(t0).isEmpty())
     }
