@@ -14,7 +14,7 @@ import zhb.company.smart_home.data.remote.dto.FirebaseErrorEnvelope
 import zhb.company.smart_home.data.remote.dto.SignInRequest
 import zhb.company.smart_home.data.remote.dto.SignInResponse
 
-/** Same Firebase Identity Toolkit REST auth used by the Flutter app (no Firebase SDK). */
+/** Firebase Identity Toolkit REST sign-in (no Firebase SDK). */
 class FirebaseAuthApi(private val httpClient: HttpClient) {
 
     // Firebase Web API key, injected from local.properties (firebase.apiKey) at build time.

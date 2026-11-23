@@ -9,12 +9,8 @@ object NodeLabels {
         "node4" to "Dnevni boravak (prizemlje)",
         "node5" to "Grejanje",
         "node6" to "Bazen",
-        "node7" to "Šupa",
         "node8" to "Dnevni boravak (sprat)",
     )
-
-    /** Nodes that exist but are not in use (smart-home-mcu docs/nodes.md). */
-    val NOT_IN_USE = setOf("node7", "node9")
 
     fun of(nodeId: String): String = LABELS[nodeId] ?: nodeId
 
@@ -22,7 +18,7 @@ object NodeLabels {
      * Nodes in the house that are in use. Anything else on the broker (an old test board's
      * retained `status`, a retired node) is not shown and does not raise alerts.
      */
-    val ACTIVE: List<String> = LABELS.keys.filter { it !in NOT_IN_USE }.sorted()
+    val ACTIVE: List<String> = LABELS.keys.sorted()
 
     fun isActive(nodeId: String): Boolean = nodeId in ACTIVE
 }

@@ -50,7 +50,7 @@ val mqttModule = module {
     single(createdAtStart = true) { Node2Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
     single(createdAtStart = true) { Node3Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
     single(createdAtStart = true) { Node6Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
-    single { GoodNightUseCase(get(), get(), get(), get()) }
+    single { GoodNightUseCase(get(), get(), get()) }
     single { PushNotifications(context = androidContext(), preferences = get(), scope = get(named(APP_SCOPE)), log = get()) }
     single { NotificationLog(context = androidContext(), httpClient = get(), auth = get()) }
     single { NotificationInbox(context = androidContext(), log = get()) }

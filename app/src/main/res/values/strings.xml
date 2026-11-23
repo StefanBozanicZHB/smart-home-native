@@ -3,15 +3,12 @@
     <string name="app_name">Smart Home</string>
 
     <!-- Auth -->
-    <string name="auth_tagline">Pametna kontrola vašeg doma</string>
-    <string name="auth_welcome_back">Dobrodošli nazad</string>
     <string name="auth_welcome_subtitle">Unesite svoje podatke za prijavu</string>
     <string name="auth_email_hint">Email adresa</string>
     <string name="auth_password_hint">Lozinka</string>
     <string name="auth_submit">Prijavite se</string>
     <string name="auth_biometric_title">Prijavljivanje pomoću otiska prsta</string>
     <string name="auth_biometric_subtitle">Potvrdite identitet da biste se prijavili</string>
-    <string name="auth_biometric_hint">Otisak prsta je dostupan za brzu prijavu</string>
     <string name="auth_error_wrong_credentials">Pogrešan email ili lozinka.</string>
     <string name="auth_error_too_many">Previše pokušaja. Sačekaj malo pa pokušaj ponovo.</string>
     <string name="auth_use_biometrics">Otključaj otiskom prsta</string>
@@ -28,37 +25,21 @@
 
     <!-- Navigation -->
     <string name="nav_back">Nazad</string>
-    <string name="nav_connections">Konekcije</string>
-    <string name="nav_settings">Podešavanja</string>
 
     <!-- Home -->
-    <string name="home_subtitle">Kontrola pametne kuće</string>
     <string name="home_greeting_morning">Dobro jutro</string>
     <string name="home_greeting_day">Dobar dan</string>
     <string name="home_greeting_evening">Dobro veče</string>
     <string name="home_connected">Povezano</string>
     <string name="home_disconnected">Nije povezano</string>
-    <string name="home_quick_glance">U ovom trenutku</string>
     <string name="home_outdoor">Napolju</string>
-    <string name="home_devices_on_full">%1$d uređaja je upaljeno</string>
-    <string name="home_all_off_title">Sve je ugašeno</string>
-    <string name="home_all_off_subtitle">Uživajte u miru</string>
-    <string name="home_tap_to_view">Dodirni za pregled</string>
     <string name="home_goodnight_button">Ugasi sve</string>
-    <string name="home_shortcuts">Prečice</string>
-    <string name="home_rooms">Prostorije</string>
     <string name="home_devices_on">Uređaji upaljeni</string>
-    <string name="home_devices_on_short">upaljeno</string>
-    <string name="home_offline">OFFLINE</string>
     <string name="home_front_door">Ulazna vrata</string>
     <string name="home_heating">Grejanje</string>
-    <string name="home_sprinklers">Prskalice</string>
-    <string name="home_security">Sigurnost</string>
     <string name="home_led_strip">LED traka</string>
-    <string name="home_bulb">Sijalica</string>
     <string name="home_fountain">Fontana</string>
     <string name="home_pool_pump">Pumpa bazena</string>
-    <string name="home_gate">Kapija</string>
     <string name="home_alert_not_connected">Nema veze sa serverom</string>
     <string name="home_alert_not_connected_detail">Prikazani podaci možda nisu tačni.</string>
     <string name="home_alert_reconnecting">Veza je prekinuta, ponovo se povezujem…</string>
@@ -110,14 +91,8 @@
     <string name="home_cancel">Otkaži</string>
     <string name="home_nothing_on">Ništa nije uključeno.</string>
     <string name="home_humidity">%1$s %%</string>
-    <string name="room_garden">Dvorište</string>
-    <string name="room_house">Kuća</string>
-    <string name="room_pool">Bazen</string>
-    <string name="room_shed">Šupa</string>
-    <string name="room_heating">Grejanje</string>
 
     <!-- Garden -->
-    <string name="garden_devices_section">Uređaji</string>
     <string name="garden_sprinkler_location">Lokacija</string>
     <string name="garden_led_strip">LED traka</string>
     <string name="garden_bulb">Sijalica</string>
@@ -129,8 +104,7 @@
     <string name="garden_sprinkler_active">Aktivna prskalica</string>
     <string name="garden_sprinkler_none_active">Nijedna prskalica nije aktivna</string>
 
-    <!-- Sprinkler dialog -->
-    <string name="garden_settings">Podesi</string>
+    <!-- Garden map and zones -->
     <string name="garden_map">Mapa</string>
     <string name="garden_zone_desc">Zona %1$d</string>
     <string name="garden_soil">Vlažnost zemljišta</string>
@@ -245,14 +219,10 @@
     <string name="plan_leave_text">Ako izađeš, izmene se gube.</string>
 
     <!-- Heating -->
-    <string name="heating_outdoor_temp">Spoljna temperatura</string>
     <string name="heating_settings_title">Podešavanja grejanja</string>
     <string name="heating_pick_time">Izaberite vreme</string>
     <string name="heating_heat_pump">Toplotna pumpa</string>
     <string name="heating_main_switch">Glavni prekidač</string>
-    <string name="heating_pump_running">Radi</string>
-    <string name="heating_pump_idle">Ne radi</string>
-    <string name="heating_flow_temp">Polazni vod</string>
     <string name="heating_demand">Traži toplotu</string>
     <string name="heating_last_change_on">Uključena %1$s</string>
     <string name="heating_last_change_off">Isključena %1$s</string>
@@ -265,11 +235,9 @@
     <string name="heating_node_time">Vreme na čvoru: %1$s, %2$s</string>
     <string name="heating_zone_ground">Prizemlje</string>
     <string name="heating_zone_upper">Sprat</string>
-    <string name="heating_target">cilj %1$s °C</string>
     <string name="heating_fault_no_schedule">nema rasporeda</string>
     <string name="heating_fault_sensor_offline">senzor oflajn</string>
     <string name="heating_fault_room_temp_stale">nema nove temperature</string>
-    <string name="heating_safe_mode_title">Bezbedni režim: pumpa je isključena</string>
     <string name="heating_safe_startup">Čvor se pokreće (prvih 5 min), to nije greška.</string>
     <string name="heating_safe_no_time">Sat na čvoru nije podešen (NTP).</string>
     <string name="heating_safe_mqtt_down">Čvor nema vezu sa MQTT brokerom.</string>
@@ -390,29 +358,9 @@
     <string name="heating_msg_timeout">Čvor nije odgovorio (10 s). Proveri stanje pre ponovnog slanja.</string>
     <string name="heating_msg_not_connected">Nema veze sa serverom, izmena nije poslata.</string>
 
-    <!-- Indoor down -->
-    <string name="indoor_down_bulb_1">Sijalica 1</string>
-    <string name="indoor_down_bulb_2">Sijalica 2</string>
-    <string name="indoor_down_bulb_3">Sijalica 3</string>
-
-    <!-- Indoor up / AC -->
+    <!-- House -->
     <string name="house_temperature">Temperatura</string>
     <string name="house_humidity">Vlažnost</string>
-    <string name="house_air_quality">Kvalitet vazduha</string>
-
-    <!-- Small home / shed -->
-    <string name="small_home_not_in_use">Šupa se trenutno ne koristi (čvor node7 je isključen).</string>
-    <string name="small_home_door">Vrata</string>
-    <string name="small_home_bulb_1">Sijalica 1</string>
-    <string name="small_home_bulb_2">Sijalica 2</string>
-    <string name="small_home_bulb_3">Sijalica 3</string>
-    <string name="small_home_fingerprint_section">Otisak prsta</string>
-    <string name="small_home_add_id">Dodaj novi ID</string>
-    <string name="small_home_delete_id">Obriši ID</string>
-    <string name="small_home_add">Dodaj</string>
-    <string name="small_home_delete">Obriši</string>
-    <string name="small_home_log">Status otiska prsta</string>
-    <string name="small_home_log_empty">Nema zabeleženih događaja.</string>
 
     <!-- Settings dialog -->
     <string name="settings_title">Podešavanja</string>
@@ -421,12 +369,10 @@
     <string name="settings_close">Zatvori</string>
 
     <!-- Connections / node status dialog -->
-    <string name="connections_title">Status konekcija</string>
     <string name="connections_online">Onlajn</string>
     <string name="connections_offline">Oflajn</string>
     <string name="connections_unknown">Nepoznato</string>
-    <string name="connections_legacy">stari firmver</string>
-    <string name="connections_legacy_no_message">stari firmver, nije se javio</string>
+    <string name="connections_no_message">još se nije javio</string>
     <string name="connections_reason_last_will">veza prekinuta (Last Will)</string>
     <string name="connections_reason_no_heartbeat">ne javlja se duže od 3 min</string>
     <string name="connections_signal">Signal: %1$s, %2$d dBm</string>
@@ -435,22 +381,14 @@
     <string name="connections_signal_weak">slab signal</string>
     <string name="connections_signal_poor">vrlo slab signal</string>
     <string name="connections_last_seen">poslednji put %1$s</string>
-    <string name="connections_legend">Novi čvorovi javljaju status i heartbeat na 60 s. Stari čvorovi su onlajn kad pošalju poruku posle povezivanja aplikacije.</string>
+    <string name="connections_legend">Čvorovi javljaju status i heartbeat na 60 s; posle 3 min bez poruke čvor je oflajn.</string>
 
-    <!-- Plus menu -->
-    <string name="menu_title">Brze prečice</string>
+    <!-- Screen titles -->
     <string name="menu_garden">Dvorište</string>
-    <string name="menu_first_floor">Prvi sprat</string>
-    <string name="menu_second_floor">Drugi sprat</string>
-    <string name="menu_house">Kućica</string>
     <string name="menu_house_combined">Kuća</string>
     <string name="menu_heating">Grejanje</string>
 
     <!-- Generic -->
-    <string name="on">Uključeno</string>
-    <string name="off">Isključeno</string>
-    <string name="temperature_unit">°C</string>
-    <string name="humidity_unit">%</string>
     <string name="goodnight_title">Laku noć</string>
     <string name="system_title">Sistem</string>
     <string name="system_online_count">%1$d / %2$d onlajn</string>
@@ -458,9 +396,8 @@
     <string name="system_broker_connected">Broker: povezano</string>
     <string name="system_broker_disconnected">Broker: nema veze</string>
     <string name="system_settings">Podešavanja</string>
-    <string name="system_shed">Šupa (ne koristi se)</string>
     <string name="node_detail_open">Detalji čvora %1$s</string>
-    <string name="node_detail_legacy">Ovaj čvor još radi na starom firmveru i ne šalje status, heartbeat ni podatke o mreži. Detalji će se pojaviti kad pređe na nove biblioteke.</string>
+    <string name="node_detail_no_data">Čvor se još nije javio od povezivanja aplikacije. Detalji će se pojaviti uz prvi heartbeat (najviše 60 s).</string>
     <string name="node_detail_restarted">Restartovan pre %1$s</string>
     <string name="node_detail_restarted_reason">Razlog: %1$s</string>
     <string name="node_detail_connection">Veza</string>
@@ -571,7 +508,6 @@
     <string name="history_outdoor">Napolju</string>
     <string name="history_outdoor_value">napolju %1$s</string>
     <string name="history_climate_title">Temperatura i vlažnost</string>
-    <string name="history_climate_description">Temperatura i vlažnost: %1$s</string>
     <string name="history_room_target_title">Soba i cilj: %1$s</string>
     <string name="history_room">soba</string>
     <string name="history_target">cilj</string>

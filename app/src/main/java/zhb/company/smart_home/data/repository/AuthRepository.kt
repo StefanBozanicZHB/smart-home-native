@@ -3,7 +3,7 @@ package zhb.company.smart_home.data.repository
 import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.remote.FirebaseAuthApi
 
-/** In-memory session + credential persistence, mirroring the Flutter `Auth` provider. */
+/** In-memory session and saved credentials. */
 class AuthRepository(
     private val authApi: FirebaseAuthApi,
     private val preferences: AppPreferences,

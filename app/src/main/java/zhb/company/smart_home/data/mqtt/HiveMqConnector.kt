@@ -67,7 +67,7 @@ class HiveMqConnector(
                     .retain(retain)
                     .send()
             } catch (_: Exception) {
-                // best-effort, matches the original app which does not surface publish failures
+                // best-effort, publish failures are not surfaced
             }
         }
 

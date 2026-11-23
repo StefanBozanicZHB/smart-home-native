@@ -20,7 +20,6 @@ import zhb.company.smart_home.ui.reports.ReportDetailViewModel
 import zhb.company.smart_home.ui.reports.ReportsViewModel
 import zhb.company.smart_home.ui.settings.ConnectionsViewModel
 import zhb.company.smart_home.ui.settings.SettingsViewModel
-import zhb.company.smart_home.ui.smallhome.SmallHomeViewModel
 
 val viewModelModule = module {
     viewModel { AuthViewModel(get()) }
@@ -32,7 +31,6 @@ val viewModelModule = module {
     viewModel { PipeSensorsViewModel(get(), get()) }
     viewModel { PipeCalibrationViewModel(get()) }
     viewModel { HouseViewModel(get()) }
-    viewModel { SmallHomeViewModel(get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { ConnectionsViewModel(get()) }
     viewModel { params -> NodeDetailViewModel(params.get(), get()) }

@@ -12,7 +12,7 @@ import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto
 
 /**
  * Fetches the MQTT broker connection config from Firebase Realtime Database,
- * exactly as the Flutter app does (no caching - re-fetched on every login).
+ * re-fetched on every sign-in (no caching).
  */
 class FirebaseRtdbApi(private val httpClient: HttpClient) : MqttConfigSource {
 

@@ -15,13 +15,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
-import zhb.company.smart_home.domain.computeListPowerDevice
 import zhb.company.smart_home.domain.model.SmartHomeState
 
 /**
- * Single source of truth for the live house state, connecting to the MQTT
- * broker and dispatching every incoming message into [state]. Mirrors the
- * Flutter app's `Mqtt` provider + `Parameters` ChangeNotifier combined.
+ * Owns the MQTT connection and the live house state: node health and the plain measurements in
+ * [state]. Nodes with a JSON API are handled by their own repositories, which get every message
+ * through [addMessageListener].
  *
  * Connection lifecycle:
  * - [connect] after sign-in fetches the broker config (primary + backup) and connects once;
@@ -200,8 +199,6 @@ class SmartHomeRepository(
             }
             connection = connected
             _connectionState.value = MqttConnectionState.Connected
-            // node7 (old firmware) publishes its state on request; the others use retained topics.
-            connected.publish(MqttTopics.LEGACY_STATE_REQUEST, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
             return true
         }
         return false
@@ -241,22 +238,12 @@ class SmartHomeRepository(
 
     /** Applies one incoming MQTT message to [state]. Internal so tests can feed messages directly. */
     internal fun handleMessage(topic: String, payload: String, retained: Boolean) {
-        val nodeMatch = MqttTopics.NODE_NUMBER_REGEX.find(topic)
         // The tracker is mutated outside _state.update, whose lambda may run more than once.
         val health = synchronized(nodeStatus) {
             if (nodeStatus.onMessage(topic, payload, retained, clock())) nodeStatus.snapshot(clock()) else null
         }
         _state.update { current ->
-            var next = current
-            if (health != null) next = next.copy(nodeHealth = health)
-            if (!retained && nodeMatch != null) {
-                val node = nodeMatch.groupValues[1].toIntOrNull()
-                if (node != null) {
-                    next = next.copy(nodeOnline = next.nodeOnline + (node to true))
-                }
-            }
-            next = dispatch(topic, payload, next)
-            next.copy(listPowerDevice = computeListPowerDevice(next))
+            dispatch(topic, payload, if (health != null) current.copy(nodeHealth = health) else current)
         }
         messageListeners.forEach { it(topic, payload, retained) }
     }
@@ -270,33 +257,18 @@ class SmartHomeRepository(
     /** Without a broker connection nothing is known about any node (instead of keeping stale "online"). */
     private fun clearNodeStatus() {
         synchronized(nodeStatus) { nodeStatus.clear() }
-        _state.update { it.copy(nodeHealth = emptyMap(), nodeOnline = emptyMap()) }
+        _state.update { it.copy(nodeHealth = emptyMap()) }
     }
 
     private fun dispatch(topic: String, payload: String, state: SmartHomeState): SmartHomeState {
-        val onOff = payload == "1"
-        return when {
-            topic == MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload))
-
-
-            topic == MqttTopics.NODE4_TEMPERATURE -> state.copy(temperatureLivingRoomDown = formatTemperature(payload))
-            topic == MqttTopics.NODE4_HUMIDITY -> state.copy(humidityLivingRoomDown = payload)
-
-
-            topic == MqttTopics.NODE6_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload))
-
-            topic == MqttTopics.NODE7_FINGER_ALL_STATUS ||
-                topic == MqttTopics.NODE7_FINGER_ADD_STATUS ||
-                topic == MqttTopics.NODE7_FINGER_DEL_STATUS ->
-                state.copy(fingerSensorStatus = if (state.fingerSensorStatus.isBlank()) payload else "$payload\n${state.fingerSensorStatus}")
-            topic == MqttTopics.node7BulbStatus(1) -> state.copy(bulbSmallHome1 = onOff)
-            topic == MqttTopics.node7BulbStatus(2) -> state.copy(bulbSmallHome2 = onOff)
-            topic == MqttTopics.node7BulbStatus(3) -> state.copy(bulbSmallHome3 = onOff)
-            topic == MqttTopics.NODE7_DOOR_STATUS -> state.copy(doorSmallHome = onOff)
-
-            // Calibrated on the node since node8-2.0.0; an empty payload (value withdrawn) shows as "--".
-            topic == MqttTopics.NODE8_TEMPERATURE -> state.copy(temperatureLivingRoomUp = formatTemperature(payload))
-            topic == MqttTopics.NODE8_HUMIDITY -> state.copy(humidityLivingRoomUp = payload)
+        // An empty payload (value withdrawn by the node) passes through and shows as "--".
+        return when (topic) {
+            MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload))
+            MqttTopics.NODE4_TEMPERATURE -> state.copy(temperatureLivingRoomDown = formatTemperature(payload))
+            MqttTopics.NODE4_HUMIDITY -> state.copy(humidityLivingRoomDown = payload)
+            MqttTopics.NODE6_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload))
+            MqttTopics.NODE8_TEMPERATURE -> state.copy(temperatureLivingRoomUp = formatTemperature(payload))
+            MqttTopics.NODE8_HUMIDITY -> state.copy(humidityLivingRoomUp = payload)
 
             else -> state
         }

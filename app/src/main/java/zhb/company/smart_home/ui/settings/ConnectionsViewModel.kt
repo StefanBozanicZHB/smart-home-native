@@ -16,7 +16,7 @@ data class NodeRow(
     val nodeId: String,
     val label: String,
     val status: NodeStatus,
-    /** Null for legacy nodes (no status topic, no heartbeat). */
+    /** Null until the node has published `status`, `heartbeat`, `info` or `boot`. */
     val health: NodeHealth?,
 )
 
@@ -28,9 +28,6 @@ class ConnectionsViewModel(repository: SmartHomeRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ConnectionsState())
 
     private fun rows(home: SmartHomeState): ConnectionsState {
-        // The nodes of the house; other ids on the broker, e.g. an old test
-        // board's retained status, are left out.
-        val ids = (1..8).map { "node$it" }
-        return ConnectionsState(ids.map { id -> NodeRow(id, NodeLabels.of(id), home.nodeStatus(id), home.nodeHealth[id]) })
+        return ConnectionsState(NodeLabels.ACTIVE.map { id -> NodeRow(id, NodeLabels.of(id), home.nodeStatus(id), home.nodeHealth[id]) })
     }
 }

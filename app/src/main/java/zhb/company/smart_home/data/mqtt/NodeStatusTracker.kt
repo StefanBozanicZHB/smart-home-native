@@ -116,12 +116,10 @@ data class NodeHealth(
 }
 
 /**
- * Online status of nodes with the new firmware (zhb_mqtt / zhb_heartbeat libraries: node1, node4,
- * node5 today). A node counts as "new" once it has published `<node>/status`, `heartbeat`, `info`
- * or `boot`, so a migrated node is picked up without changes here. The retained `status` alone is
- * not enough: it can be missing (e.g. a bridge that does not forward retained messages, or a
- * broker restarted without persistence) while heartbeats keep arriving. Legacy nodes keep the
- * old rule in [SmartHomeRepository].
+ * Online status of the nodes (zhb_mqtt / zhb_heartbeat libraries). A node is tracked once it has
+ * published `<node>/status`, or `heartbeat`, `info` or `boot` with a `fw` field. The retained
+ * `status` alone is not enough: it can be missing (e.g. a bridge that does not forward retained
+ * messages, or a broker restarted without persistence) while heartbeats keep arriving.
  *
  * Rules:
  * - `status` = `offline` (sent by the broker as Last Will) → OFFLINE;
@@ -165,7 +163,7 @@ class NodeStatusTracker(
             return true
         }
         // Other topics only matter for nodes that have announced themselves (`status` above, or
-        // one of the common new-firmware topics); legacy topics are left to the old rule.
+        // one of the common topics with `fw`).
         if (current == null && !(leaf in NEW_FIRMWARE_LEAVES && parseObject(payload)?.str("fw") != null)) return false
         var next = current ?: Entry()
         val heartbeat = if (leaf == "heartbeat") parseHeartbeat(payload) else null
@@ -194,13 +192,13 @@ class NodeStatusTracker(
     }
 
     companion object {
-        /** Topics only the new firmware publishes; any of them with a `fw` field marks a node as new. */
+        /** Common topics; any of them with a `fw` field starts tracking a node. */
         private val NEW_FIRMWARE_LEAVES = setOf("heartbeat", "info", "boot")
 
         /** Three missed 60 s heartbeats. */
         const val DEFAULT_HEARTBEAT_TIMEOUT_MS = 180_000L
 
-        /** `bozaSub/kuca/<node>/<leaf>`; legacy topics are deeper or use other leaf names. */
+        /** `bozaSub/kuca/<node>/<leaf>`; deeper topics are not node health. */
         private val TOPIC = Regex("""^bozaSub/kuca/([A-Za-z0-9_]+)/([A-Za-z0-9_]+)$""")
         private val json = Json { ignoreUnknownKeys = true }
 

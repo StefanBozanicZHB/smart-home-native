@@ -100,7 +100,7 @@ private fun NodeDetailContent(row: NodeRow, nowMs: Long, onBack: () -> Unit = {}
         if (health == null) {
             item {
                 DashboardCard {
-                    Text(stringResource(R.string.node_detail_legacy), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.node_detail_no_data), style = MaterialTheme.typography.bodyMedium)
                 }
             }
             return@LazyColumn
@@ -309,10 +309,10 @@ private fun NodeDetailRestartedPreview() {
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Node detail - legacy", heightDp = 400)
+@androidx.compose.ui.tooling.preview.Preview(name = "Node detail - no data", heightDp = 400)
 @Composable
-private fun NodeDetailLegacyPreview() {
+private fun NodeDetailNoDataPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
-        Surface { NodeDetailContent(NodeRow("node2", "Dvorište", NodeStatus.ONLINE, null), PREVIEW_NOW) }
+        Surface { NodeDetailContent(NodeRow("node2", "Dvorište", NodeStatus.UNKNOWN, null), PREVIEW_NOW) }
     }
 }

@@ -32,7 +32,7 @@ class ReconnectTest {
     private fun FakeMqttConnector.dropActive() = listeners.last().onDisconnected("network lost")
 
     @Test
-    fun `a dropped connection reconnects by itself and asks legacy nodes for state again`() = runTest {
+    fun `a dropped connection reconnects by itself`() = runTest {
         val connector = FakeMqttConnector()
         val repo = repository(connector)
         repo.connect("token")
@@ -45,7 +45,6 @@ class ReconnectTest {
         assertEquals(MqttConnectionState.Connected, repo.connectionState.value)
         val second = connector.lastConnection!!
         assertTrue(second !== first)
-        assertEquals(MqttTopics.LEGACY_STATE_REQUEST, second.published.single().topic)
     }
 
     @Test

@@ -12,7 +12,7 @@ import zhb.company.smart_home.data.notifications.QuietHours
 
 private val Context.dataStore by preferencesDataStore(name = "smart_home_prefs")
 
-/** Replaces the Flutter app's SharedPreferences-backed AppLocalStorage. */
+/** App settings and the saved sign-in, in DataStore. */
 class AppPreferences(private val context: Context) {
 
     private object Keys {

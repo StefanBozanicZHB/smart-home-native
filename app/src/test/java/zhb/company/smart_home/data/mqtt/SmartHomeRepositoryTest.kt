@@ -26,7 +26,7 @@ class SmartHomeRepositoryTest {
     // --- connect ---
 
     @Test
-    fun `connect uses the primary broker and requests legacy node state`() = runTest {
+    fun `connect uses the primary broker and publishes nothing`() = runTest {
         val connector = FakeMqttConnector()
         val repo = repository(connector)
 
@@ -36,8 +36,7 @@ class SmartHomeRepositoryTest {
         assertEquals(listOf(MqttEndpoint("primary", 1883, "u", "p")), connector.attempts)
         val connection = connector.lastConnection!!
         assertEquals(MqttTopics.SUBSCRIBE_ALL, connection.topicFilter)
-        assertEquals(MqttTopics.LEGACY_STATE_REQUEST, connection.published.single().topic)
-        assertEquals("s", connection.published.single().payload)
+        assertTrue(connection.published.isEmpty())
     }
 
     @Test
@@ -101,13 +100,13 @@ class SmartHomeRepositoryTest {
         val connector = FakeMqttConnector()
         val repo = repository(connector)
 
-        repo.publish("bozaSub/kuca/node2/neonka", "1")
+        repo.publish("bozaSub/kuca/test/topic", "1")
         repo.connect("token")
-        repo.publish("bozaSub/kuca/node2/neonka", "1", retain = true)
+        repo.publish("bozaSub/kuca/test/topic", "1", retain = true)
 
         val sent = connector.lastConnection!!.published.last()
-        assertEquals(PublishedMessage("bozaSub/kuca/node2/neonka", "1", true, MqttQualityOfService.EXACTLY_ONCE), sent)
-        assertEquals(2, connector.lastConnection!!.published.size) // "s" request + this one
+        assertEquals(PublishedMessage("bozaSub/kuca/test/topic", "1", true, MqttQualityOfService.EXACTLY_ONCE), sent)
+        assertEquals(1, connector.lastConnection!!.published.size)
     }
 
     @Test
@@ -175,18 +174,7 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
-    fun `only live (non-retained) messages mark a node online`() {
-        val repo = repository(FakeMqttConnector())
-
-        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "0", retained = true)
-        assertFalse(repo.state.value.isNodeOnline(7))
-
-        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "1", retained = false)
-        assertTrue(repo.state.value.isNodeOnline(7))
-    }
-
-    @Test
-    fun `new-firmware nodes use status and heartbeat, legacy nodes keep the old rule`() {
+    fun `nodes use status and heartbeat`() {
         var now = 0L
         val repo = SmartHomeRepository(
             MqttConfigSource { Result.success(config) }, FakeMqttConnector(), UnconfinedTestDispatcher(), clock = { now },
@@ -209,12 +197,9 @@ class SmartHomeRepositoryTest {
         repo.handleMessage("bozaSub/kuca/node5/status", "offline", retained = true)
         assertEquals(NodeStatus.OFFLINE, repo.state.value.nodeStatus("node5"))
 
-        // node7 (legacy): unknown until a live message, then online with no timeout.
-        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node7"))
-        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "1", retained = false)
-        now = 10_000_000
-        repo.refreshNodeHealth()
-        assertTrue(repo.state.value.isNodeOnline(7))
+        // A plain measurement does not make a node known; only the common topics do.
+        repo.handleMessage(MqttTopics.NODE6_TEMPERATURE, "24.5", retained = false)
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node6"))
     }
 
     @Test
@@ -223,12 +208,12 @@ class SmartHomeRepositoryTest {
         val repo = repository(connector)
         repo.connect("token")
         repo.handleMessage("bozaSub/kuca/node4/status", "online", retained = true)
-        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "1", retained = false)
+        repo.handleMessage("bozaSub/kuca/node6/heartbeat", """{"fw":"node6-2.0.0","up":60}""", retained = false)
 
         connector.listeners.last().onDisconnected("network lost")
 
         assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node4"))
-        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node7"))
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node6"))
     }
 
     @Test

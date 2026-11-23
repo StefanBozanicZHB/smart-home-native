@@ -26,32 +26,12 @@ class GoodNightUseCaseTest {
     }
 
     @Test
-    fun `turns off every device that is on`() = runTest {
-        val connector = FakeMqttConnector()
-        val repo = connectedRepository(connector)
-        repo.handleMessage(MqttTopics.node7BulbStatus(1), "1", retained = false)
-        repo.handleMessage(MqttTopics.node7BulbStatus(3), "1", retained = false)
-
-        val changed = GoodNightUseCase(repo, Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))()
-
-        assertTrue(changed)
-        val sent = connector.lastConnection!!.published.drop(1).filterNot { it.topic.endsWith("/config/get") }.map { it.topic to it.payload } // drop "s" request
-        assertEquals(
-            listOf(
-                MqttTopics.node7BulbControl(1) to "0",
-                MqttTopics.node7BulbControl(3) to "0",
-            ),
-            sent,
-        )
-    }
-
-    @Test
     fun `does nothing when everything is already off`() = runTest {
         val connector = FakeMqttConnector()
         val repo = connectedRepository(connector)
 
-        assertFalse(GoodNightUseCase(repo, Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))())
-        assertEquals(1, connector.lastConnection!!.published.count { !it.topic.endsWith("/config/get") }) // only the "s" request
+        assertFalse(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))())
+        assertEquals(0, connector.lastConnection!!.published.count { !it.topic.endsWith("/config/get") })
     }
 
     @Test
@@ -66,7 +46,7 @@ class GoodNightUseCaseTest {
             retained = true,
         )
 
-        assertTrue(GoodNightUseCase(repo, node1, Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))())
+        assertTrue(GoodNightUseCase(node1, Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))())
         val topics = connector.lastConnection!!.published.map { it.topic }
         assertTrue("bozaSub/kuca/node1/fountain/pump/set" in topics)
         assertTrue("bozaSub/kuca/node1/run/stop" in topics)
@@ -84,7 +64,7 @@ class GoodNightUseCaseTest {
             retained = true,
         )
 
-        assertTrue(GoodNightUseCase(repo, Node1Repository(repo, backgroundScope), node2, Node6Repository(repo, backgroundScope))())
+        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), node2, Node6Repository(repo, backgroundScope))())
         val sent = connector.lastConnection!!.published.filter { it.topic.startsWith("bozaSub/kuca/node2/") && !it.topic.endsWith("/config/get") }
         assertEquals(listOf("bozaSub/kuca/node2/lamp/set" to """{"on":false,"id":"g"}"""), sent.map { it.topic to it.payload })
     }
@@ -96,7 +76,7 @@ class GoodNightUseCaseTest {
         val node6 = Node6Repository(repo, backgroundScope, commandTimeoutMs = 1_000, newId = { "p" })
         repo.handleMessage("bozaSub/kuca/node6/state", """{"seq":5,"up":300,"pump":true,"pump_left":7140,"ds18b20":true}""", retained = true)
 
-        assertTrue(GoodNightUseCase(repo, Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)())
+        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)())
         val sent = connector.lastConnection!!.published.filter { it.topic == "bozaSub/kuca/node6/pump/set" }
         assertEquals(listOf("""{"on":false,"id":"p"}"""), sent.map { it.payload })
     }

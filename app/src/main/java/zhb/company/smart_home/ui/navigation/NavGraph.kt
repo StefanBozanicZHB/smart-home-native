@@ -43,7 +43,6 @@ import zhb.company.smart_home.ui.mqttconnect.MqttConnectScreen
 import zhb.company.smart_home.ui.reports.ReportDetailScreen
 import zhb.company.smart_home.ui.reports.ReportsScreen
 import zhb.company.smart_home.ui.notifications.NotificationsScreen
-import zhb.company.smart_home.ui.smallhome.SmallHomeScreen
 import zhb.company.smart_home.ui.system.NodeDetailScreen
 import zhb.company.smart_home.ui.system.SystemScreen
 
@@ -107,9 +106,9 @@ fun SmartHomeNavGraph(
             navController.navigateReplacing(Destination.Auth.route)
         }
     }
-    // The shed is opened from the system tab, so that tab stays selected there.
+    // Sub-screens keep the tab they were opened from selected.
     val selectedRoute = when (currentRoute) {
-        Destination.SmallHome.route, Destination.NodeDetail.route -> Destination.System.route
+        Destination.NodeDetail.route -> Destination.System.route
         Destination.HeatingSensors.route, Destination.HeatingCalibration.route,
         Destination.Reports.route, Destination.ReportDetail.route -> Destination.Heating.route
         Destination.Notifications.route -> Destination.Home.route
@@ -203,16 +202,10 @@ fun SmartHomeNavGraph(
                 PipeCalibrationScreen(onDone = { navController.popBackStack() })
             }
             composable(Destination.System.route) {
-                SystemScreen(
-                    onOpenShed = { navController.navigate(Destination.SmallHome.route) },
-                    onOpenNode = { navController.navigate(Destination.NodeDetail.of(it)) },
-                )
+                SystemScreen(onOpenNode = { navController.navigate(Destination.NodeDetail.of(it)) })
             }
             composable(Destination.NodeDetail.route) { entry ->
                 NodeDetailScreen(nodeId = entry.arguments?.getString(Destination.NodeDetail.ARG).orEmpty(), onBack = { navController.navigateUp() })
-            }
-            composable(Destination.SmallHome.route) {
-                SmallHomeScreen(onBack = { navController.navigateUp() })
             }
         }
     }

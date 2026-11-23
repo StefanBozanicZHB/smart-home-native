@@ -126,7 +126,7 @@ class HomeViewModel(
                 lastAccess = door.lastAccess,
                 lastAccessSecondsAgo = door.lastAccess?.secondsBefore(door.state),
             ),
-            devicesOnList = home.listPowerDevice + Node1Devices.onLabels(yardState) + Node2Devices.onLabels(lights) + Node6Json.onLabels(pool),
+            devicesOnList = Node1Devices.onLabels(yardState) + Node2Devices.onLabels(lights) + Node6Json.onLabels(pool),
             showDevicesOnDialog = ui.showDevicesOnDialog,
             showUnlockConfirm = ui.showUnlockConfirm,
         )

@@ -6,24 +6,18 @@ import kotlinx.coroutines.coroutineScope
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.garden.Node6Repository
-import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 
 /**
- * Turns off every currently-on device in one batch, mirroring `Parameters.goodNight()`. Nodes with
- * the JSON API (Node 1 fountain and sprinklers, Node 2 yard lights, Node 6 pool pump) get their commands; they are
- * sent together and their answers awaited.
+ * Turns off everything that is on: Node 1 fountain and watering, Node 2 yard lights, Node 6 pool
+ * pump. The commands are sent together and their answers awaited.
  */
 class GoodNightUseCase(
-    private val repository: SmartHomeRepository,
     private val node1: Node1Repository,
     private val node2: Node2Repository,
     private val node6: Node6Repository,
 ) {
 
     suspend operator fun invoke(): Boolean {
-        val state = repository.state.value
-        val onDevices = PowerDevices.ALL.filter { it.isOn(state) }
-        onDevices.forEach { repository.publish(it.controlTopic, it.offPayload) }
         val yard = node1.snapshot.value.state
         val lights = node2.state.value
         val jsonCommands = buildList<suspend () -> Unit> {
@@ -35,6 +29,6 @@ class GoodNightUseCase(
             if (node6.state.value?.pump == true) add { node6.setPump(false) }
         }
         coroutineScope { jsonCommands.map { async { it() } }.awaitAll() }
-        return onDevices.isNotEmpty() || jsonCommands.isNotEmpty()
+        return jsonCommands.isNotEmpty()
     }
 }

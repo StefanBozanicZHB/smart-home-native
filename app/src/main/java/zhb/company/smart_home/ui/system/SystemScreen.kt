@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Warehouse
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,7 +49,6 @@ import zhb.company.smart_home.ui.history.loggerStatusText
 /** Nodes (status, signal, firmware), broker connection and the entry to settings. */
 @Composable
 fun SystemScreen(
-    onOpenShed: () -> Unit,
     onOpenNode: (String) -> Unit,
     viewModel: ConnectionsViewModel = koinViewModel(),
     repository: SmartHomeRepository = koinInject(),
@@ -66,7 +64,6 @@ fun SystemScreen(
         state = state,
         connected = connection is MqttConnectionState.Connected,
         onOpenSettings = { showSettings = true },
-        onOpenShed = onOpenShed,
         onOpenNode = onOpenNode,
         history = history,
     )
@@ -78,12 +75,10 @@ private fun SystemContent(
     state: ConnectionsState,
     connected: Boolean,
     onOpenSettings: () -> Unit,
-    onOpenShed: () -> Unit,
     onOpenNode: (String) -> Unit = {},
     history: HistoryState = HistoryState(),
 ) {
-    // Nodes not in use (the shed) are left out of the count and the list; the shed has its own row.
-    val nodes = state.nodes.filter { it.nodeId !in NodeLabels.NOT_IN_USE }
+    val nodes = state.nodes
     val online = nodes.count { it.status == NodeStatus.ONLINE }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -122,9 +117,8 @@ private fun SystemContent(
                 ConnectionsList(ConnectionsState(nodes), onNodeClick = onOpenNode)
             }
         }
-        // Only nodes with a heartbeat have availability history; the card shows those.
+        // Nodes the RPi logger has no availability history for are left out by the card.
         item { AvailabilityCard(history, nodes.map { it.nodeId to NodeLabels.of(it.nodeId) }) }
-        item { CompactRow(Icons.Outlined.Warehouse, stringResource(R.string.system_shed), onClick = onOpenShed) }
     }
 }
 
@@ -141,12 +135,10 @@ private fun SystemPreview() {
                         NodeRow("node2", NodeLabels.of("node2"), NodeStatus.ONLINE, null),
                         NodeRow("node3", NodeLabels.of("node3"), NodeStatus.UNKNOWN, null),
                         NodeRow("node4", NodeLabels.of("node4"), NodeStatus.ONLINE, null),
-                        NodeRow("node7", NodeLabels.of("node7"), NodeStatus.UNKNOWN, null),
                     ),
                 ),
                 connected = true,
                 onOpenSettings = {},
-                onOpenShed = {},
             )
         }
     }

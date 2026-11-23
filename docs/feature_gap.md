@@ -14,7 +14,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | # | Area | Flutter | Native | Impact | Proposed fix |
 |---|---|---|---|---|---|
 | B1 | A/C state topics (node8) | `node8/ac/temp`, `node8/ac/fan`, `node8/ac/mode` (retained, written by the app) | — | Obsolete: `node8-2.0.0` has no IR transmitter, the A/C control is removed from the app. | Clear the retained `node8/ac/*` and `node8/acTemp|acFan|acMode` on the broker. |
-| B2 | Ground-floor lights (node4) | `indoor_down_screen`: toggles `node4/dnevniBoravak/sijalica1…3`; also in GoodNight | No screen, but `PowerDevices` still lists the three lights, so GoodNight publishes to them and they count as "devices on" from retained `…/stanje` | Since `node4-2.0.0` Node 4 only measures: the light relays were removed and it subscribes to nothing. Stale retained `sijalicaN/stanje` can show lights as "on" forever. | Fixed in native (lights removed). Still to do: clear the retained `node4/dnevniBoravak/sijalicaN/stanje` on the broker. |
+| B2 | Ground-floor lights (node4) | `indoor_down_screen`: toggles `node4/dnevniBoravak/sijalica1…3`; also in GoodNight | — | Since `node4-2.0.0` Node 4 only measures: the light relays were removed and it subscribes to nothing. Stale retained `sijalicaN/stanje` can show lights as "on" forever. | Fixed in native (lights removed). Still to do: clear the retained `node4/dnevniBoravak/sijalicaN/stanje` on the broker. |
 | B3 | A/C temperature codes | Gray-code table 17→`0` … 30→`B` | — | Fixed in `e79c36e` (native sent wrong codes for 19–30 °C). | Done. |
 
 ## 2. Feature comparison by screen
@@ -27,7 +27,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Biometric unlock | `local_auth` | `BiometricPrompt` | ✅ |
 | Broker config from Firebase RTDB, primary + backup broker | ✓ | ✓ | ✅ |
 | Connection error screen with retry | ✓ | ✓ | ✅ |
-| Request legacy node state (`node1/stanje` = `s`) after connect | ✓ | ✓ | ✅ (only for node7, still on old firmware) |
+| Request legacy node state (`node1/stanje` = `s`) after connect | ✓ | — | 🗑️ no node in use answers it; every node publishes retained states |
 
 ### Home
 | Feature | Flutter | Native | Status |
@@ -65,19 +65,19 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Old API: heating type, pellet level, alarm level, full/empty calibration, `glavniPrekidac`, `planogram`, one-digit hysteresis | ✓ | removed | 🗑️ replaced by `node5-2.0.0` |
 | New API: main switch, per-zone workday/weekend schedule (0.1 °C, ≤ 8 segments), hysteresis, safe mode, pump events, command results by `id` | — | ✓ | native only |
 
-Note: the native app supports only the new firmware of nodes 1–6 and 8 (`-2.0.0`); node7 still runs
-its old firmware.
+Note: the native app supports only the new firmware of nodes 1–6 and 8 (`-2.0.x`); every node in
+use runs it.
 
 ### Shed (node7)
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
-| Door, lights 1–3, fingerprint add/delete/list | ✓ | ✓ | ✅, but 🗑️ candidate: node7 is **not in use** (`nodes.md`) |
+| Door, lights 1–3, fingerprint add/delete/list | ✓ | removed (2026-11-23) | 🗑️ node7 is **not in use** (`nodes.md`) |
 
 ### Settings and connections
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Light/dark theme | ✓ | ✓ | ✅ |
-| Microcontroller overview (nodes online) | ✓ | node1–8 | ✅ |
+| Microcontroller overview (nodes online) | ✓ | nodes 1–6 and 8, status and heartbeat only | ✅ |
 | Warning instead of a switch when the device's node is offline ("Mikrokontroler … nije povezan") | ✓ (switch replaced by a warning icon, toast) | online dot only; switches stay active and publish into the void | ❌ |
 
 ## 3. Topic diff summary
@@ -85,15 +85,15 @@ its old firmware.
 Only in Flutter: all old Serbian topics of nodes 1–6 (intentionally removed: the `-2.0.0` firmware of
 each node replaced them), `node8/ac/{temp,fan,mode}` (B1).
 Only in native: Node 1, 2, 3, 5, 6 and 8 v2 topics under `node1/`, `node2/`, `node3/`, `node5/`, `node6/`, `node8/`.
-Everything else (nodes 4, 7) matches.
+Node 4 uses `node4/temperature` and `node4/humidity`; node7 topics are no longer read.
 
 ## 4. Improvements that are not Flutter parity
 
 | # | Item | Why |
 |---|---|---|
 | S1 | Store the Firebase password encrypted (Android Keystore) or keep only the refresh token | Plain text in DataStore today, same as Flutter. |
-| S2 | ~~Online state from `<node>/status` (retained Last Will) for migrated nodes~~ | Done: `NodeStatusTracker` (status + 3 min heartbeat timeout, unknown while the app is disconnected); legacy nodes keep the old rule until migrated. |
-| S3 | Hide or mark the shed screen (node7) and drop node9 references | Nodes are not in use. |
+| S2 | ~~Online state from `<node>/status` (retained Last Will) for migrated nodes~~ | Done: `NodeStatusTracker` (status + 3 min heartbeat timeout, unknown while the app is disconnected); the old "any live message" rule was removed with the last old-firmware node. |
+| S3 | ~~Hide or mark the shed screen (node7) and drop node9 references~~ | Done: shed screen and node7 topics removed. |
 | S5 | Replace deprecated Compose APIs (`Slider` in settings, `PasswordVisualTransformation` in auth) | Compiler warnings after the Compose 1.13 upgrade. |
 
 ## 5. Before the Flutter app can be retired
@@ -101,6 +101,6 @@ Everything else (nodes 4, 7) matches.
 1. ~~Fix B1 and B2~~ (done in native; broker cleanup in step 6).
 2. ~~Add the melody button (node8)~~ (no buzzer in `node8-2.0.0`).
 3. Disable or warn on switches whose node is offline.
-4. Install `node5-2.0.0` on the real Node 5 (only then can native control the heating).
-5. Decide on the shed screen (S3).
-6. Clear the obsolete retained topics on the broker (old Serbian topics of nodes 1–6, old `node8/*` (`temp`, `gas`, `ac/*`), `node0/*`, `node4/…/sijalicaN/stanje`, `node8/acTemp|acFan|acMode`).
+4. ~~Install `node5-2.0.0` on the real Node 5~~ (installed 2026-11-22).
+5. ~~Decide on the shed screen (S3)~~ (removed).
+6. Clear the obsolete retained topics on the broker (old Serbian topics of nodes 1–6, old `node8/*` (`temp`, `gas`, `ac/*`), `node0/*`, `node4/…/sijalicaN/stanje`, `node8/acTemp|acFan|acMode`, `node7/*`).

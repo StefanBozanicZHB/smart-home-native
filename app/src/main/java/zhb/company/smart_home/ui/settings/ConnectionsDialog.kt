@@ -47,7 +47,7 @@ import zhb.company.smart_home.ui.theme.AppTheme
 internal fun ConnectionsList(state: ConnectionsState, onNodeClick: ((String) -> Unit)? = null) {
     Column {
         state.nodes.forEach { row ->
-            // Only new-firmware nodes have details to show.
+            // Details open once the node has been heard from.
             NodeStatusRow(row, onClick = if (row.health != null && onNodeClick != null) ({ onNodeClick(row.nodeId) }) else null)
         }
         Text(
@@ -135,14 +135,10 @@ internal fun signalName(quality: SignalQuality): String = stringResource(
     },
 )
 
-/** Second line: firmware and last heartbeat for new nodes, why it is offline, or "old firmware". */
+/** Second line: firmware, why the node is offline or its weak signal, and when it was last heard. */
 @Composable
 private fun nodeDetail(row: NodeRow): String {
-    val health = row.health ?: return if (row.status == NodeStatus.ONLINE) {
-        "${row.nodeId} · ${stringResource(R.string.connections_legacy)}"
-    } else {
-        "${row.nodeId} · ${stringResource(R.string.connections_legacy_no_message)}"
-    }
+    val health = row.health ?: return "${row.nodeId} · ${stringResource(R.string.connections_no_message)}"
     val parts = mutableListOf(row.nodeId)
     health.firmware?.let { parts += it }
     when (health.offlineReason) {

@@ -4,56 +4,30 @@ import zhb.company.smart_home.data.mqtt.NodeHealth
 import zhb.company.smart_home.data.mqtt.NodeStatus
 
 /**
- * Single source of truth for every sensor reading / device state in the house,
- * mirroring the Flutter app's `Parameters` ChangeNotifier. Updated exclusively
- * by [zhb.company.smart_home.data.mqtt.SmartHomeRepository] as MQTT messages
- * arrive, and read by every screen ViewModel.
+ * Live node health and the plain measurements, updated by
+ * [zhb.company.smart_home.data.mqtt.SmartHomeRepository]. Nodes with a JSON API keep their state
+ * in their own repositories (data/garden, data/door, data/heating).
+ * A measurement is "--" until it arrives and "" while the node has withdrawn it.
  */
 data class SmartHomeState(
-    // node1 (fountain, sprinklers): data/garden/Node1Repository; node5 (heating): data/heating/Node5Repository.
-
-    // node2 - yard: outdoor temperature ("" while the node has withdrawn it); lights in data/garden/Node2Repository
+    // node2 - yard
     val temperatureOutdoor: String = "--",
 
-    // node4 - ground floor living room
+    // node4 - living room, ground floor
     val temperatureLivingRoomDown: String = "--",
     val humidityLivingRoomDown: String = "--",
 
-    // node5 - heating: see zhb.company.smart_home.data.heating.Node5Repository
-
-    // node6 - pool: water temperature ("" while withdrawn); the pump in data/garden/Node6Repository
+    // node6 - pool
     val temperaturePool: String = "--",
 
-    // node7 - shed
-    val doorSmallHome: Boolean = false,
-    val bulbSmallHome1: Boolean = false,
-    val bulbSmallHome2: Boolean = false,
-    val bulbSmallHome3: Boolean = false,
-    val fingerSensorStatus: String = "",
-
-    // node8 - living room, upper floor ("" while the node has withdrawn a value)
+    // node8 - living room, upper floor
     val temperatureLivingRoomUp: String = "--",
     val humidityLivingRoomUp: String = "--",
 
-    // legacy rule: true once a live (non-retained) message arrived from node N since connecting
-    val nodeOnline: Map<Int, Boolean> = emptyMap(),
-
-    // nodes with the new firmware (they publish <node>/status + heartbeat), keyed by node id, e.g. "node4"
+    // keyed by node id, e.g. "node4"
     val nodeHealth: Map<String, NodeHealth> = emptyMap(),
-
-    // devices currently on, human-readable, used for the Home "devices on" count + GoodNight
-    val listPowerDevice: List<String> = emptyList(),
 ) {
-    /** New-firmware status if the node has one, else the legacy rule. */
     fun isNodeOnline(node: Int): Boolean = nodeStatus("node$node") == NodeStatus.ONLINE
 
-    fun nodeStatus(nodeId: String): NodeStatus {
-        nodeHealth[nodeId]?.let { return it.status }
-        val legacyNumber = LEGACY_NODE_ID.matchEntire(nodeId)?.groupValues?.get(1)?.toInt() ?: return NodeStatus.UNKNOWN
-        return if (nodeOnline[legacyNumber] == true) NodeStatus.ONLINE else NodeStatus.UNKNOWN
-    }
-
-    private companion object {
-        val LEGACY_NODE_ID = Regex("""node(\d)""")
-    }
+    fun nodeStatus(nodeId: String): NodeStatus = nodeHealth[nodeId]?.status ?: NodeStatus.UNKNOWN
 }
