@@ -187,6 +187,7 @@ private fun errorMessageFor(code: String): String = when {
     code.startsWith("INVALID_LOGIN_CREDENTIALS") || code.startsWith("INVALID_PASSWORD") || code.startsWith("EMAIL_NOT_FOUND") ->
         stringResource(R.string.auth_error_wrong_credentials)
     code.startsWith("TOO_MANY_ATTEMPTS") -> stringResource(R.string.auth_error_too_many)
+    code == zhb.company.smart_home.data.remote.FirebaseAuthApi.NETWORK_ERROR -> stringResource(R.string.auth_error_network)
     else -> stringResource(R.string.auth_error_generic)
 }
 

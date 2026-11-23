@@ -16,6 +16,7 @@
     <string name="auth_error_too_many">Previše pokušaja. Sačekaj malo pa pokušaj ponovo.</string>
     <string name="auth_use_biometrics">Otključaj otiskom prsta</string>
     <string name="auth_error_generic">Došlo je do greške, pokušajte ponovo.</string>
+    <string name="auth_error_network">Nema veze sa internetom (Firebase nije dostupan). Proverite mrežu pa pokušajte ponovo.</string>
     <string name="auth_error_invalid_email">Unesite ispravnu email adresu.</string>
     <string name="auth_error_invalid_password">Lozinka mora imati najmanje 5 karaktera.</string>
 

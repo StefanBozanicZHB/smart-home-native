@@ -5,11 +5,9 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto
 
 /**
@@ -17,8 +15,6 @@ import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto
  * exactly as the Flutter app does (no caching - re-fetched on every login).
  */
 class FirebaseRtdbApi(private val httpClient: HttpClient) : MqttConfigSource {
-
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun fetchMqttClientConfig(idToken: String): Result<MqttClientConfigDto> {
         return runCatching {
@@ -33,7 +29,7 @@ class FirebaseRtdbApi(private val httpClient: HttpClient) : MqttConfigSource {
                 else -> null
             } ?: throw IllegalStateException("No MQTT client config found in Firebase response")
 
-            json.decodeFromJsonElement<MqttClientConfigDto>(firstEntry)
+            MqttClientConfigDto.fromJson(firstEntry)
         }
     }
 }
