@@ -26,12 +26,11 @@ class GoodNightUseCaseTest {
     }
 
     @Test
-    fun `turns off every device that is on, including the AC`() = runTest {
+    fun `turns off every device that is on`() = runTest {
         val connector = FakeMqttConnector()
         val repo = connectedRepository(connector)
         repo.handleMessage(MqttTopics.node7BulbStatus(1), "1", retained = false)
         repo.handleMessage(MqttTopics.node7BulbStatus(3), "1", retained = false)
-        repo.setAcPower(true)
 
         val changed = GoodNightUseCase(repo, Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))()
 
@@ -41,11 +40,9 @@ class GoodNightUseCaseTest {
             listOf(
                 MqttTopics.node7BulbControl(1) to "0",
                 MqttTopics.node7BulbControl(3) to "0",
-                MqttTopics.NODE8_AC_COMMAND to AcCommandBuilder.POWER_OFF_COMMAND,
             ),
             sent,
         )
-        assertFalse(repo.state.value.acOn)
     }
 
     @Test

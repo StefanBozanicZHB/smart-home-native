@@ -8,8 +8,8 @@ object MqttTopics {
     // node1 - fountain and sprinklers: new JSON API, see data/garden/Node1Repository.kt.
 
     /**
-     * `s` on this topic: the nodes still on old firmware (node7 shed, node8 upper floor) publish
-     * their state. Nodes with the new firmware ignore it. Remove once node7 and node8 are migrated.
+     * `s` on this topic: node7 (shed), the only node still on old firmware, publishes its state.
+     * Nodes with the new firmware ignore it. Remove once node7 is migrated or dropped.
      */
     const val LEGACY_STATE_REQUEST = "$BASE/node1/stanje"
 
@@ -41,19 +41,10 @@ object MqttTopics {
     const val NODE7_DOOR_CONTROL = "$BASE/node7/vrata"
     const val NODE7_DOOR_STATUS = "$BASE/node7/vrata/stanje"
 
-    // node8 - first floor living room + AC
+    // node8 - living room, upper floor (node8-2.0.0, the same as node4): AHT10, calibrated on the
+    // node; values deleted (empty retained message) after 5 min without a valid reading.
+    const val NODE8_TEMPERATURE = "$BASE/node8/temperature"
     const val NODE8_HUMIDITY = "$BASE/node8/humidity"
-    const val NODE8_TEMPERATURE = "$BASE/node8/temp"
-    const val NODE8_GAS = "$BASE/node8/gas"
-    // A/C state is stored retained on the broker by the apps (no node reads it); same topics as the Flutter app.
-    const val NODE8_AC_MODE = "$BASE/node8/ac/mode"
-    const val NODE8_AC_FAN = "$BASE/node8/ac/fan"
-    const val NODE8_AC_TEMP = "$BASE/node8/ac/temp"
-    const val NODE8_AC_COMMAND = "$BASE/node8/aq"
-    const val NODE8_MELODY = "$BASE/node8/melody"
-
-    /** The hardware calibration offset applied to node8's raw temperature reading. */
-    const val NODE8_TEMP_CALIBRATION_OFFSET = -6.0
 
     /** Regex used to extract the node number from an incoming topic, e.g. "bozaSub/kuca/node3/..." -> 3. */
     val NODE_NUMBER_REGEX = Regex("""bozaSub/kuca/node(\d)""")

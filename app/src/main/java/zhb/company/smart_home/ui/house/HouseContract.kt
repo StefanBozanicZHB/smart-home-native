@@ -1,27 +1,23 @@
 package zhb.company.smart_home.ui.house
 
-import zhb.company.smart_home.domain.model.AcFanSpeed
-import zhb.company.smart_home.domain.model.AcMode
+import zhb.company.smart_home.ui.format.NO_VALUE
 
-data class HouseState(
-    val groundOnline: Boolean = false,
-    val groundTemperature: String = "--",
-    val groundHumidity: String = "--",
-    val upperOnline: Boolean = false,
-    val upperTemperature: String = "--",
-    val upperHumidity: String = "--",
-    val co2: String = "--",
-    val acOn: Boolean = false,
-    val acMode: AcMode = AcMode.COOL,
-    val acFanSpeed: AcFanSpeed = AcFanSpeed.AUTO,
-    val acTemp: Int = 22,
+/**
+ * One room with its sensor node. Temperature and humidity come from every room node today;
+ * [extras] holds whatever a node adds later (e.g. presence from the LD2410 radar planned for
+ * Node 8) without changing the screen's structure.
+ */
+data class RoomUi(
+    val online: Boolean = false,
+    val temperature: String = NO_VALUE,
+    val humidity: String = NO_VALUE,
+    val extras: List<RoomReading> = emptyList(),
 )
 
-sealed interface HouseIntent {
-    data object PowerOn : HouseIntent
-    data object PowerOff : HouseIntent
-    data class SelectMode(val mode: AcMode) : HouseIntent
-    data class SelectFanSpeed(val fanSpeed: AcFanSpeed) : HouseIntent
-    data object IncreaseTemp : HouseIntent
-    data object DecreaseTemp : HouseIntent
-}
+/** An extra reading shown as one more tile: a label resource and a ready-to-show value. */
+data class RoomReading(@androidx.annotation.StringRes val label: Int, val value: String)
+
+data class HouseState(
+    val ground: RoomUi = RoomUi(),
+    val upper: RoomUi = RoomUi(),
+)

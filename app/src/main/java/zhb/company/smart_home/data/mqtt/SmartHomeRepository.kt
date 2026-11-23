@@ -16,8 +16,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.domain.computeListPowerDevice
-import zhb.company.smart_home.domain.model.AcFanSpeed
-import zhb.company.smart_home.domain.model.AcMode
 import zhb.company.smart_home.domain.model.SmartHomeState
 
 /**
@@ -202,7 +200,7 @@ class SmartHomeRepository(
             }
             connection = connected
             _connectionState.value = MqttConnectionState.Connected
-            // node7 and node8 (old firmware) publish their state on request; the others use retained topics.
+            // node7 (old firmware) publishes its state on request; the others use retained topics.
             connected.publish(MqttTopics.LEGACY_STATE_REQUEST, "s", retain = false, qos = MqttQualityOfService.EXACTLY_ONCE)
             return true
         }
@@ -239,11 +237,6 @@ class SmartHomeRepository(
     ) {
         val current = connection ?: return
         withContext(ioDispatcher) { current.publish(topic, payload, retain, qos) }
-    }
-
-    /** AC power on/off has no dedicated status topic on the wire - tracked client-side only. */
-    fun setAcPower(on: Boolean) {
-        _state.update { it.copy(acOn = on).let { s -> s.copy(listPowerDevice = computeListPowerDevice(s)) } }
     }
 
     /** Applies one incoming MQTT message to [state]. Internal so tests can feed messages directly. */
@@ -301,15 +294,9 @@ class SmartHomeRepository(
             topic == MqttTopics.node7BulbStatus(3) -> state.copy(bulbSmallHome3 = onOff)
             topic == MqttTopics.NODE7_DOOR_STATUS -> state.copy(doorSmallHome = onOff)
 
-            topic == MqttTopics.NODE8_TEMPERATURE -> {
-                val calibrated = payload.toDoubleOrNull()?.plus(MqttTopics.NODE8_TEMP_CALIBRATION_OFFSET)
-                state.copy(temperatureLivingRoomUp = formatTemperature(calibrated?.toString() ?: payload))
-            }
+            // Calibrated on the node since node8-2.0.0; an empty payload (value withdrawn) shows as "--".
+            topic == MqttTopics.NODE8_TEMPERATURE -> state.copy(temperatureLivingRoomUp = formatTemperature(payload))
             topic == MqttTopics.NODE8_HUMIDITY -> state.copy(humidityLivingRoomUp = payload)
-            topic == MqttTopics.NODE8_GAS -> state.copy(gasLivingRoomUp = payload)
-            topic == MqttTopics.NODE8_AC_MODE -> state.copy(acMode = AcMode.fromCode(payload))
-            topic == MqttTopics.NODE8_AC_FAN -> state.copy(acFanSpeed = AcFanSpeed.fromCode(payload))
-            topic == MqttTopics.NODE8_AC_TEMP -> state.copy(acTemp = payload.toIntOrNull() ?: state.acTemp)
 
             else -> state
         }

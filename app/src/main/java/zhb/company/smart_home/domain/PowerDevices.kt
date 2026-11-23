@@ -26,6 +26,5 @@ object PowerDevices {
 }
 
 fun computeListPowerDevice(state: SmartHomeState): List<String> {
-    val base = PowerDevices.ALL.filter { it.isOn(state) }.map { it.label }
-    return if (state.acOn) base + "Klima uređaj" else base
+    return PowerDevices.ALL.filter { it.isOn(state) }.map { it.label }
 }

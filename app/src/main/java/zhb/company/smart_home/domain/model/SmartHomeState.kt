@@ -31,14 +31,9 @@ data class SmartHomeState(
     val bulbSmallHome3: Boolean = false,
     val fingerSensorStatus: String = "",
 
-    // node8 - first floor living room + AC
+    // node8 - living room, upper floor ("" while the node has withdrawn a value)
     val temperatureLivingRoomUp: String = "--",
     val humidityLivingRoomUp: String = "--",
-    val gasLivingRoomUp: String = "--",
-    val acMode: AcMode = AcMode.COOL,
-    val acFanSpeed: AcFanSpeed = AcFanSpeed.AUTO,
-    val acTemp: Int = 22,
-    val acOn: Boolean = false,
 
     // legacy rule: true once a live (non-retained) message arrived from node N since connecting
     val nodeOnline: Map<Int, Boolean> = emptyMap(),
@@ -60,27 +55,5 @@ data class SmartHomeState(
 
     private companion object {
         val LEGACY_NODE_ID = Regex("""node(\d)""")
-    }
-}
-
-enum class AcMode(val code: String) {
-    COOL("0"),
-    AUTO("8"),
-    FAN("4"),
-    HEAT("C");
-
-    companion object {
-        fun fromCode(code: String): AcMode = entries.firstOrNull { it.code == code } ?: COOL
-    }
-}
-
-enum class AcFanSpeed(val code: String) {
-    AUTO("5"),
-    MIN("4"),
-    MED("2"),
-    MAX("1");
-
-    companion object {
-        fun fromCode(code: String): AcFanSpeed = entries.firstOrNull { it.code == code } ?: AUTO
     }
 }

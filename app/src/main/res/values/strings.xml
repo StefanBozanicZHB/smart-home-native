@@ -399,27 +399,6 @@
     <string name="house_temperature">Temperatura</string>
     <string name="house_humidity">Vlažnost</string>
     <string name="house_air_quality">Kvalitet vazduha</string>
-    <string name="house_air_short">Vazduh</string>
-    <string name="house_ac_on">Uključena</string>
-    <string name="house_ac_off">Isključena</string>
-    <string name="house_ac_hint">Promena režima ili temperature šalje komandu klimi.</string>
-    <string name="ac_title">Klima uređaj</string>
-    <string name="ac_power_on">Uključi</string>
-    <string name="ac_power_off">Isključi</string>
-    <string name="ac_temp_decrease">Smanji temperaturu</string>
-    <string name="ac_temp_increase">Povećaj temperaturu</string>
-    <string name="ac_mode_caption">Mod rada</string>
-    <string name="ac_mode_cool">Hlađenje</string>
-    <string name="ac_mode_auto">Automatski</string>
-    <string name="ac_mode_fan">Ventilator</string>
-    <string name="ac_mode_heat">Grejanje</string>
-    <string name="ac_fan_caption">Brzina ventilatora</string>
-    <string name="ac_fan_auto">Auto</string>
-    <string name="ac_fan_min">Min</string>
-    <string name="ac_fan_med">Sred.</string>
-    <string name="ac_fan_max">Maks.</string>
-    <string name="ac_melody">Melodija</string>
-    <string name="co2_level">CO2</string>
 
     <!-- Small home / shed -->
     <string name="small_home_not_in_use">Šupa se trenutno ne koristi (čvor node7 je isključen).</string>

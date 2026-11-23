@@ -17,7 +17,7 @@ class HomeLayoutTest {
 
     private val idle = HomeSignals(
         heatingMainSwitch = false, sprinklerAuto = false, sprinklerRunning = false,
-        poolPumpOn = false, acOn = false,
+        poolPumpOn = false,
     )
 
     @Test
@@ -37,15 +37,15 @@ class HomeLayoutTest {
     }
 
     @Test
-    fun `sprinklers on auto alone are summer, without pool or AC tiles`() {
+    fun `sprinklers on auto alone are summer, without the pool tile`() {
         val sections = HomeLayout.sections(idle.copy(sprinklerAuto = true))
         assertTrue(GARDEN_HERO in sections)
         assertFalse(SUMMER_TILES in sections)
     }
 
     @Test
-    fun `AC on in a heated house shows both, heating first`() {
-        val sections = HomeLayout.sections(idle.copy(heatingMainSwitch = true, acOn = true))
+    fun `pool pump on in a heated house shows both, heating first`() {
+        val sections = HomeLayout.sections(idle.copy(heatingMainSwitch = true, poolPumpOn = true))
         assertEquals(listOf(HEATING_HERO, GARDEN_HERO, SUMMER_TILES), sections.take(3))
         assertFalse(HEATING_ROW in sections)
         assertFalse(SPRINKLERS_ROW in sections)

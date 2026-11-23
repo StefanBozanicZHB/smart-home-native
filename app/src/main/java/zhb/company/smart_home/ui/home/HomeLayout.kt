@@ -27,23 +27,22 @@ data class HomeSignals(
     val sprinklerAuto: Boolean,
     val sprinklerRunning: Boolean,
     val poolPumpOn: Boolean,
-    val acOn: Boolean,
 )
 
 /**
  * Chooses what is large on the home screen from device state, not from the calendar:
  * - heating main switch on → large heating card, otherwise a single line;
- * - sprinklers on auto or running, pool or A/C on → large yard card (summer), otherwise a line;
+ * - sprinklers on auto or running, or the pool pump on → large yard card (summer), otherwise a line;
  * - both active (spring/autumn) → both large, heating first.
  * Alerts are not part of this list: they always come first.
  */
 object HomeLayout {
     fun sections(s: HomeSignals): List<HomeSection> {
-        val outdoorSeason = s.sprinklerAuto || s.sprinklerRunning || s.poolPumpOn || s.acOn
+        val outdoorSeason = s.sprinklerAuto || s.sprinklerRunning || s.poolPumpOn
         return buildList {
             if (s.heatingMainSwitch) add(HomeSection.HEATING_HERO)
             if (outdoorSeason) add(HomeSection.GARDEN_HERO)
-            if (s.poolPumpOn || s.acOn) add(HomeSection.SUMMER_TILES)
+            if (s.poolPumpOn) add(HomeSection.SUMMER_TILES)
             add(HomeSection.ROOM_TEMPS)
             add(HomeSection.DEVICES)
             if (!s.heatingMainSwitch) add(HomeSection.HEATING_ROW)

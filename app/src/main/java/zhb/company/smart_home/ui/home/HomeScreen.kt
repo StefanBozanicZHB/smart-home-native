@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.DoorFront
@@ -49,7 +48,6 @@ import org.koin.compose.koinInject
 import zhb.company.smart_home.R
 import zhb.company.smart_home.data.history.HistoryPeriod
 import zhb.company.smart_home.data.notifications.NotificationInbox
-import zhb.company.smart_home.domain.model.AcMode
 import zhb.company.smart_home.ui.components.ActionTile
 import zhb.company.smart_home.ui.components.AlertBanner
 import zhb.company.smart_home.ui.components.BigValue
@@ -128,7 +126,7 @@ private fun HomeContent(
                 when (section) {
                     HomeSection.HEATING_HERO -> HeatingHeroCard(state.heating, onOpenHeating, history)
                     HomeSection.GARDEN_HERO -> GardenHeroCard(state, onOpenGarden)
-                    HomeSection.SUMMER_TILES -> SummerTiles(state, onOpenGarden, onOpenHouse)
+                    HomeSection.SUMMER_TILES -> SummerTiles(state, onOpenGarden)
                     HomeSection.ROOM_TEMPS -> RoomTemps(state, showOutdoor = HomeSection.GARDEN_HERO !in state.sections)
                     HomeSection.DEVICES -> Devices(state, onIntent)
                     HomeSection.HEATING_ROW -> CompactRow(
@@ -273,7 +271,7 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit, onOpenHouse: () -> Unit) {
+private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit) {
     val tiles = buildList<@Composable (Modifier) -> Unit> {
         if (state.poolPumpOn) add { m ->
             ActionTile(
@@ -284,24 +282,8 @@ private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit, onOpenHouse:
                 modifier = m,
             )
         }
-        if (state.acOn) add { m ->
-            ActionTile(
-                icon = Icons.Outlined.AcUnit,
-                label = "${stringResource(R.string.ac_title)} · ${state.acTemp}°",
-                detail = stringResource(acModeLabel(state.acMode)),
-                onClick = onOpenHouse,
-                modifier = m,
-            )
-        }
     }
     TileGrid(columns = adaptiveColumns(2), tiles = tiles)
-}
-
-private fun acModeLabel(mode: AcMode): Int = when (mode) {
-    AcMode.COOL -> R.string.ac_mode_cool
-    AcMode.AUTO -> R.string.ac_mode_auto
-    AcMode.FAN -> R.string.ac_mode_fan
-    AcMode.HEAT -> R.string.ac_mode_heat
 }
 
 @Composable
@@ -421,7 +403,7 @@ private fun lastAccessText(event: zhb.company.smart_home.domain.door.AccessEvent
 private val PreviewWinter = HomeState(
     connected = true,
     alerts = listOf(HomeAlert.NodeOffline("Ulazna vrata", lastWill = false)),
-    sections = HomeLayout.sections(HomeSignals(true, false, false, false, false)),
+    sections = HomeLayout.sections(HomeSignals(true, false, false, false)),
     heating = HeatingSummary(
         online = true, mainSwitch = true, pump = true, flowTemp = "34.3",
         status = zhb.company.smart_home.domain.heating.HeatPumpStatus.Running(minutes = 12, demand = true, minRunLeftMinutes = null),
@@ -434,12 +416,12 @@ private val PreviewWinter = HomeState(
 
 private val PreviewSummer = HomeState(
     connected = true,
-    sections = HomeLayout.sections(HomeSignals(false, true, false, true, true)),
+    sections = HomeLayout.sections(HomeSignals(false, true, false, true)),
     heating = HeatingSummary(online = true, mainSwitch = false),
     outdoorTemp = "31.2", groundTemp = "25.1", groundHumidity = "52", upperTemp = "26.8", upperHumidity = "48",
-    poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true, acOn = true, acTemp = 24,
+    poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true,
     yardNodeOnline = true, fountainNodeOnline = true, poolNodeOnline = true, doorNodeOnline = true,
-    devicesOnList = listOf("Pumpa bazena", "Klima uređaj"),
+    devicesOnList = listOf("Pumpa bazena"),
 )
 
 @androidx.compose.ui.tooling.preview.Preview(name = "Home - winter", heightDp = 900)

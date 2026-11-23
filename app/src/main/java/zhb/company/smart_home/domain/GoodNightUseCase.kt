@@ -6,7 +6,6 @@ import kotlinx.coroutines.coroutineScope
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.garden.Node6Repository
-import zhb.company.smart_home.data.mqtt.MqttTopics
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 
 /**
@@ -25,10 +24,6 @@ class GoodNightUseCase(
         val state = repository.state.value
         val onDevices = PowerDevices.ALL.filter { it.isOn(state) }
         onDevices.forEach { repository.publish(it.controlTopic, it.offPayload) }
-        if (state.acOn) {
-            repository.publish(MqttTopics.NODE8_AC_COMMAND, AcCommandBuilder.POWER_OFF_COMMAND)
-            repository.setAcPower(false)
-        }
         val yard = node1.snapshot.value.state
         val lights = node2.state.value
         val jsonCommands = buildList<suspend () -> Unit> {
@@ -40,6 +35,6 @@ class GoodNightUseCase(
             if (node6.state.value?.pump == true) add { node6.setPump(false) }
         }
         coroutineScope { jsonCommands.map { async { it() } }.awaitAll() }
-        return onDevices.isNotEmpty() || state.acOn || jsonCommands.isNotEmpty()
+        return onDevices.isNotEmpty() || jsonCommands.isNotEmpty()
     }
 }

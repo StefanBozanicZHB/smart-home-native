@@ -1,7 +1,6 @@
 package zhb.company.smart_home.ui.home
 
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
-import zhb.company.smart_home.domain.model.AcMode
 import zhb.company.smart_home.ui.format.NO_VALUE
 
 /** Something wrong right now; shown at the top of the home screen until it is resolved. */
@@ -36,7 +35,7 @@ data class HomeState(
     val connected: Boolean = false,
     val alerts: List<HomeAlert> = emptyList(),
     val sections: List<HomeSection> = HomeLayout.sections(
-        HomeSignals(false, false, false, false, false),
+        HomeSignals(false, false, false, false),
     ),
     val heating: HeatingSummary = HeatingSummary(),
 
@@ -56,9 +55,6 @@ data class HomeState(
     val ledStripOn: Boolean = false,
     val fountainOn: Boolean = false,
     val poolPumpOn: Boolean = false,
-    val acOn: Boolean = false,
-    val acTemp: Int = 22,
-    val acMode: AcMode = AcMode.COOL,
 
     /** Online state of the nodes behind the home tiles; an offline node's tile is disabled. */
     val yardNodeOnline: Boolean = false,

@@ -157,23 +157,32 @@ class SmartHomeRepositoryTest {
     }
 
     @Test
-    fun `node8 temperature gets the calibration offset`() {
+    fun `node8 climate from the English topics, calibrated on the node, deleted value shows as missing`() {
         val repo = repository(FakeMqttConnector())
 
-        repo.handleMessage(MqttTopics.NODE8_TEMPERATURE, "28.25", retained = false)
-
+        repo.handleMessage("bozaSub/kuca/node8/temperature", "22.25", retained = true)
+        repo.handleMessage("bozaSub/kuca/node8/humidity", "40.5", retained = true)
+        repo.handleMessage("bozaSub/kuca/node8/temp", "28.25", retained = true) // old topic: ignored
+        // No correction in the app any more: the node applies its own offset.
         assertEquals("22.25", repo.state.value.temperatureLivingRoomUp)
+        assertEquals("40.5", repo.state.value.humidityLivingRoomUp)
+
+        // AHT10 failed for 5 min: the node deletes the retained values.
+        repo.handleMessage("bozaSub/kuca/node8/temperature", "", retained = true)
+        repo.handleMessage("bozaSub/kuca/node8/humidity", "", retained = true)
+        assertEquals("--", zhb.company.smart_home.ui.format.Readings.temperature(repo.state.value.temperatureLivingRoomUp))
+        assertEquals("--", zhb.company.smart_home.ui.format.Readings.percent(repo.state.value.humidityLivingRoomUp))
     }
 
     @Test
     fun `only live (non-retained) messages mark a node online`() {
         val repo = repository(FakeMqttConnector())
 
-        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "40", retained = true)
-        assertFalse(repo.state.value.isNodeOnline(8))
+        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "0", retained = true)
+        assertFalse(repo.state.value.isNodeOnline(7))
 
-        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "41", retained = false)
-        assertTrue(repo.state.value.isNodeOnline(8))
+        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "1", retained = false)
+        assertTrue(repo.state.value.isNodeOnline(7))
     }
 
     @Test
@@ -200,12 +209,12 @@ class SmartHomeRepositoryTest {
         repo.handleMessage("bozaSub/kuca/node5/status", "offline", retained = true)
         assertEquals(NodeStatus.OFFLINE, repo.state.value.nodeStatus("node5"))
 
-        // node8 (legacy): unknown until a live message, then online with no timeout.
-        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node8"))
-        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "40", retained = false)
+        // node7 (legacy): unknown until a live message, then online with no timeout.
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node7"))
+        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "1", retained = false)
         now = 10_000_000
         repo.refreshNodeHealth()
-        assertTrue(repo.state.value.isNodeOnline(8))
+        assertTrue(repo.state.value.isNodeOnline(7))
     }
 
     @Test
@@ -214,26 +223,12 @@ class SmartHomeRepositoryTest {
         val repo = repository(connector)
         repo.connect("token")
         repo.handleMessage("bozaSub/kuca/node4/status", "online", retained = true)
-        repo.handleMessage(MqttTopics.NODE8_HUMIDITY, "40", retained = false)
+        repo.handleMessage(MqttTopics.NODE7_DOOR_STATUS, "1", retained = false)
 
         connector.listeners.last().onDisconnected("network lost")
 
         assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node4"))
-        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node8"))
-    }
-
-    @Test
-    fun `AC state is read from the same retained topics as the Flutter app`() {
-        val repo = repository(FakeMqttConnector())
-
-        repo.handleMessage("bozaSub/kuca/node8/ac/mode", "C", retained = true)
-        repo.handleMessage("bozaSub/kuca/node8/ac/fan", "1", retained = true)
-        repo.handleMessage("bozaSub/kuca/node8/ac/temp", "24", retained = true)
-
-        val state = repo.state.value
-        assertEquals(zhb.company.smart_home.domain.model.AcMode.HEAT, state.acMode)
-        assertEquals(zhb.company.smart_home.domain.model.AcFanSpeed.MAX, state.acFanSpeed)
-        assertEquals(24, state.acTemp)
+        assertEquals(NodeStatus.UNKNOWN, repo.state.value.nodeStatus("node7"))
     }
 
     @Test
@@ -252,13 +247,4 @@ class SmartHomeRepositoryTest {
         assertEquals("--", zhb.company.smart_home.ui.format.Readings.percent(repo.state.value.humidityLivingRoomDown))
     }
 
-    @Test
-    fun `AC power is tracked client-side and listed as a power device`() {
-        val repo = repository(FakeMqttConnector())
-
-        repo.setAcPower(true)
-
-        assertTrue(repo.state.value.acOn)
-        assertTrue("Klima uređaj" in repo.state.value.listPowerDevice)
-    }
 }
