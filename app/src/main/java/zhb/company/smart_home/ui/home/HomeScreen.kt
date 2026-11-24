@@ -33,7 +33,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +88,8 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val history by historyViewModel.state.collectAsStateWithLifecycle()
     val inboxEntries by inbox.entries.collectAsStateWithLifecycle()
-    val toLabel = inboxEntries.count { it.needsLabel }
+    val toLabel = remember(inboxEntries) { inboxEntries.count { it.needsLabel } }
+    val now by rememberMinuteClock()
     // Only the winter heating card has a chart.
     if (HomeSection.HEATING_HERO in state.sections) HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.DAY))
     val context = LocalContext.current
@@ -97,7 +102,7 @@ fun HomeScreen(
         }
     }
 
-    HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse, history = history, toLabel = toLabel, onOpenNotifications = onOpenNotifications)
+    HomeContent(state, viewModel::onIntent, onOpenHeating, onOpenGarden, onOpenHouse, now, history = history, toLabel = toLabel, onOpenNotifications = onOpenNotifications)
 
     if (state.showDevicesOnDialog) DevicesOnDialog(state.devicesOnList) { viewModel.onIntent(HomeIntent.DismissDevicesOnDialog) }
     if (state.showUnlockConfirm) UnlockDialog(state.frontDoor, viewModel::onIntent)
@@ -110,7 +115,7 @@ private fun HomeContent(
     onOpenHeating: () -> Unit,
     onOpenGarden: () -> Unit,
     onOpenHouse: () -> Unit,
-    now: LocalDateTime = LocalDateTime.now(),
+    now: LocalDateTime,
     history: HistoryState = HistoryState(),
     toLabel: Int = 0,
     onOpenNotifications: () -> Unit = {},
@@ -164,8 +169,7 @@ private fun HomeHeader(connected: Boolean, now: LocalDateTime, toLabel: Int = 0,
             else -> R.string.home_greeting_evening
         },
     )
-    val date = now.format(DateTimeFormatter.ofPattern("EEEE, HH:mm", Locale.forLanguageTag("sr-Latn")))
-        .replaceFirstChar { it.titlecase(Locale.forLanguageTag("sr-Latn")) }
+    val date = now.format(HEADER_DATE).replaceFirstChar { it.titlecase(SR) }
     ScreenHeader(title = greeting, subtitle = date, horizontalPadding = 0.dp) {
         BadgedBox(
             badge = { if (toLabel > 0) Badge { Text(toLabel.toString()) } },
@@ -179,6 +183,22 @@ private fun HomeHeader(connected: Boolean, now: LocalDateTime, toLabel: Int = 0,
             text = stringResource(if (connected) R.string.home_connected else R.string.home_disconnected),
             tone = if (connected) Tone.ACTIVE else Tone.DANGER,
         )
+    }
+}
+
+private val SR = Locale.forLanguageTag("sr-Latn")
+private val HEADER_DATE = DateTimeFormatter.ofPattern("EEEE, HH:mm", SR)
+
+/**
+ * The current time for the header ("subota, 21:35"), moved on at the start of every minute, so the
+ * clock keeps going without other updates and the header recomposes once a minute at most.
+ */
+@Composable
+private fun rememberMinuteClock(): State<LocalDateTime> = produceState(LocalDateTime.now()) {
+    while (true) {
+        val now = LocalDateTime.now()
+        value = now
+        delay(60_000L - now.second * 1_000L - now.nano / 1_000_000L)
     }
 }
 
