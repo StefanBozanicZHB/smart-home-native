@@ -1,25 +1,26 @@
 package zhb.company.smart_home.di
 
-import org.koin.core.module.dsl.viewModel
-import zhb.company.smart_home.ui.garden.IrrigationPlanViewModel
-import zhb.company.smart_home.ui.history.HistoryViewModel
-import zhb.company.smart_home.ui.notifications.NotificationsViewModel
 import org.koin.android.ext.koin.androidContext
-import zhb.company.smart_home.ui.system.NodeDetailViewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 import zhb.company.smart_home.ui.ThemeStateHolder
 import zhb.company.smart_home.ui.auth.AuthViewModel
 import zhb.company.smart_home.ui.garden.GardenViewModel
+import zhb.company.smart_home.ui.garden.IrrigationPlanViewModel
+import zhb.company.smart_home.ui.garden.LightSchedulesViewModel
 import zhb.company.smart_home.ui.heating.HeatingViewModel
 import zhb.company.smart_home.ui.heating.PipeCalibrationViewModel
 import zhb.company.smart_home.ui.heating.PipeSensorsViewModel
+import zhb.company.smart_home.ui.history.HistoryViewModel
 import zhb.company.smart_home.ui.home.HomeViewModel
 import zhb.company.smart_home.ui.house.HouseViewModel
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectViewModel
+import zhb.company.smart_home.ui.notifications.NotificationsViewModel
 import zhb.company.smart_home.ui.reports.ReportDetailViewModel
 import zhb.company.smart_home.ui.reports.ReportsViewModel
 import zhb.company.smart_home.ui.settings.ConnectionsViewModel
 import zhb.company.smart_home.ui.settings.SettingsViewModel
+import zhb.company.smart_home.ui.system.NodeDetailViewModel
 
 val viewModelModule = module {
     viewModel { AuthViewModel(get()) }
@@ -27,6 +28,7 @@ val viewModelModule = module {
     viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { GardenViewModel(get(), get(), get(), get()) }
     viewModel { IrrigationPlanViewModel(get(), get()) }
+    viewModel { LightSchedulesViewModel(get(), get(), get()) }
     viewModel { HeatingViewModel(get(), get()) }
     viewModel { PipeSensorsViewModel(get(), get()) }
     viewModel { PipeCalibrationViewModel(get()) }

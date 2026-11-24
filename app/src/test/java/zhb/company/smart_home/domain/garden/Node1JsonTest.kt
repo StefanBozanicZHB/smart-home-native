@@ -5,6 +5,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import zhb.company.smart_home.domain.node.NodeCommandResult
+import zhb.company.smart_home.domain.schedule.OutputSchedule
+import zhb.company.smart_home.domain.schedule.TodayWindow
 
 /** Payloads from smart-home-mcu docs/mqtt_topics.md, section Node 1 (commit 6d7ea71). */
 class Node1JsonTest {
@@ -92,5 +94,22 @@ class Node1JsonTest {
             NodeCommandResult("config/set", "a1", ok = true, rev = 5, error = null, saved = false),
             NodeCommandResult.parse("""{"cmd":"config/set","id":"a1","ok":true,"rev":5,"saved":false}"""),
         )
+    }
+
+    @Test
+    fun `fountain schedules of node1-2_1_0, and none before`() {
+        assertNull("2.0.0 has no fountain key", Node1Json.parseConfig(configDoc)!!.fountainSchedules)
+        val withFountain = configDoc.removeSuffix("}") +
+            ""","fountain":{"pump":null,"light":{"on":"sunset+20","off":"23:30","days":["mon","tue","wed","thu","fri","sat","sun"]}}}"""
+        val c = Node1Json.parseConfig(withFountain)!!
+        assertEquals(listOf("pump", "light"), c.fountainSchedules?.keys?.toList())
+        assertNull(c.fountainSchedules?.get("pump"))
+        assertEquals(OutputSchedule.DEFAULT, c.fountainSchedules?.get("light"))
+
+        val s = Node1Json.parseState(
+            stateDoc.replace(""""light_left":5400}""", """"light_left":null,"pump_today":null,"light_today":{"on":"16:52","off":"23:30"}}"""),
+        )!!
+        assertEquals(mapOf("pump" to null, "light" to TodayWindow("16:52", "23:30")), s.fountain.today)
+        assertEquals(emptyMap<String, TodayWindow?>(), Node1Json.parseState(stateDoc)!!.fountain.today)
     }
 }

@@ -32,13 +32,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import zhb.company.smart_home.R
 import org.koin.compose.koinInject
+import zhb.company.smart_home.R
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.ui.auth.AuthScreen
 import zhb.company.smart_home.ui.components.Motion
 import zhb.company.smart_home.ui.garden.GardenScreen
 import zhb.company.smart_home.ui.garden.IrrigationPlanScreen
+import zhb.company.smart_home.ui.garden.LightSchedulesScreen
 import zhb.company.smart_home.ui.heating.HeatingScreen
 import zhb.company.smart_home.ui.heating.PipeCalibrationScreen
 import zhb.company.smart_home.ui.heating.PipeSensorsScreen
@@ -137,7 +138,7 @@ fun SmartHomeNavGraph(
         Destination.HeatingSensors.route, Destination.HeatingCalibration.route,
         Destination.Reports.route, Destination.ReportDetail.route -> Destination.Heating.route
         Destination.Notifications.route -> Destination.Home.route
-        Destination.IrrigationPlan.route -> Destination.Garden.route
+        Destination.IrrigationPlan.route, Destination.LightSchedules.route -> Destination.Garden.route
         else -> currentRoute
     }
     val tab: (Destination) -> Unit = { navController.navigateToTab(it.route) }
@@ -204,10 +205,16 @@ fun SmartHomeNavGraph(
                 )
             }
             composable(Destination.Garden.route) {
-                GardenScreen(onOpenPlan = { navController.navigate(Destination.IrrigationPlan.route) })
+                GardenScreen(
+                    onOpenPlan = { navController.navigate(Destination.IrrigationPlan.route) },
+                    onOpenSchedules = { navController.navigate(Destination.LightSchedules.route) },
+                )
             }
             composable(Destination.IrrigationPlan.route) {
                 IrrigationPlanScreen(onBack = { navController.navigateUp() })
+            }
+            composable(Destination.LightSchedules.route) {
+                LightSchedulesScreen(onBack = { navController.navigateUp() })
             }
             composable(Destination.Heating.route) {
                 HeatingScreen(

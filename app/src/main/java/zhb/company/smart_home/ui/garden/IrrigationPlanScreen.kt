@@ -44,7 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,20 +71,20 @@ import zhb.company.smart_home.ui.heating.ScheduleTimePickerDialog
 fun IrrigationPlanScreen(onBack: () -> Unit, viewModel: IrrigationPlanViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val leave = { if (state.dirty) viewModel.onIntent(PlanIntent.RequestLeave) else onBack() }
     BackHandler(enabled = state.dirty) { viewModel.onIntent(PlanIntent.RequestLeave) }
 
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
         val text = when (message) {
-            PlanMessage.Saved -> context.getString(R.string.heating_msg_saved)
-            PlanMessage.NotSaved -> context.getString(R.string.garden_msg_not_saved)
-            PlanMessage.Paused -> context.getString(R.string.plan_msg_paused)
-            PlanMessage.PauseCleared -> context.getString(R.string.plan_msg_pause_cleared)
-            is PlanMessage.Rejected -> context.getString(R.string.heating_msg_rejected, message.error)
-            PlanMessage.Timeout -> context.getString(R.string.heating_msg_timeout)
-            PlanMessage.NotConnected -> context.getString(R.string.heating_msg_not_connected)
+            PlanMessage.Saved -> resources.getString(R.string.heating_msg_saved)
+            PlanMessage.NotSaved -> resources.getString(R.string.garden_msg_not_saved)
+            PlanMessage.Paused -> resources.getString(R.string.plan_msg_paused)
+            PlanMessage.PauseCleared -> resources.getString(R.string.plan_msg_pause_cleared)
+            is PlanMessage.Rejected -> resources.getString(R.string.heating_msg_rejected, message.error)
+            PlanMessage.Timeout -> resources.getString(R.string.heating_msg_timeout)
+            PlanMessage.NotConnected -> resources.getString(R.string.heating_msg_not_connected)
         }
         viewModel.onIntent(PlanIntent.MessageShown)
         snackbar.showSnackbar(text)

@@ -3,6 +3,7 @@ package zhb.company.smart_home.ui.garden
 import zhb.company.smart_home.domain.garden.ActiveRun
 import zhb.company.smart_home.domain.garden.NextStart
 import zhb.company.smart_home.domain.garden.RunEvent
+import zhb.company.smart_home.domain.schedule.TodayWindow
 import zhb.company.smart_home.ui.format.NO_VALUE
 
 /** Sprinklers on Node 1: plan summary, the active run and the last run event. */
@@ -41,6 +42,13 @@ data class GardenState(
     val fountainPumpLeftSeconds: Int? = null,
     val fountainLightOn: Boolean = false,
     val fountainLightLeftSeconds: Int? = null,
+    /** Today's schedule window of each light and fountain output; null = no schedule or none today. */
+    val ledStripToday: TodayWindow? = null,
+    val bulbToday: TodayWindow? = null,
+    val fountainPumpToday: TodayWindow? = null,
+    val fountainLightToday: TodayWindow? = null,
+    /** Node 1 or Node 2 has firmware with schedules; only then is the schedules screen offered. */
+    val schedulesSupported: Boolean = false,
     val poolPumpOn: Boolean = false,
     val poolPumpLeftSeconds: Int? = null,
     /** Null while Node 6 does not report a heating relay (firmware before `node6-2.0.1`). */

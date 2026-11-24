@@ -1,5 +1,6 @@
 package zhb.company.smart_home.ui.auth
 
+import androidx.activity.compose.LocalActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
@@ -44,7 +45,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -63,7 +63,7 @@ import zhb.company.smart_home.ui.components.Tone
 @Composable
 fun AuthScreen(viewModel: AuthViewModel = koinViewModel(), onAuthenticated: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val activity = LocalContext.current as? FragmentActivity
+    val activity = LocalActivity.current as? FragmentActivity
 
     fun launchBiometricPrompt() {
         val fragmentActivity = activity ?: return

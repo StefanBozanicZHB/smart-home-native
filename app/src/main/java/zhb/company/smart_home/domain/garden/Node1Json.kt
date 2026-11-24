@@ -12,6 +12,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import zhb.company.smart_home.domain.node.NodeJson
+import zhb.company.smart_home.domain.schedule.ScheduleJson
 
 /**
  * Parses Node 1 payloads and builds its commands. A parse function returns null for a payload it
@@ -41,6 +42,7 @@ object Node1Json {
                 soakOnMax = limits?.int("soak_on_max") ?: d.soakOnMax,
                 soakOffMax = limits?.int("soak_off_max") ?: d.soakOffMax,
             ),
+            fountainSchedules = o.obj("fountain")?.let(ScheduleJson::parseSchedules),
         )
     }
 
@@ -63,6 +65,8 @@ object Node1Json {
                 pumpLeftSeconds = fountain?.int("pump_left"),
                 light = fountain?.bool("light") ?: false,
                 lightLeftSeconds = fountain?.int("light_left"),
+                today = fountain?.keys.orEmpty().filter { it.endsWith("_today") }
+                    .associate { it.removeSuffix("_today") to ScheduleJson.parseToday(fountain!![it]) },
             ),
             configRev = o.long("cfg_rev"),
             storage = o.string("storage"),

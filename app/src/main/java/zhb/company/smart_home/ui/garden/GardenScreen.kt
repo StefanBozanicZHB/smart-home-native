@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Grass
 import androidx.compose.material.icons.outlined.Light
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Pool
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Water
@@ -64,7 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -84,10 +85,12 @@ import zhb.company.smart_home.domain.garden.RunPhase
 import zhb.company.smart_home.domain.garden.RunSource
 import zhb.company.smart_home.domain.garden.SkipReason
 import zhb.company.smart_home.domain.garden.Weekday
+import zhb.company.smart_home.domain.schedule.TodayWindow
 import zhb.company.smart_home.ui.components.AlertBanner
 import zhb.company.smart_home.ui.components.Appearing
 import zhb.company.smart_home.ui.components.BigValue
 import zhb.company.smart_home.ui.components.CardHeader
+import zhb.company.smart_home.ui.components.CompactRow
 import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.DeviceTile
 import zhb.company.smart_home.ui.components.Motion
@@ -105,28 +108,28 @@ import zhb.company.smart_home.ui.format.Durations
 import zhb.company.smart_home.ui.theme.AppTheme
 
 @Composable
-fun GardenScreen(onOpenPlan: () -> Unit, viewModel: GardenViewModel = koinViewModel()) {
+fun GardenScreen(onOpenPlan: () -> Unit, onOpenSchedules: () -> Unit = {}, viewModel: GardenViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
         val text = when (message) {
-            GardenMessage.Started -> context.getString(R.string.garden_msg_started)
-            GardenMessage.Stopped -> context.getString(R.string.garden_msg_stopped)
-            GardenMessage.NoZones -> context.getString(R.string.garden_msg_no_zones)
-            GardenMessage.NotSaved -> context.getString(R.string.garden_msg_not_saved)
-            is GardenMessage.Rejected -> context.getString(R.string.heating_msg_rejected, message.error)
-            GardenMessage.Timeout -> context.getString(R.string.heating_msg_timeout)
-            GardenMessage.NotConnected -> context.getString(R.string.heating_msg_not_connected)
+            GardenMessage.Started -> resources.getString(R.string.garden_msg_started)
+            GardenMessage.Stopped -> resources.getString(R.string.garden_msg_stopped)
+            GardenMessage.NoZones -> resources.getString(R.string.garden_msg_no_zones)
+            GardenMessage.NotSaved -> resources.getString(R.string.garden_msg_not_saved)
+            is GardenMessage.Rejected -> resources.getString(R.string.heating_msg_rejected, message.error)
+            GardenMessage.Timeout -> resources.getString(R.string.heating_msg_timeout)
+            GardenMessage.NotConnected -> resources.getString(R.string.heating_msg_not_connected)
         }
         viewModel.onIntent(GardenIntent.MessageShown)
         snackbar.showSnackbar(text)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        GardenContent(state, viewModel::onIntent, onOpenPlan)
+        GardenContent(state, viewModel::onIntent, onOpenPlan, onOpenSchedules)
         SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
     if (state.showLocationDialog) {
@@ -150,7 +153,7 @@ fun GardenScreen(onOpenPlan: () -> Unit, viewModel: GardenViewModel = koinViewMo
 }
 
 @Composable
-private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenPlan: () -> Unit) {
+private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenPlan: () -> Unit, onOpenSchedules: () -> Unit = {}) {
     val offline = stringResource(R.string.home_node_offline_tile)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -178,7 +181,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                         DeviceTile(
                             Icons.Outlined.Water, stringResource(R.string.garden_fountain_pump), state.fountainPumpOn,
                             { onIntent(GardenIntent.SetFountainPump(it)) }, m,
-                            detail = waitingOr(GardenOutput.FOUNTAIN_PUMP in state.slow, state.fountainPumpLeftSeconds),
+                            detail = waitingOr(GardenOutput.FOUNTAIN_PUMP in state.slow, state.fountainPumpLeftSeconds, state.fountainPumpToday),
                             enabled = state.node1Online, disabledReason = if (state.node1Online) null else offline,
                         )
                     },
@@ -186,7 +189,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                         DeviceTile(
                             Icons.Outlined.Light, stringResource(R.string.garden_fountain_light), state.fountainLightOn,
                             { onIntent(GardenIntent.SetFountainLight(it)) }, m,
-                            detail = waitingOr(GardenOutput.FOUNTAIN_LIGHT in state.slow, state.fountainLightLeftSeconds),
+                            detail = waitingOr(GardenOutput.FOUNTAIN_LIGHT in state.slow, state.fountainLightLeftSeconds, state.fountainLightToday),
                             enabled = state.node1Online, disabledReason = if (state.node1Online) null else offline,
                         )
                     },
@@ -194,7 +197,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                         DeviceTile(
                             Icons.Outlined.Lightbulb, stringResource(R.string.garden_led_strip), state.ledStripOn,
                             { onIntent(GardenIntent.SetLedStrip(it)) }, m,
-                            detail = waitingOr(GardenOutput.LED_STRIP in state.slow, state.ledStripLeftSeconds),
+                            detail = waitingOr(GardenOutput.LED_STRIP in state.slow, state.ledStripLeftSeconds, state.ledStripToday),
                             enabled = state.yardOnline, disabledReason = if (state.yardOnline) null else offline,
                         )
                     },
@@ -202,7 +205,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                         DeviceTile(
                             Icons.Outlined.WbIncandescent, stringResource(R.string.garden_bulb), state.bulbOn,
                             { onIntent(GardenIntent.SetBulb(it)) }, m,
-                            detail = waitingOr(GardenOutput.BULB in state.slow, state.bulbLeftSeconds),
+                            detail = waitingOr(GardenOutput.BULB in state.slow, state.bulbLeftSeconds, state.bulbToday),
                             enabled = state.yardOnline, disabledReason = if (state.yardOnline) null else offline,
                         )
                     },
@@ -227,6 +230,12 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                         stringResource(R.string.garden_bulb_short) to { m: Int -> onIntent(GardenIntent.SetBulb(true, m)) },
                     ),
                 )
+            }
+        }
+        // Only once a node announces schedules (newer firmware).
+        if (state.schedulesSupported) {
+            animatedItem("garden-schedules") {
+                CompactRow(Icons.Outlined.Schedule, stringResource(R.string.schedules_open), onClick = onOpenSchedules)
             }
         }
         animatedItem("garden-8") { PoolCard(state, onIntent) }
@@ -458,11 +467,15 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
     }
 }
 
-/** "čeka čvor…" while the answer is late, else the time until the output switches off. */
+/**
+ * "čeka čvor…" while the answer is late, else the time until the output switches off, else
+ * today's schedule window ("danas 16:52–23:30").
+ */
 @Composable
-private fun waitingOr(waiting: Boolean, leftSeconds: Int?): String? = when {
+private fun waitingOr(waiting: Boolean, leftSeconds: Int?, today: TodayWindow? = null): String? = when {
     waiting -> stringResource(R.string.garden_waiting)
     leftSeconds != null -> stringResource(R.string.garden_off_in, leftText(leftSeconds))
+    today != null -> todayWindowText(today)
     else -> null
 }
 

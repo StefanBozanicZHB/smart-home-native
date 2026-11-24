@@ -32,12 +32,25 @@ class NodeCommandClient(
     /** Called on the MQTT client's thread with a `<node>/result` payload. */
     fun onResult(payload: String) {
         val result = NodeCommandResult.parse(payload) ?: return
-        result.id?.let { pending[it]?.complete(result) }
+        val key = result.id ?: commandKey(result.command)
+        pending[key]?.complete(result)
     }
 
     suspend fun send(topic: String, payload: (id: String) -> String): CommandOutcome {
         if (mqtt.connectionState.value !is MqttConnectionState.Connected) return CommandOutcome.NotConnected
-        val id = newId()
+        return sendAndAwait(newId(), topic, payload)
+    }
+
+    /**
+     * A command whose payload cannot carry an id (a bare JSON `null`, e.g. removing a schedule):
+     * the answer is matched by its `cmd` ([command], the topic after `<node>/`) instead.
+     */
+    suspend fun sendWithoutId(topic: String, command: String, payload: String): CommandOutcome {
+        if (mqtt.connectionState.value !is MqttConnectionState.Connected) return CommandOutcome.NotConnected
+        return sendAndAwait(commandKey(command), topic) { payload }
+    }
+
+    private suspend fun sendAndAwait(id: String, topic: String, payload: (id: String) -> String): CommandOutcome {
         val answer = CompletableDeferred<NodeCommandResult>()
         pending[id] = answer
         return try {
@@ -54,6 +67,8 @@ class NodeCommandClient(
     }
 
     companion object {
+        private fun commandKey(command: String) = "cmd:$command"
+
         /** Ids unique per app run and readable in broker logs: `app-<start time>-<counter>`. */
         fun defaultIdGenerator(): () -> String {
             val session = System.currentTimeMillis() % 1_000_000

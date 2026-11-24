@@ -92,7 +92,7 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is HomeEffect.ShowToast -> Toast.makeText(context, context.getString(effect.messageRes), Toast.LENGTH_SHORT).show()
+                is HomeEffect.ShowToast -> Toast.makeText(context, effect.messageRes, Toast.LENGTH_SHORT).show()
             }
         }
     }

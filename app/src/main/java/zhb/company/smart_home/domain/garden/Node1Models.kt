@@ -1,5 +1,8 @@
 package zhb.company.smart_home.domain.garden
 
+import zhb.company.smart_home.domain.schedule.OutputSchedule
+import zhb.company.smart_home.domain.schedule.TodayWindow
+
 /**
  * Node 1 (fountain and sprinklers, `node1-2.0.0`) as described in smart-home-mcu
  * docs/mqtt_topics.md, section Node 1. Durations in minutes unless the name says seconds.
@@ -38,6 +41,11 @@ data class Node1Config(
     /** "YYYY-MM-DD": no scheduled watering up to and including that date; null = no pause. */
     val pauseUntil: String?,
     val limits: Node1Limits = Node1Limits(),
+    /**
+     * Schedules of the fountain outputs ("pump", "light"); null value = manual only. Null map:
+     * firmware before `node1-2.1.0`, which has no schedules.
+     */
+    val fountainSchedules: Map<String, OutputSchedule?>? = null,
 )
 
 enum class RunPhase(val key: String) {
@@ -76,6 +84,8 @@ data class FountainState(
     val pumpLeftSeconds: Int?,
     val light: Boolean,
     val lightLeftSeconds: Int?,
+    /** Today's schedule window per output (`pump_today`, `light_today`); null = no window today. */
+    val today: Map<String, TodayWindow?> = emptyMap(),
 )
 
 /** Retained `node1/state`. */

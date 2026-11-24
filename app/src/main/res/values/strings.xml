@@ -220,6 +220,32 @@
     <string name="plan_leave_title">Izmene plana nisu sačuvane</string>
     <string name="plan_leave_text">Ako izađeš, izmene se gube.</string>
 
+    <!-- Light and fountain schedules (Node 1, Node 2) -->
+    <string name="schedules_title">Raspored svetla i fontane</string>
+    <string name="schedules_hint">Po rasporedu se uređaj pali i gasi sam. Prekidač i tajmer u međuvremenu imaju prednost do sledećeg paljenja ili gašenja po rasporedu.</string>
+    <string name="schedules_waiting">Čvorovi još nisu javili rasporede. Potreban je novi firmver na Node 1 ili Node 2.</string>
+    <string name="schedules_manual">Ručno</string>
+    <string name="schedules_scheduled">Po rasporedu</string>
+    <string name="schedules_manual_hint">Pali se i gasi samo prekidačem i tajmerom.</string>
+    <string name="schedules_on">Pali se</string>
+    <string name="schedules_off">Gasi se</string>
+    <string name="schedules_sunset">Zalazak</string>
+    <string name="schedules_sunrise">Izlazak</string>
+    <string name="schedules_fixed">Vreme</string>
+    <string name="schedules_offset_exact">tačno</string>
+    <string name="schedules_offset_after">%1$d min posle</string>
+    <string name="schedules_offset_before">%1$d min pre</string>
+    <string name="schedules_earlier">Ranije</string>
+    <string name="schedules_later">Kasnije</string>
+    <string name="schedules_days">Dani paljenja</string>
+    <string name="schedules_today">danas %1$s–%2$s</string>
+    <string name="schedules_today_none">danas ne gori</string>
+    <string name="schedules_problem_no_days">Izaberi bar jedan dan.</string>
+    <string name="schedules_problem_offset">Pomeraj može biti najviše 180 min.</string>
+    <string name="schedules_problem_same">Paljenje i gašenje ne mogu biti u isto vreme.</string>
+    <string name="schedules_msg_removed">Raspored je obrisan; uređaj radi ručno.</string>
+    <string name="schedules_open">Raspored svetla i fontane</string>
+
     <!-- Heating -->
     <string name="heating_settings_title">Podešavanja grejanja</string>
     <string name="heating_pick_time">Izaberite vreme</string>

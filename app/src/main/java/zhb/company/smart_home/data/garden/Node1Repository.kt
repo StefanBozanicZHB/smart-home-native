@@ -18,6 +18,8 @@ import zhb.company.smart_home.domain.garden.Node1ConfigChange
 import zhb.company.smart_home.domain.garden.Node1Json
 import zhb.company.smart_home.domain.garden.Node1State
 import zhb.company.smart_home.domain.garden.RunEvent
+import zhb.company.smart_home.domain.schedule.OutputSchedule
+import zhb.company.smart_home.domain.schedule.ScheduleJson
 
 /** Everything the app knows about Node 1, built from its retained topics. */
 data class Node1Snapshot(
@@ -42,6 +44,9 @@ object Node1Topics {
     const val STATE = "state"
     const val RUN = "run"
     const val RESULT = "result"
+
+    /** `fountain/<output>/schedule/set`, relative to [BASE] (also the `cmd` in the answer). */
+    fun fountainScheduleCommand(output: String) = "fountain/$output/schedule/set"
 }
 
 /**
@@ -87,6 +92,17 @@ class Node1Repository(
 
     suspend fun setLight(on: Boolean, minutes: Int? = null): CommandOutcome =
         commands.send(Node1Topics.LIGHT_SET) { id -> Node1Json.fountainCommand(id, on, minutes) }
+
+    /** Daily schedule of a fountain output ([output] as in `node1/config` `fountain`); null removes it. */
+    suspend fun setFountainSchedule(output: String, schedule: OutputSchedule?): CommandOutcome {
+        val command = Node1Topics.fountainScheduleCommand(output)
+        val topic = Node1Topics.BASE + command
+        return if (schedule == null) {
+            commands.sendWithoutId(topic, command, ScheduleJson.REMOVE)
+        } else {
+            commands.send(topic) { id -> ScheduleJson.setCommand(id, schedule) }
+        }
+    }
 
     /** Called on the MQTT client's thread for every message on the shared subscription. */
     private fun onMessage(topic: String, payload: String, @Suppress("UNUSED_PARAMETER") retained: Boolean) {

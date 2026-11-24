@@ -6,6 +6,7 @@ sealed class Destination(val route: String) {
     data object Home : Destination("home")
     data object Garden : Destination("garden")
     data object IrrigationPlan : Destination("garden_plan")
+    data object LightSchedules : Destination("garden_schedules")
     data object Heating : Destination("heating")
     data object House : Destination("house")
     data object System : Destination("system")

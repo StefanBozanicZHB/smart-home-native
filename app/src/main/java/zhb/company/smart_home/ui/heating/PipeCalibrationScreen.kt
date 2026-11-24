@@ -29,7 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +53,7 @@ import zhb.company.smart_home.ui.format.Readings
 fun PipeCalibrationScreen(onDone: () -> Unit, viewModel: PipeCalibrationViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(state.done) { if (state.done) onDone() }
     LaunchedEffect(state.message) {
@@ -62,9 +62,9 @@ fun PipeCalibrationScreen(onDone: () -> Unit, viewModel: PipeCalibrationViewMode
         if (message is HeatingMessage.Saved) return@LaunchedEffect // the sensors screen shows the new offsets
         snackbar.showSnackbar(
             when (message) {
-                is HeatingMessage.Rejected -> context.getString(R.string.heating_msg_rejected, message.error)
-                HeatingMessage.Timeout -> context.getString(R.string.heating_msg_timeout)
-                else -> context.getString(R.string.heating_msg_not_connected)
+                is HeatingMessage.Rejected -> resources.getString(R.string.heating_msg_rejected, message.error)
+                HeatingMessage.Timeout -> resources.getString(R.string.heating_msg_timeout)
+                else -> resources.getString(R.string.heating_msg_not_connected)
             },
         )
     }

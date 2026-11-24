@@ -64,8 +64,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -124,15 +124,15 @@ fun HeatingScreen(
     // Leaving drops the view model and with it every unsaved schedule draft, so ask first.
     BackHandler(enabled = state.hasUnsavedDrafts) { viewModel.onIntent(HeatingIntent.RequestLeave) }
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(state.message) {
         val message = state.message ?: return@LaunchedEffect
         val text = when (message) {
-            HeatingMessage.Saved -> context.getString(R.string.heating_msg_saved)
-            is HeatingMessage.Rejected -> context.getString(R.string.heating_msg_rejected, message.error)
-            HeatingMessage.Timeout -> context.getString(R.string.heating_msg_timeout)
-            HeatingMessage.NotConnected -> context.getString(R.string.heating_msg_not_connected)
+            HeatingMessage.Saved -> resources.getString(R.string.heating_msg_saved)
+            is HeatingMessage.Rejected -> resources.getString(R.string.heating_msg_rejected, message.error)
+            HeatingMessage.Timeout -> resources.getString(R.string.heating_msg_timeout)
+            HeatingMessage.NotConnected -> resources.getString(R.string.heating_msg_not_connected)
         }
         viewModel.onIntent(HeatingIntent.MessageShown)
         snackbar.showSnackbar(text)

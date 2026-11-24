@@ -45,11 +45,14 @@ class GardenViewModel(
 
     private val extras = MutableStateFlow(UiExtras())
 
-    val state: StateFlow<GardenState> = combine(repository.state, node1.snapshot, node2.state, node6.state, extras) { home, yard, lights, pool, ui ->
-        mapState(home, yard, lights, pool, ui)
+    /** Node 2 lights and whether its firmware has schedules (`node2/config`). */
+    private val lightsWithSchedules = combine(node2.state, node2.config) { lights, config -> lights to (config != null) }
+
+    val state: StateFlow<GardenState> = combine(repository.state, node1.snapshot, lightsWithSchedules, node6.state, extras) { home, yard, lightsInfo, pool, ui ->
+        mapState(home, yard, lightsInfo.first, lightsInfo.second, pool, ui)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GardenState())
 
-    private fun mapState(home: SmartHomeState, yard: Node1Snapshot, lights: Node2State?, pool: Node6State?, ui: UiExtras): GardenState {
+    private fun mapState(home: SmartHomeState, yard: Node1Snapshot, lights: Node2State?, lightsScheduled: Boolean, pool: Node6State?, ui: UiExtras): GardenState {
         val config = yard.config
         val live = yard.state
         fun shown(output: GardenOutput, actual: Boolean) = ui.pending[output] ?: actual
@@ -62,6 +65,11 @@ class GardenViewModel(
             outdoorSensorOk = lights?.sensorOk != false,
             ledStripOn = shown(GardenOutput.LED_STRIP, lights?.neon ?: false),
             ledStripLeftSeconds = lights?.neonLeftSeconds,
+            ledStripToday = lights?.today?.get("neon"),
+            bulbToday = lights?.today?.get("lamp"),
+            fountainPumpToday = live?.fountain?.today?.get("pump"),
+            fountainLightToday = live?.fountain?.today?.get("light"),
+            schedulesSupported = lightsScheduled || config?.fountainSchedules != null,
             bulbOn = shown(GardenOutput.BULB, lights?.lamp ?: false),
             bulbLeftSeconds = lights?.lampLeftSeconds,
             fountainPumpOn = shown(GardenOutput.FOUNTAIN_PUMP, live?.fountain?.pump ?: false),
