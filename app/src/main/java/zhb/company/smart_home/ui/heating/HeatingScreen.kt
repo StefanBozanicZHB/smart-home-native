@@ -59,6 +59,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -532,8 +533,9 @@ private fun ScheduleTimeline(segments: List<ScheduleSegment>, limits: Node5Limit
     val minT = (temps.minOrNull() ?: limits.tempMinTenths).toFloat()
     val maxT = (temps.maxOrNull() ?: limits.tempMaxTenths).toFloat()
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Box(modifier = Modifier.fillMaxWidth().height(32.dp)) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
+        // The bar is drawn behind the temperature labels.
+        Box(
+            modifier = Modifier.fillMaxWidth().height(32.dp).drawBehind {
                 segments.forEachIndexed { i, seg ->
                     val start = seg.startMinute / MINUTES_PER_DAY.toFloat() * size.width
                     val end = ScheduleRules.endMinute(segments, i) / MINUTES_PER_DAY.toFloat() * size.width
@@ -549,7 +551,8 @@ private fun ScheduleTimeline(segments: List<ScheduleSegment>, limits: Node5Limit
                     val x = it / MINUTES_PER_DAY.toFloat() * size.width
                     drawLine(marker, Offset(x, -2f), Offset(x, size.height + 2f), strokeWidth = 2.dp.toPx())
                 }
-            }
+            },
+        ) {
             Row(modifier = Modifier.fillMaxSize()) {
                 segments.forEachIndexed { i, seg ->
                     val minutes = ScheduleRules.endMinute(segments, i) - seg.startMinute

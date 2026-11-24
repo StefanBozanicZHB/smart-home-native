@@ -81,6 +81,7 @@ private fun SystemContent(
 ) {
     val nodes = state.nodes
     val online = nodes.count { it.status == NodeStatus.ONLINE }
+    val nodeLabels = remember(nodes) { nodes.map { it.nodeId to NodeLabels.of(it.nodeId) } }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
@@ -119,7 +120,7 @@ private fun SystemContent(
             }
         }
         // Nodes the RPi logger has no availability history for are left out by the card.
-        animatedItem("system-5") { AvailabilityCard(history, nodes.map { it.nodeId to NodeLabels.of(it.nodeId) }) }
+        animatedItem("system-5") { AvailabilityCard(history, nodeLabels) }
     }
 }
 

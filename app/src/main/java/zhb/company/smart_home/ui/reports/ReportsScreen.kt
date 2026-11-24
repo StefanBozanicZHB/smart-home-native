@@ -67,7 +67,7 @@ fun ReportsScreen(onOpen: (String) -> Unit, onBack: () -> Unit, viewModel: Repor
             state.items.isEmpty() -> item {
                 Text(stringResource(R.string.reports_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> items(state.items, key = { it.date }) { ReportRow(it, onClick = { onOpen(it.date) }) }
+            else -> items(state.items, key = { it.date }, contentType = { "report" }) { ReportRow(it, onClick = { onOpen(it.date) }) }
         }
     }
 }
