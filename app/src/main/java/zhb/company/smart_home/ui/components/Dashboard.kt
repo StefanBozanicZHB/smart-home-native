@@ -171,7 +171,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
     Surface(shape = TileShape, color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = valueColor, maxLines = 1)
+            AnimatedText(value) { Text(it, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = valueColor, maxLines = 1) }
             if (detail != null) {
                 Text(detail, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
@@ -179,10 +179,12 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
     }
 }
 
-/** Value in the large display style used inside cards ("21.5°"). */
+/** Value in the large display style used inside cards ("21.5°"); a new value cross-fades in. */
 @Composable
 fun BigValue(text: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
-    Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, color = color, modifier = modifier)
+    Box(modifier) {
+        AnimatedText(text) { Text(it, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, color = color) }
+    }
 }
 
 /**

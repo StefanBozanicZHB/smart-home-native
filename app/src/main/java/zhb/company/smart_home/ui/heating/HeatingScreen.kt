@@ -2,6 +2,7 @@ package zhb.company.smart_home.ui.heating
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,18 +19,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Thermostat
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,14 +73,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
-import zhb.company.smart_home.data.history.HistoryPeriod
-import zhb.company.smart_home.ui.history.HistoryAutoLoad
-import zhb.company.smart_home.ui.history.HistoryState
-import zhb.company.smart_home.ui.history.HistoryViewModel
-import zhb.company.smart_home.ui.history.PumpRunCard
-import zhb.company.smart_home.ui.history.PipeDeltaCard
-import zhb.company.smart_home.ui.history.RoomTargetCard
 import zhb.company.smart_home.R
+import zhb.company.smart_home.data.history.HistoryPeriod
 import zhb.company.smart_home.domain.heating.DayType
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.Hysteresis
@@ -91,6 +86,7 @@ import zhb.company.smart_home.domain.heating.ScheduleSegment
 import zhb.company.smart_home.domain.heating.TimeOfDay
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.ui.components.AlertBanner
+import zhb.company.smart_home.ui.components.AnimatedText
 import zhb.company.smart_home.ui.components.Appearing
 import zhb.company.smart_home.ui.components.BigValue
 import zhb.company.smart_home.ui.components.CardHeader
@@ -101,8 +97,15 @@ import zhb.company.smart_home.ui.components.StatTile
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.animatedColor
 import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.components.isLargeFont
+import zhb.company.smart_home.ui.history.HistoryAutoLoad
+import zhb.company.smart_home.ui.history.HistoryState
+import zhb.company.smart_home.ui.history.HistoryViewModel
+import zhb.company.smart_home.ui.history.PipeDeltaCard
+import zhb.company.smart_home.ui.history.PumpRunCard
+import zhb.company.smart_home.ui.history.RoomTargetCard
 import zhb.company.smart_home.ui.theme.AppTheme
 
 private const val TEMP_STEP_TENTHS = 1
@@ -306,11 +309,13 @@ private fun ZoneCard(state: HeatingState) {
 @Composable
 private fun RoomVsTargetRing(room: Double?, targetTenths: Int?, roomText: String, targetText: String?, warm: Boolean) {
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    val fill = if (warm) AppTheme.status.warm else AppTheme.status.active
-    val fraction = if (room != null && targetTenths != null) {
+    val fill = animatedColor(if (warm) AppTheme.status.warm else AppTheme.status.active, "ringFill")
+    val targetFraction = if (room != null && targetTenths != null) {
         val low = targetTenths / 10.0 - 2.0
         ((room - low) / 3.0).coerceIn(0.0, 1.0).toFloat()
     } else 0f
+    // The arc grows or shrinks to a new reading instead of jumping.
+    val fraction by animateFloatAsState(targetFraction, Motion.standard(Motion.LONG_MS), label = "ring")
     // The ring grows with the system font so the temperature always fits inside.
     val ringSize = 104.dp * LocalDensity.current.fontScale.coerceIn(1f, 2f)
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ringSize)) {
@@ -324,9 +329,11 @@ private fun RoomVsTargetRing(room: Double?, targetTenths: Int?, roomText: String
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("$roomText°", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            AnimatedText("$roomText°") { Text(it, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold) }
             if (targetText != null) {
-                Text(stringResource(R.string.home_target, targetText), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AnimatedText(stringResource(R.string.home_target, targetText)) {
+                    Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }

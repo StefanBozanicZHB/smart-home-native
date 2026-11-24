@@ -1,5 +1,6 @@
 package zhb.company.smart_home.ui.heating
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -9,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,7 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
+import zhb.company.smart_home.ui.components.AnimatedText
+import zhb.company.smart_home.ui.components.Appearing
 import zhb.company.smart_home.ui.components.CardShape
+import zhb.company.smart_home.ui.components.Motion
+import zhb.company.smart_home.ui.components.animatedColor
 import zhb.company.smart_home.ui.theme.AppTheme
 
 /** Headline and explanation for a heat pump status, shared by the heating and home screens. */
@@ -101,16 +107,21 @@ private fun StatusIcon(look: StatusLook, size: Int) {
 fun HeatPumpStatusCard(status: HeatPumpStatus, modifier: Modifier = Modifier, onTurnOn: (() -> Unit)? = null) {
     val look = look(status)
     val (title, detail) = heatPumpStatusText(status)
-    Surface(shape = CardShape, color = look.container, modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
+    // A new state (running → waiting → idle …) cross-fades its color, icon and text.
+    val container = animatedColor(look.container, "statusBg")
+    val content = animatedColor(look.content, "statusFg")
+    Surface(shape = CardShape, color = container, modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
-            Surface(shape = CircleShape, color = look.content.copy(alpha = 0.12f), modifier = Modifier.size(52.dp)) {
-                Box(contentAlignment = Alignment.Center) { StatusIcon(look, 30) }
+            Surface(shape = CircleShape, color = content.copy(alpha = 0.12f), modifier = Modifier.size(52.dp)) {
+                Crossfade(look.copy(container = Color.Unspecified, content = Color.Unspecified), animationSpec = Motion.standard(), label = "statusIcon") { shown ->
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { StatusIcon(shown.copy(content = content), 30) }
+                }
             }
             Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = look.content)
-                if (detail != null) Text(detail, style = MaterialTheme.typography.bodyMedium, color = look.content)
-                if (status == HeatPumpStatus.Off && onTurnOn != null) {
-                    TextButton(onClick = onTurnOn, modifier = Modifier.padding(top = 2.dp)) { Text(stringResource(R.string.home_heating_turn_on)) }
+                AnimatedText(title) { Text(it, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = content) }
+                Appearing(detail) { d -> AnimatedText(d) { Text(it, style = MaterialTheme.typography.bodyMedium, color = content) } }
+                Appearing(status == HeatPumpStatus.Off && onTurnOn != null) {
+                    TextButton(onClick = { onTurnOn?.invoke() }, modifier = Modifier.padding(top = 2.dp)) { Text(stringResource(R.string.home_heating_turn_on)) }
                 }
             }
         }
@@ -122,10 +133,15 @@ fun HeatPumpStatusCard(status: HeatPumpStatus, modifier: Modifier = Modifier, on
 fun HeatPumpStatusLine(status: HeatPumpStatus, modifier: Modifier = Modifier) {
     val look = look(status)
     val (title, _) = heatPumpStatusText(status)
-    Surface(shape = CardShape, color = look.container, modifier = modifier.fillMaxWidth()) {
+    val content = animatedColor(look.content, "statusLineFg")
+    Surface(shape = CardShape, color = animatedColor(look.container, "statusLineBg"), modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            StatusIcon(look, 20)
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = look.content, modifier = Modifier.padding(start = 8.dp))
+            Crossfade(look.copy(container = Color.Unspecified, content = Color.Unspecified), animationSpec = Motion.standard(), label = "statusLineIcon") { shown ->
+                StatusIcon(shown.copy(content = content), 20)
+            }
+            Box(modifier = Modifier.padding(start = 8.dp)) {
+                AnimatedText(title) { Text(it, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = content) }
+            }
         }
     }
 }

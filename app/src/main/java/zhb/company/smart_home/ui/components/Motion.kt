@@ -1,6 +1,8 @@
 package zhb.company.smart_home.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
@@ -9,6 +11,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyListScope
@@ -81,4 +84,20 @@ fun <T : Any> Appearing(value: T?, content: @Composable (T) -> Unit) {
 @Composable
 fun Appearing(visible: Boolean, content: @Composable () -> Unit) {
     Appearing(if (visible) Unit else null) { content() }
+}
+
+/**
+ * A text value that cross-fades when it changes (a temperature, a time, a status line). The space
+ * it takes follows the new text smoothly.
+ */
+@Composable
+fun AnimatedText(text: String, content: @Composable (String) -> Unit) {
+    AnimatedContent(
+        targetState = text,
+        transitionSpec = {
+            (fadeIn(Motion.standard()) togetherWith fadeOut(Motion.standard(Motion.SHORT_MS)))
+                .using(SizeTransform(clip = false) { _, _ -> Motion.standard() })
+        },
+        label = "text",
+    ) { content(it) }
 }
