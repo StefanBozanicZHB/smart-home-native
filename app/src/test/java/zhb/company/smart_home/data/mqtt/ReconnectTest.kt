@@ -134,6 +134,100 @@ class ReconnectTest {
         assertEquals(MqttConnectionState.Idle, repo.connectionState.value)
     }
 
+    // --- attempts that finish late or overlap (a blocking connect cannot be interrupted) -----------
+
+    @Test
+    fun `pause during a connect attempt closes the new client instead of keeping it`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        repo.connect("token")
+        connector.dropActive()
+        connector.duringConnect = { repo.pause() }
+
+        advanceTimeBy(1_001)
+
+        assertTrue("the client that connected after pause is closed", connector.lastConnection!!.disconnected)
+        assertEquals(MqttConnectionState.Paused, repo.connectionState.value)
+        assertFalse(repo.publish("t", "1"))
+    }
+
+    @Test
+    fun `sign-out during a connect attempt leaves nothing connected`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        repo.connect("token")
+        connector.dropActive()
+        connector.duringConnect = { repo.disconnect() }
+
+        advanceTimeBy(1_001)
+
+        assertTrue(connector.lastConnection!!.disconnected)
+        assertEquals(MqttConnectionState.Idle, repo.connectionState.value)
+        assertFalse(repo.hasSession)
+    }
+
+    @Test
+    fun `a client that drops before it is adopted is closed and the next broker is used`() = runTest {
+        val connector = FakeMqttConnector()
+        connector.duringConnect = { listener ->
+            if (connector.attempts.last().host == "primary") listener.onDisconnected("dropped")
+        }
+        val repo = repository(connector)
+
+        repo.connect("token")
+
+        val (primary, backup) = connector.connections
+        assertTrue("dead primary client closed", primary.disconnected)
+        assertEquals("backup", backup.endpoint.host)
+        assertFalse(backup.disconnected)
+        assertEquals(MqttConnectionState.Connected, repo.connectionState.value)
+    }
+
+    @Test
+    fun `resume during a running attempt does not open a second connection`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        connector.duringConnect = { repo.resume() }
+
+        repo.connect("token")
+        connector.duringConnect = null
+        runCurrent()
+
+        assertEquals(1, connector.connections.size)
+        assertFalse(connector.connections.single().disconnected)
+        assertEquals(MqttConnectionState.Connected, repo.connectionState.value)
+    }
+
+    @Test
+    fun `retained messages during the subscribe count, messages from a replaced client do not`() = runTest {
+        val connector = FakeMqttConnector()
+        connector.duringConnect = { listener -> listener.onMessage(MqttTopics.NODE4_TEMPERATURE, "21.5", true) }
+        val repo = repository(connector)
+        repo.connect("token")
+        assertEquals("21.50", repo.state.value.temperatureLivingRoomDown)
+
+        val oldListener = connector.listeners.last()
+        connector.duringConnect = null
+        connector.dropActive()
+        advanceTimeBy(1_001)
+        oldListener.onMessage(MqttTopics.NODE4_TEMPERATURE, "30.0", true)
+
+        assertEquals("21.50", repo.state.value.temperatureLivingRoomDown)
+        connector.listeners.last().onMessage(MqttTopics.NODE4_TEMPERATURE, "22.0", false)
+        assertEquals("22.00", repo.state.value.temperatureLivingRoomDown)
+    }
+
+    @Test
+    fun `publish reports a refused message`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        repo.connect("token")
+        assertTrue(repo.publish("t", "1"))
+
+        connector.lastConnection!!.refusePublish = true
+        assertFalse(repo.publish("t", "1"))
+    }
+
     @Test
     fun `background longer than a minute pauses, a quick app switch does not`() = runTest {
         val connector = FakeMqttConnector()

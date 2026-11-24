@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.domain.model.SmartHomeState
@@ -30,6 +32,10 @@ import zhb.company.smart_home.domain.model.SmartHomeState
  *   reconnects at once; [onNetworkAvailable] skips the current pause when the network returns;
  * - [disconnect] (sign-out) forgets the session.
  * Every new connection resubscribes, so retained messages refresh the whole state.
+ *
+ * Connect attempts run one at a time ([attemptMutex]). [connect], [pause] and [disconnect] start a
+ * new [epoch]: an attempt that finishes after that (a blocking connect cannot be interrupted) closes
+ * its client instead of becoming the connection, so there is never more than one live client.
  */
 class SmartHomeRepository(
     private val configSource: MqttConfigSource,
@@ -62,8 +68,12 @@ class SmartHomeRepository(
 
     private var reconnectJob: Job? = null
 
+    /** Only one connect attempt at a time. */
+    private val attemptMutex = Mutex()
+
+    /** Bumped when the session or its wish to be connected changes; older attempts are discarded. */
     @Volatile
-    private var attemptInProgress = false
+    private var epoch = 0L
     private var lastNetworkRetryMs = Long.MIN_VALUE / 2
 
     /** True once the user has signed in and the broker config is known in this process. */
@@ -88,8 +98,9 @@ class SmartHomeRepository(
     suspend fun connect(idToken: String) {
         cancelReconnect()
         paused = false
+        // A new sign-in starts from scratch, with the config fetched below.
+        closeConnection()
         _connectionState.value = MqttConnectionState.Connecting
-        clearNodeStatus()
         val config = configSource.fetchMqttClientConfig(idToken).getOrElse {
             logWarning("MQTT config from Firebase failed: ${it.message}")
             _connectionState.value = MqttConnectionState.Failed(it.message ?: "Konfiguracija nije pronađena")
@@ -130,7 +141,7 @@ class SmartHomeRepository(
 
     /** The device got a working network: do not wait for the current reconnect pause. */
     fun onNetworkAvailable() {
-        if (!hasSession || paused || connection != null || attemptInProgress) return
+        if (!hasSession || paused || connection != null || attemptMutex.isLocked) return
         // The system reports network changes often (e.g. signal strength); retry at most every 5 s.
         val now = clock()
         if (now - lastNetworkRetryMs < NETWORK_RETRY_MIN_INTERVAL_MS) return
@@ -138,9 +149,12 @@ class SmartHomeRepository(
         reconnectNow()
     }
 
+    /** Closes the connection on purpose; an attempt still in flight is discarded when it returns. */
     private fun closeConnection() {
-        val current = connection
-        connection = null // set first, so the listener ignores the disconnect event we cause
+        val current = synchronized(this) {
+            epoch++
+            connection.also { connection = null } // cleared first, so its listener ignores the disconnect we cause
+        }
         current?.disconnect()
         clearNodeStatus()
     }
@@ -151,9 +165,15 @@ class SmartHomeRepository(
         reconnectJob = null
     }
 
-    /** Connection lost unexpectedly (network, broker restart): report it and start reconnecting. */
-    private fun onConnectionLost(cause: String?) {
-        connection = null
+    /**
+     * [lost] dropped unexpectedly (network, broker restart): report it and start reconnecting.
+     * Ignored unless [lost] is the current connection, so a late event from an old client is harmless.
+     */
+    private fun onConnectionLost(lost: MqttConnection, cause: String?) {
+        synchronized(this) {
+            if (connection !== lost) return
+            connection = null
+        }
         clearNodeStatus()
         _connectionState.value = MqttConnectionState.Disconnected(cause ?: "Veza sa serverom je prekinuta")
         if (!paused) startReconnectLoop(immediate = false)
@@ -178,62 +198,94 @@ class SmartHomeRepository(
     }
 
     /** Tries the brokers in order; on success the state is [MqttConnectionState.Connected]. */
-    private suspend fun connectToAnyEndpoint(): Boolean = withContext(ioDispatcher) {
-        attemptInProgress = true
-        try {
-            connectOnce()
-        } finally {
-            attemptInProgress = false
+    private suspend fun connectToAnyEndpoint(): Boolean = attemptMutex.withLock {
+        // An attempt that was waiting for the lock may find the previous one already connected.
+        if (connection != null) {
+            _connectionState.value = MqttConnectionState.Connected
+            return@withLock true
         }
+        val started = epoch
+        withContext(ioDispatcher) { connectOnce(started) }
     }
 
-    private fun connectOnce(): Boolean {
+    private fun connectOnce(started: Long): Boolean {
         for (endpoint in endpoints) {
-            val connected = tryConnect(endpoint) ?: run {
+            if (epoch != started) return false
+            val attempt = Attempt()
+            val connected = connector.connect(endpoint, MqttTopics.SUBSCRIBE_ALL, attempt)
+            if (connected == null) {
+                attempt.abandoned = true
                 logWarning("Broker ${endpoint.host}:${endpoint.port} not reachable")
-                null
-            } ?: continue
-            if (paused) {
-                connected.disconnect()
-                return false
+                continue
             }
-            connection = connected
+            attempt.connection = connected
+            val adopted = synchronized(this) {
+                // Paused, signed out or signed in again meanwhile, or dropped before it was adopted.
+                val usable = epoch == started && !paused && hasSession && !attempt.lost
+                if (usable) connection = connected
+                usable
+            }
+            if (!adopted) {
+                attempt.abandoned = true
+                connected.disconnect()
+                if (epoch != started || paused || !hasSession) return false
+                continue // dropped right away: try the next broker
+            }
             _connectionState.value = MqttConnectionState.Connected
             return true
         }
         return false
     }
 
-    private fun tryConnect(endpoint: MqttEndpoint): MqttConnection? {
-        // Set once connect() returns. The callbacks compare it with the active connection, so a
-        // stale (e.g. failed primary or replaced) attempt cannot overwrite a newer connection's
-        // status with its late connected/disconnected events.
-        var attempt: MqttConnection? = null
-        val listener = object : MqttConnectionListener {
-            override fun onMessage(topic: String, payload: String, retained: Boolean) =
-                handleMessage(topic, payload, retained)
+    /**
+     * Listener of one connect attempt. Messages count while the attempt is under way (retained
+     * messages arrive during the subscribe) and while its client is the current connection;
+     * afterwards (timed out, replaced, closed) its client is ignored.
+     */
+    private inner class Attempt : MqttConnectionListener {
+        /** Set when the connector returns the client. */
+        @Volatile
+        var connection: MqttConnection? = null
 
-            override fun onConnected() {
-                if (attempt != null && connection === attempt) {
-                    _connectionState.value = MqttConnectionState.Connected
-                }
+        @Volatile
+        var abandoned = false
+
+        /** The client reported a disconnect, possibly before it was adopted as the connection. */
+        @Volatile
+        var lost = false
+
+        private val current: Boolean
+            get() {
+                if (abandoned) return false
+                val mine = connection
+                return mine == null || mine === this@SmartHomeRepository.connection
             }
 
-            override fun onDisconnected(cause: String?) {
-                if (attempt != null && connection === attempt) onConnectionLost(cause)
-            }
+        override fun onMessage(topic: String, payload: String, retained: Boolean) {
+            if (current) handleMessage(topic, payload, retained)
         }
-        return connector.connect(endpoint, MqttTopics.SUBSCRIBE_ALL, listener).also { attempt = it }
+
+        override fun onConnected() = Unit // the state is set when the client is adopted
+
+        override fun onDisconnected(cause: String?) {
+            // Flag first: connectOnce checks it while adopting, onConnectionLost covers the rest.
+            lost = true
+            connection?.let { onConnectionLost(it, cause) }
+        }
     }
 
+    /**
+     * Publishes on the current connection. False when there is none or the client refused the
+     * message; true means it was handed to the broker (an answer, if any, comes separately).
+     */
     suspend fun publish(
         topic: String,
         payload: String,
         retain: Boolean = false,
         qos: MqttQualityOfService = MqttQualityOfService.EXACTLY_ONCE,
-    ) {
-        val current = connection ?: return
-        withContext(ioDispatcher) { current.publish(topic, payload, retain, qos) }
+    ): Boolean {
+        val current = connection ?: return false
+        return withContext(ioDispatcher) { current.publish(topic, payload, retain, qos) }
     }
 
     /** Applies one incoming MQTT message to [state]. Internal so tests can feed messages directly. */

@@ -54,7 +54,8 @@ class NodeCommandClient(
         val answer = CompletableDeferred<NodeCommandResult>()
         pending[id] = answer
         return try {
-            mqtt.publish(topic, payload(id), qos = MqttQualityOfService.AT_LEAST_ONCE)
+            // Not sent at all (no connection, client refused it): say so now instead of a timeout later.
+            if (!mqtt.publish(topic, payload(id), qos = MqttQualityOfService.AT_LEAST_ONCE)) return CommandOutcome.NotConnected
             val result = withTimeoutOrNull(timeoutMs) { answer.await() }
             when {
                 result == null -> CommandOutcome.Timeout

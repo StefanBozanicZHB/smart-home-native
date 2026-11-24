@@ -30,8 +30,11 @@ interface MqttConnectionListener {
 
 /** A live broker connection, already subscribed to the requested topic filter. */
 interface MqttConnection {
-    /** Best-effort, fire-and-forget publish; failures are not reported. */
-    fun publish(topic: String, payload: String, retain: Boolean, qos: MqttQualityOfService)
+    /**
+     * Hands the message to the broker. Blocking for a short while; false when the client refused
+     * or failed it (e.g. the connection is gone), true when it went out or is still on its way.
+     */
+    fun publish(topic: String, payload: String, retain: Boolean, qos: MqttQualityOfService): Boolean
     fun disconnect()
 }
 
