@@ -1,8 +1,12 @@
 package zhb.company.smart_home.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -32,6 +36,7 @@ import zhb.company.smart_home.R
 import org.koin.compose.koinInject
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.ui.auth.AuthScreen
+import zhb.company.smart_home.ui.components.Motion
 import zhb.company.smart_home.ui.garden.GardenScreen
 import zhb.company.smart_home.ui.garden.IrrigationPlanScreen
 import zhb.company.smart_home.ui.heating.HeatingScreen
@@ -40,9 +45,9 @@ import zhb.company.smart_home.ui.heating.PipeSensorsScreen
 import zhb.company.smart_home.ui.home.HomeScreen
 import zhb.company.smart_home.ui.house.HouseScreen
 import zhb.company.smart_home.ui.mqttconnect.MqttConnectScreen
+import zhb.company.smart_home.ui.notifications.NotificationsScreen
 import zhb.company.smart_home.ui.reports.ReportDetailScreen
 import zhb.company.smart_home.ui.reports.ReportsScreen
-import zhb.company.smart_home.ui.notifications.NotificationsScreen
 import zhb.company.smart_home.ui.system.NodeDetailScreen
 import zhb.company.smart_home.ui.system.SystemScreen
 
@@ -78,6 +83,26 @@ private val TABS = listOf(
 )
 
 private const val FADE_MS = 220
+
+/** A screen opened from a tab (not a tab, not the sign-in flow). */
+private fun isSubScreen(route: String?): Boolean =
+    route != null && route !in FLOW_ROUTES && TABS.none { it.destination.route == route }
+
+/** A sub-screen entering from the right edge. */
+private fun slideIn(): EnterTransition =
+    slideInHorizontally(Motion.standard(Motion.LONG_MS)) { width -> width } + fadeIn(tween(Motion.MEDIUM_MS))
+
+/** The screen under a new sub-screen moves a little to the left and fades. */
+private fun slideOutBehind(): ExitTransition =
+    slideOutHorizontally(Motion.standard(Motion.LONG_MS)) { width -> -width / 4 } + fadeOut(tween(Motion.LONG_MS))
+
+/** Back: the screen under the sub-screen returns from the left. */
+private fun slideInFromBehind(): EnterTransition =
+    slideInHorizontally(Motion.standard(Motion.LONG_MS)) { width -> -width / 4 } + fadeIn(tween(Motion.LONG_MS))
+
+/** Back: the sub-screen leaves to the right. */
+private fun slideOut(): ExitTransition =
+    slideOutHorizontally(Motion.standard(Motion.LONG_MS)) { width -> width } + fadeOut(tween(Motion.MEDIUM_MS))
 
 /** Routes without the bottom bar (sign-in flow). */
 private val FLOW_ROUTES = setOf(Destination.Auth.route, Destination.MqttConnect.route)
@@ -137,14 +162,28 @@ fun SmartHomeNavGraph(
             navController = navController,
             startDestination = Destination.Auth.route,
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
-            // Plain cross-fades everywhere. The predictive back gesture has its own pair, whose
-            // default shrinks the leaving screen toward the center; it fades here too.
-            enterTransition = { fadeIn(tween(FADE_MS)) },
-            exitTransition = { fadeOut(tween(FADE_MS)) },
-            popEnterTransition = { fadeIn(tween(FADE_MS)) },
-            popExitTransition = { fadeOut(tween(FADE_MS)) },
-            predictivePopEnterTransition = { _ -> fadeIn(tween(FADE_MS)) },
-            predictivePopExitTransition = { _ -> fadeOut(tween(FADE_MS)) },
+            // Tabs and the sign-in flow cross-fade. A sub-screen (plan, sensors, reports, node
+            // detail…) slides in from the right and back out to the right, so going deeper and
+            // coming back can be seen; the screen under it moves a little the other way. The
+            // predictive back gesture uses the same pair (its default shrinks the leaving screen).
+            enterTransition = {
+                if (isSubScreen(targetState.destination.route)) slideIn() else fadeIn(tween(FADE_MS))
+            },
+            exitTransition = {
+                if (isSubScreen(targetState.destination.route)) slideOutBehind() else fadeOut(tween(FADE_MS))
+            },
+            popEnterTransition = {
+                if (isSubScreen(initialState.destination.route)) slideInFromBehind() else fadeIn(tween(FADE_MS))
+            },
+            popExitTransition = {
+                if (isSubScreen(initialState.destination.route)) slideOut() else fadeOut(tween(FADE_MS))
+            },
+            predictivePopEnterTransition = { _ ->
+                if (isSubScreen(initialState.destination.route)) slideInFromBehind() else fadeIn(tween(FADE_MS))
+            },
+            predictivePopExitTransition = { _ ->
+                if (isSubScreen(initialState.destination.route)) slideOut() else fadeOut(tween(FADE_MS))
+            },
             sizeTransform = null,
         ) {
             composable(Destination.Auth.route) {
