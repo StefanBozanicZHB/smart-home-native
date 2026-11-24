@@ -77,6 +77,10 @@ class SmartHomeRepository(
     private var epoch = 0L
     private var lastNetworkRetryMs = Long.MIN_VALUE / 2
 
+    /** The default network last reported by [onNetworkAvailable]; null until the first report. */
+    @Volatile
+    private var currentNetwork: Long? = null
+
     /** True once the user has signed in and the broker config is known in this process. */
     val hasSession: Boolean get() = endpoints.isNotEmpty()
 
@@ -140,9 +144,23 @@ class SmartHomeRepository(
         if (hasSession && connection == null) reconnectNow()
     }
 
-    /** The device got a working network: do not wait for the current reconnect pause. */
-    fun onNetworkAvailable() {
-        if (!hasSession || paused || connection != null || attemptMutex.isLocked) return
+    /**
+     * The device has a working default network ([network] identifies it, e.g. Wi-Fi or mobile data).
+     * Without a connection: do not wait for the current reconnect pause. With one, when the default
+     * network is another than before (Wi-Fi gone, mobile data took over): the old socket belongs to
+     * the network that left and would look alive until the keep-alive fails (20-30 s), so it is
+     * replaced at once.
+     */
+    fun onNetworkAvailable(network: Long? = null) {
+        val previous = currentNetwork
+        if (network != null) currentNetwork = network
+        if (!hasSession || paused) return
+        if (network != null && previous != null && network != previous && connection != null) {
+            closeConnection()
+            reconnectNow()
+            return
+        }
+        if (connection != null || attemptMutex.isLocked) return
         // The system reports network changes often (e.g. signal strength); retry at most every 5 s.
         val now = clock()
         if (now - lastNetworkRetryMs < NETWORK_RETRY_MIN_INTERVAL_MS) return

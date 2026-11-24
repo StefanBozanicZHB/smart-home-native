@@ -134,6 +134,42 @@ class ReconnectTest {
         assertEquals(MqttConnectionState.Idle, repo.connectionState.value)
     }
 
+    @Test
+    fun `switching from Wi-Fi to mobile data replaces the connection at once`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        repo.connect("token")
+        val first = connector.lastConnection!!
+
+        repo.onNetworkAvailable(network = 1) // the network at start: nothing to do
+        repo.onNetworkAvailable(network = 1) // e.g. a signal change on the same network
+        runCurrent()
+        assertFalse(first.disconnected)
+        assertEquals(1, connector.connections.size)
+
+        repo.onNetworkAvailable(network = 2) // Wi-Fi gone, mobile data is the default now
+        runCurrent()
+        assertTrue("the socket of the old network is closed", first.disconnected)
+        assertEquals(2, connector.connections.size)
+        assertFalse(connector.lastConnection!!.disconnected)
+        assertEquals(MqttConnectionState.Connected, repo.connectionState.value)
+    }
+
+    @Test
+    fun `a network switch while paused waits for resume`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = repository(connector)
+        repo.connect("token")
+        repo.onNetworkAvailable(network = 1)
+        repo.pause()
+        connector.attempts.clear()
+
+        repo.onNetworkAvailable(network = 2)
+        runCurrent()
+        assertTrue(connector.attempts.isEmpty())
+        assertEquals(MqttConnectionState.Paused, repo.connectionState.value)
+    }
+
     // --- attempts that finish late or overlap (a blocking connect cannot be interrupted) -----------
 
     @Test

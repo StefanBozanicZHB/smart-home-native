@@ -37,5 +37,6 @@ class ConnectionLifecycle(
         }
     }
 
-    fun onNetworkAvailable() = repository.onNetworkAvailable()
+    /** [network] identifies the default network ([android.net.Network.getNetworkHandle]). */
+    fun onNetworkAvailable(network: Long) = repository.onNetworkAvailable(network)
 }

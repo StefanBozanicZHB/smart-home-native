@@ -31,7 +31,7 @@ class SmartHomeApp : Application() {
         get<WidgetLiveSync>().start()
     }
 
-    /** Feeds app foreground/background and "network is back" events to the MQTT connection. */
+    /** Feeds app foreground/background and default-network events (back, or switched) to the MQTT connection. */
     private fun watchVisibilityAndNetwork(lifecycle: ConnectionLifecycle) {
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             object : DefaultLifecycleObserver {
@@ -42,7 +42,7 @@ class SmartHomeApp : Application() {
         getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(
             object : ConnectivityManager.NetworkCallback() {
                 override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                    if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) lifecycle.onNetworkAvailable()
+                    if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) lifecycle.onNetworkAvailable(network.networkHandle)
                 }
             },
         )
