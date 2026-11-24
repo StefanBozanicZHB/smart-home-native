@@ -1,19 +1,22 @@
 package zhb.company.smart_home.domain.heating
 
 import kotlin.math.roundToInt
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import zhb.company.smart_home.domain.node.bool
+import zhb.company.smart_home.domain.node.double
+import zhb.company.smart_home.domain.node.int
+import zhb.company.smart_home.domain.node.long
+import zhb.company.smart_home.domain.node.obj
+import zhb.company.smart_home.domain.node.parseJsonObject
+import zhb.company.smart_home.domain.node.string
 
 /**
  * Parses Node 5 state payloads and builds command payloads. Every parse function returns null
@@ -24,7 +27,7 @@ object Node5Json {
 
     // ---- states ------------------------------------------------------------------------------
 
-    fun parseConfig(payload: String): Node5Config? = parseObject(payload)?.let { o ->
+    fun parseConfig(payload: String): Node5Config? = parseJsonObject(payload)?.let { o ->
         val limits = o.obj("limits")
         val defaults = Node5Limits()
         Node5Config(
@@ -43,7 +46,7 @@ object Node5Json {
         )
     }
 
-    fun parseZone(payload: String): ZoneSettings? = parseObject(payload)?.let { o ->
+    fun parseZone(payload: String): ZoneSettings? = parseJsonObject(payload)?.let { o ->
         val h = o.obj("hysteresis") ?: return null
         ZoneSettings(
             rev = o.long("rev"),
@@ -56,7 +59,7 @@ object Node5Json {
         )
     }
 
-    fun parseState(payload: String): Node5LiveState? = parseObject(payload)?.let { o ->
+    fun parseState(payload: String): Node5LiveState? = parseJsonObject(payload)?.let { o ->
         Node5LiveState(
             seq = o.long("seq") ?: return null,
             uptimeSeconds = o.long("up") ?: return null,
@@ -83,7 +86,7 @@ object Node5Json {
         )
     }
 
-    fun parsePump(payload: String): PumpEvent? = parseObject(payload)?.let { o ->
+    fun parsePump(payload: String): PumpEvent? = parseJsonObject(payload)?.let { o ->
         PumpEvent(
             seq = o.long("seq") ?: return null,
             atUptimeSeconds = o.long("at") ?: return null,
@@ -93,7 +96,7 @@ object Node5Json {
         )
     }
 
-    fun parseSafeMode(payload: String): SafeModeState? = parseObject(payload)?.let { o ->
+    fun parseSafeMode(payload: String): SafeModeState? = parseJsonObject(payload)?.let { o ->
         SafeModeState(
             active = o.bool("active") ?: return null,
             reason = o.string("reason"),
@@ -102,7 +105,7 @@ object Node5Json {
         )
     }
 
-    fun parseSensors(payload: String): PipeSensors? = parseObject(payload)?.let { o ->
+    fun parseSensors(payload: String): PipeSensors? = parseJsonObject(payload)?.let { o ->
         val pipes = o.obj("pipes") ?: return null
         PipeSensors(
             rev = o.long("rev"),
@@ -191,11 +194,6 @@ object Node5Json {
 
     // ---- helpers -----------------------------------------------------------------------------
 
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun parseObject(payload: String): JsonObject? =
-        runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject
-
     private fun parseDay(element: JsonElement?): List<ScheduleSegment>? {
         val array = element as? JsonArray ?: return null
         return array.map { item ->
@@ -221,12 +219,5 @@ object Node5Json {
     /** 215 -> 21.5 (a Double with one decimal prints exactly, e.g. "21.5", "20.0"). */
     private fun tenthsToJson(tenths: Int): JsonPrimitive = JsonPrimitive(tenths / 10.0)
 
-    private fun JsonObject.primitive(key: String): JsonPrimitive? = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }
-    private fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
-    private fun JsonObject.long(key: String): Long? = primitive(key)?.takeUnless { it.isString }?.longOrNull
-    private fun JsonObject.int(key: String): Int? = primitive(key)?.takeUnless { it.isString }?.intOrNull
-    private fun JsonObject.double(key: String): Double? = primitive(key)?.takeUnless { it.isString }?.doubleOrNull
-    private fun JsonObject.bool(key: String): Boolean? = primitive(key)?.takeUnless { it.isString }?.booleanOrNull
-    private fun JsonObject.string(key: String): String? = primitive(key)?.takeIf { it.isString }?.content
     private fun JsonObject.tenths(key: String): Int? = double(key)?.let { (it * 10).roundToInt() }
 }

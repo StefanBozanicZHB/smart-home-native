@@ -1,5 +1,6 @@
 package zhb.company.smart_home.data.notifications
 
+import androidx.core.content.edit
 import android.content.Context
 import android.util.Log
 import io.ktor.client.HttpClient
@@ -89,7 +90,7 @@ class NotificationLog(
         prefs.getString(KEY, null)?.let { runCatching { json.decodeFromString<List<Pending>>(it) }.getOrNull() } ?: emptyList()
 
     private fun save(items: List<Pending>) {
-        prefs.edit().putString(KEY, json.encodeToString(items)).apply()
+        prefs.edit { putString(KEY, json.encodeToString(items)) }
     }
 
     private companion object {

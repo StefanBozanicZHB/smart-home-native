@@ -9,6 +9,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import zhb.company.smart_home.domain.garden.Weekday
+import zhb.company.smart_home.domain.node.string
 
 /** Schedule JSON shared by Node 1 and Node 2. */
 object ScheduleJson {
@@ -49,6 +50,4 @@ object ScheduleJson {
     }.toString()
 
     const val REMOVE = "null"
-
-    private fun JsonObject.string(key: String) = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }

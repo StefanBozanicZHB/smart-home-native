@@ -1,12 +1,10 @@
 package zhb.company.smart_home.domain.door
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
+import zhb.company.smart_home.domain.node.bool
+import zhb.company.smart_home.domain.node.int
+import zhb.company.smart_home.domain.node.long
+import zhb.company.smart_home.domain.node.parseJsonObject
+import zhb.company.smart_home.domain.node.string
 
 /** Retained `node3/state` (front door, `node3-2.0.0`, smart-home-mcu docs/mqtt_topics.md, section Node 3). */
 data class Node3State(
@@ -48,16 +46,7 @@ data class AccessEvent(
 }
 
 object Node3Json {
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun parseObject(payload: String): JsonObject? =
-        runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject
-
-    private fun JsonObject.prim(key: String) = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }
-    private fun JsonObject.string(key: String) = prim(key)?.takeIf { it.isString }?.content
-    private fun JsonObject.long(key: String) = prim(key)?.takeUnless { it.isString }?.longOrNull
-
-    fun parseState(payload: String): Node3State? = parseObject(payload)?.let { o ->
+    fun parseState(payload: String): Node3State? = parseJsonObject(payload)?.let { o ->
         Node3State(
             seq = o.long("seq") ?: return null,
             uptimeSeconds = o.long("up") ?: return null,
@@ -66,12 +55,12 @@ object Node3Json {
                 "locked" -> false
                 else -> return null
             },
-            tags = o.prim("tags")?.takeUnless { it.isString }?.intOrNull,
-            readerOk = o.prim("reader_ok")?.takeUnless { it.isString }?.booleanOrNull,
+            tags = o.int("tags"),
+            readerOk = o.bool("reader_ok"),
         )
     }
 
-    fun parseAccess(payload: String): AccessEvent? = parseObject(payload)?.let { o ->
+    fun parseAccess(payload: String): AccessEvent? = parseJsonObject(payload)?.let { o ->
         AccessEvent(
             seq = o.long("seq") ?: return null,
             atUptimeSeconds = o.long("at") ?: return null,

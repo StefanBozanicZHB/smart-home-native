@@ -1,6 +1,7 @@
 package zhb.company.smart_home.ui.garden
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import zhb.company.smart_home.R
 import zhb.company.smart_home.domain.garden.IrrigationRules
@@ -32,7 +33,7 @@ fun nextStartText(next: NextStart): String = when {
     next.inDays == 0 -> stringResource(R.string.irrigation_next_today, next.time)
     next.inDays == 1 -> stringResource(R.string.irrigation_next_tomorrow, next.time)
     next.day != null -> stringResource(R.string.irrigation_next_day, weekdayShort(next.day), next.time)
-    else -> stringResource(R.string.irrigation_next_in_days, next.inDays, next.time)
+    else -> pluralStringResource(R.plurals.irrigation_next_in_days, next.inDays, next.inDays, next.time)
 }
 
 /** "2026-11-22" → "22.11."; unparsable dates are shown as sent. */

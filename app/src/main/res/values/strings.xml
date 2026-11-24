@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="sr">
     <string name="app_name">Smart Home</string>
 
     <!-- Auth -->
@@ -127,7 +127,6 @@
     <string name="garden_off_in">gasi se za %1$s</string>
     <string name="garden_waiting">čeka čvor…</string>
     <string name="garden_minutes_short">%1$d min</string>
-    <string name="garden_zone_minutes">%1$d minuta po planu</string>
     <string name="garden_zone_running">zaliva se sada</string>
     <string name="garden_zone_queued">na redu</string>
     <string name="garden_water_all">Zalij sve</string>
@@ -152,7 +151,6 @@
     <string name="irrigation_next_today">danas u %1$s</string>
     <string name="irrigation_next_tomorrow">sutra u %1$s</string>
     <string name="irrigation_next_day">%1$s u %2$s</string>
-    <string name="irrigation_next_in_days">za %1$d dana u %2$s</string>
     <string name="irrigation_last">Poslednje: %1$s</string>
     <string name="irrigation_event_started">pokrenuto</string>
     <string name="irrigation_event_finished">završeno</string>
@@ -188,7 +186,7 @@
     <string name="plan_pause_active">Zakazana zalivanja se preskaču do %1$s (uključujući).</string>
     <string name="plan_pause_today">Danas</string>
     <string name="plan_pause_tomorrow">Do sutra</string>
-    <string name="plan_pause_days">%1$d dana</string>
+    <string name="plan_pause_days" tools:ignore="PluralsCandidate">%1$d dana</string>
     <string name="plan_pause_clear">Ukloni pauzu</string>
     <string name="plan_days">Dani</string>
     <string name="plan_every_day">Svaki dan</string>
@@ -207,12 +205,12 @@
     <string name="plan_soak_on">Deo zalivanja</string>
     <string name="plan_soak_off">Pauza između</string>
     <string name="plan_problems">Plan ne može da se sačuva</string>
-    <string name="plan_problem_starts">Najviše %1$d vremena pokretanja.</string>
+    <string name="plan_problem_starts" tools:ignore="PluralsCandidate">Najviše %1$d vremena pokretanja.</string>
     <string name="plan_problem_bad_start">Neispravno vreme: %1$s</string>
     <string name="plan_problem_duplicate">Vreme %1$s je uneto dva puta.</string>
-    <string name="plan_problem_zone">Zona %1$d: najviše %2$d minuta.</string>
-    <string name="plan_problem_soak_on">Deo zalivanja: najviše %1$d minuta.</string>
-    <string name="plan_problem_soak_off">Pauza: najviše %1$d minuta.</string>
+    <string name="plan_problem_zone" tools:ignore="PluralsCandidate">Zona %1$d: najviše %2$d minuta.</string>
+    <string name="plan_problem_soak_on" tools:ignore="PluralsCandidate">Deo zalivanja: najviše %1$d minuta.</string>
+    <string name="plan_problem_soak_off" tools:ignore="PluralsCandidate">Pauza: najviše %1$d minuta.</string>
     <string name="plan_problem_pause">Neispravan datum pauze.</string>
     <string name="plan_discard">Poništi</string>
     <string name="plan_saving">Čuva se…</string>
@@ -290,9 +288,9 @@
     <string name="heating_discard">Odbaci</string>
     <string name="heating_day_not_set">Čvor još nema raspored za ovaj dan. Podesi ga i sačuvaj.</string>
     <string name="heating_remote_changed">Raspored je u međuvremenu promenjen na čvoru. Sačuvaj da ga zameniš ili odbaci izmene.</string>
-    <string name="heating_problem_segments">Dozvoljeno je 1–%1$d segmenata.</string>
+    <string name="heating_problem_segments" tools:ignore="PluralsCandidate">Dozvoljeno je 1–%1$d segmenata.</string>
     <string name="heating_problem_first_midnight">Prvi segment mora da počne u 00:00.</string>
-    <string name="heating_problem_rising">Segment %1$d mora da počne posle prethodnog.</string>
+    <string name="heating_problem_rising" tools:ignore="PluralsCandidate">Segment %1$d mora da počne posle prethodnog.</string>
     <string name="heating_problem_temp">Segment %1$d: temperatura mora biti %2$s–%3$s °C.</string>
     <string name="heating_problem_hysteresis">Histereza mora biti 0,0–%1$s °C.</string>
     <string name="heating_hysteresis_lower">Donja histereza</string>
@@ -424,7 +422,7 @@
     <!-- Generic -->
     <string name="goodnight_title">Laku noć</string>
     <string name="system_title">Sistem</string>
-    <string name="system_online_count">%1$d / %2$d onlajn</string>
+    <string name="system_online_count" tools:ignore="PluralsCandidate">%1$d / %2$d onlajn</string>
     <string name="system_nodes">Čvorovi</string>
     <string name="system_broker_connected">Broker: povezano</string>
     <string name="system_broker_disconnected">Broker: nema veze</string>
@@ -527,7 +525,7 @@
     <string name="reports_pipe_well_delta">Δ bunar</string>
     <string name="reports_safe_mode">Bezbedni režim ukupno %1$s</string>
     <string name="reports_data">Podaci</string>
-    <string name="reports_data_detail">Potpunost %1$s (%2$d od %3$d uzoraka node5/state), restartova čvora: %4$d</string>
+    <string name="reports_data_detail" tools:ignore="PluralsCandidate">Potpunost %1$s (%2$d od %3$d uzoraka node5/state), restartova čvora: %4$d</string>
 
     <!-- History charts (RPi logger aggregates in Firebase: history/v1) -->
     <string name="history_24h">24h</string>
@@ -600,4 +598,16 @@
     <string name="widget_heating_unknown">Grejanje: nepoznato</string>
     <string name="widget_heating_unreachable">Grejanje: čvor nije dostupan</string>
     <string name="widget_at">u %1$s</string>
+
+    <!-- Serbian plural forms: one (1, 21, 31 …), few (2–4, 22–24 …), other (0, 5–20, 25 …). -->
+    <plurals name="garden_zone_minutes">
+        <item quantity="one">%1$d minut po planu</item>
+        <item quantity="few">%1$d minuta po planu</item>
+        <item quantity="other">%1$d minuta po planu</item>
+    </plurals>
+    <plurals name="irrigation_next_in_days">
+        <item quantity="one">za %1$d dan u %2$s</item>
+        <item quantity="few">za %1$d dana u %2$s</item>
+        <item quantity="other">za %1$d dana u %2$s</item>
+    </plurals>
 </resources>

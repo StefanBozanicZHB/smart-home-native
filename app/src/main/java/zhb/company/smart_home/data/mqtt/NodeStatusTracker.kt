@@ -1,10 +1,9 @@
 package zhb.company.smart_home.data.mqtt
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
+import zhb.company.smart_home.domain.node.int
+import zhb.company.smart_home.domain.node.long
+import zhb.company.smart_home.domain.node.parseJsonObject
+import zhb.company.smart_home.domain.node.string
 
 enum class NodeStatus { ONLINE, OFFLINE, UNKNOWN }
 
@@ -164,7 +163,7 @@ class NodeStatusTracker(
         }
         // Other topics only matter for nodes that have announced themselves (`status` above, or
         // one of the common topics with `fw`).
-        if (current == null && !(leaf in NEW_FIRMWARE_LEAVES && parseObject(payload)?.str("fw") != null)) return false
+        if (current == null && !(leaf in NEW_FIRMWARE_LEAVES && parseJsonObject(payload)?.string("fw") != null)) return false
         var next = current ?: Entry()
         val heartbeat = if (leaf == "heartbeat") parseHeartbeat(payload) else null
         if (heartbeat != null) next = next.copy(heartbeat = heartbeat, heartbeatAtMs = nowMs)
@@ -200,25 +199,16 @@ class NodeStatusTracker(
 
         /** `bozaSub/kuca/<node>/<leaf>`; deeper topics are not node health. */
         private val TOPIC = Regex("""^bozaSub/kuca/([A-Za-z0-9_]+)/([A-Za-z0-9_]+)$""")
-        private val json = Json { ignoreUnknownKeys = true }
-
-        private fun parseObject(payload: String): JsonObject? =
-            runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject
-
-        private fun JsonObject.str(key: String) = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
-        private fun JsonObject.long(key: String) = (this[key] as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
-        private fun JsonObject.int(key: String) = (this[key] as? JsonPrimitive)?.takeUnless { it.isString }?.intOrNull
-
-        private fun parseHeartbeat(payload: String) = parseObject(payload)?.let {
-            NodeHeartbeat(it.str("fw"), it.long("up"), it.int("rssi"), it.long("heap"), it.long("mqtt"))
+        private fun parseHeartbeat(payload: String) = parseJsonObject(payload)?.let {
+            NodeHeartbeat(it.string("fw"), it.long("up"), it.int("rssi"), it.long("heap"), it.long("mqtt"))
         }
 
-        private fun parseInfo(payload: String) = parseObject(payload)?.let {
-            NodeInfo(it.str("fw"), it.str("git"), it.str("ip"), it.str("host"), it.int("rssi"), it.str("mac"), it.str("ssid"))
+        private fun parseInfo(payload: String) = parseJsonObject(payload)?.let {
+            NodeInfo(it.string("fw"), it.string("git"), it.string("ip"), it.string("host"), it.int("rssi"), it.string("mac"), it.string("ssid"))
         }
 
-        private fun parseBoot(payload: String, nowMs: Long) = parseObject(payload)?.let {
-            NodeBoot(it.str("fw"), it.str("git"), it.str("reset"), nowMs)
+        private fun parseBoot(payload: String, nowMs: Long) = parseJsonObject(payload)?.let {
+            NodeBoot(it.string("fw"), it.string("git"), it.string("reset"), nowMs)
         }
     }
 }

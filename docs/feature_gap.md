@@ -1,6 +1,6 @@
 # Feature gap: Flutter `smart-home-app` → native `smart-home-native`
 
-Compared on 2026-11-19 against `smart-home-app/lib` (Flutter, reference only, to be retired) and
+Compared on 2026-11-19 (updated 2026-11-24) against `smart-home-app/lib` (Flutter, reference only, to be retired) and
 native `main` at `18ce72e`. Firmware state from `smart-home-mcu/docs` (`nodes.md`, `mqtt_topics.md`).
 
 Method: every MQTT topic literal and `MqttTopics` constant used by the Flutter app was diffed against
@@ -23,8 +23,8 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Feature | Flutter | Native | Status |
 |---|---|---|---|
 | Email/password sign-in (Firebase Identity Toolkit REST) | ✓ | ✓ | ✅ |
-| Remember credentials | SharedPreferences (plain text) | DataStore (plain text) | ⚠️ parity, but see §4 S1 |
-| Biometric unlock | `local_auth` | `BiometricPrompt` | ✅ |
+| Remember credentials | SharedPreferences (password, plain text) | refresh token only, encrypted with a Keystore key; left out of backups; sign-out in settings | ✅ (better) |
+| Biometric unlock | `local_auth` | `BiometricPrompt` (fingerprint, face or screen-lock PIN); the password is never put into the form | ✅ |
 | Broker config from Firebase RTDB, primary + backup broker | ✓ | ✓ | ✅ |
 | Connection error screen with retry | ✓ | ✓ | ✅ |
 | Request legacy node state (`node1/stanje` = `s`) after connect | ✓ | — | 🗑️ no node in use answers it; every node publishes retained states |
@@ -78,7 +78,7 @@ use runs it.
 |---|---|---|---|
 | Light/dark theme | ✓ | ✓ | ✅ |
 | Microcontroller overview (nodes online) | ✓ | nodes 1–6 and 8, status and heartbeat only | ✅ |
-| Warning instead of a switch when the device's node is offline ("Mikrokontroler … nije povezan") | ✓ (switch replaced by a warning icon, toast) | online dot only; switches stay active and publish into the void | ❌ |
+| Warning instead of a switch when the device's node is offline ("Mikrokontroler … nije povezan") | ✓ (switch replaced by a warning icon, toast) | the tile is disabled and says "čvor oflajn"; readings of an offline node are grayed with the time of their last update | ✅ |
 
 ## 3. Topic diff summary
 
@@ -91,16 +91,16 @@ Node 4 uses `node4/temperature` and `node4/humidity`; node7 topics are no longer
 
 | # | Item | Why |
 |---|---|---|
-| S1 | Store the Firebase password encrypted (Android Keystore) or keep only the refresh token | Plain text in DataStore today, same as Flutter. |
+| S1 | ~~Store the Firebase password encrypted or keep only the refresh token~~ | Done 2026-11-24: only the refresh token is kept, encrypted with a Keystore key. |
 | S2 | ~~Online state from `<node>/status` (retained Last Will) for migrated nodes~~ | Done: `NodeStatusTracker` (status + 3 min heartbeat timeout, unknown while the app is disconnected); the old "any live message" rule was removed with the last old-firmware node. |
 | S3 | ~~Hide or mark the shed screen (node7) and drop node9 references~~ | Done: shed screen and node7 topics removed. |
-| S5 | Replace deprecated Compose APIs (`Slider` in settings, `PasswordVisualTransformation` in auth) | Compiler warnings after the Compose 1.13 upgrade. |
+| S5 | ~~Replace deprecated Compose APIs~~ | Done: the build has no compiler warnings. |
 
 ## 5. Before the Flutter app can be retired
 
 1. ~~Fix B1 and B2~~ (done in native; broker cleanup in step 6).
 2. ~~Add the melody button (node8)~~ (no buzzer in `node8-2.0.0`).
-3. Disable or warn on switches whose node is offline.
+3. ~~Disable or warn on switches whose node is offline~~ (done).
 4. ~~Install `node5-2.0.0` on the real Node 5~~ (installed 2026-11-22).
 5. ~~Decide on the shed screen (S3)~~ (removed).
 6. Clear the obsolete retained topics on the broker (old Serbian topics of nodes 1–6, old `node8/*` (`temp`, `gas`, `ac/*`), `node0/*`, `node4/…/sijalicaN/stanje`, `node8/acTemp|acFan|acMode`, `node7/*`).

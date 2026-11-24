@@ -1,12 +1,9 @@
 package zhb.company.smart_home.domain.garden
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
+import zhb.company.smart_home.domain.node.bool
+import zhb.company.smart_home.domain.node.int
+import zhb.company.smart_home.domain.node.long
+import zhb.company.smart_home.domain.node.parseJsonObject
 
 /** Retained `node6/state` (pool, smart-home-mcu docs/mqtt_topics.md, section Node 6). */
 data class Node6State(
@@ -22,19 +19,16 @@ data class Node6State(
 )
 
 object Node6Json {
-    private val json = Json { ignoreUnknownKeys = true }
-
     fun parseState(payload: String): Node6State? {
-        val o = runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject ?: return null
-        fun prim(key: String) = (o[key] as? JsonPrimitive)?.takeUnless { it is JsonNull || it.isString }
+        val o = parseJsonObject(payload) ?: return null
         return Node6State(
-            seq = prim("seq")?.longOrNull ?: return null,
-            uptimeSeconds = prim("up")?.longOrNull ?: return null,
-            pump = prim("pump")?.booleanOrNull ?: false,
-            pumpLeftSeconds = prim("pump_left")?.intOrNull,
-            heating = prim("heating")?.booleanOrNull,
-            heatingLeftSeconds = prim("heating_left")?.intOrNull,
-            sensorOk = prim("ds18b20")?.booleanOrNull,
+            seq = o.long("seq") ?: return null,
+            uptimeSeconds = o.long("up") ?: return null,
+            pump = o.bool("pump") ?: false,
+            pumpLeftSeconds = o.int("pump_left"),
+            heating = o.bool("heating"),
+            heatingLeftSeconds = o.int("heating_left"),
+            sensorOk = o.bool("ds18b20"),
         )
     }
 

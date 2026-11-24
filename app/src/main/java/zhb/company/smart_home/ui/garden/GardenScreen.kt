@@ -67,6 +67,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -379,7 +380,7 @@ private fun ZoneButtons(irrigation: IrrigationUi, enabled: Boolean, onIntent: (G
                 val stateText = when {
                     running -> stringResource(R.string.garden_zone_running)
                     queued -> stringResource(R.string.garden_zone_queued)
-                    else -> stringResource(R.string.garden_zone_minutes, minutes)
+                    else -> pluralStringResource(R.plurals.garden_zone_minutes, minutes, minutes)
                 }
                 Surface(
                     onClick = { onIntent(GardenIntent.StartZone(zone)) },

@@ -36,6 +36,9 @@ data class InboxEntry(
     val extras: Map<String, String> = emptyMap(),
 ) {
     val needsLabel: Boolean get() = feedbackOffered && id != null && feedback == null
+
+    /** Tag of its notification in the shade, as [AlertPayload.notificationTag] gave it (entries that can be labeled have an id). */
+    val notificationTag: String? get() = tag ?: id?.let { "id-$it" }
 }
 
 /**

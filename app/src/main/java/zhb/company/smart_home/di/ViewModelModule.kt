@@ -1,5 +1,6 @@
 package zhb.company.smart_home.di
 
+import androidx.core.app.NotificationManagerCompat
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -39,6 +40,6 @@ val viewModelModule = module {
     viewModel { ThemeStateHolder(get()) }
     viewModel { ReportsViewModel(get()) }
     viewModel { HistoryViewModel(get()) }
-    viewModel { NotificationsViewModel(get(), androidContext()) }
+    viewModel { NotificationsViewModel(get(), NotificationManagerCompat.from(androidContext())) }
     viewModel { params -> ReportDetailViewModel(params.get(), get()) }
 }

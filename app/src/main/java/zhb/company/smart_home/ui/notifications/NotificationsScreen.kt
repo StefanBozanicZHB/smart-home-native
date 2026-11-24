@@ -1,6 +1,5 @@
 package zhb.company.smart_home.ui.notifications
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -67,14 +66,14 @@ import zhb.company.smart_home.ui.format.Durations
 import zhb.company.smart_home.ui.theme.AppTheme
 import zhb.company.smart_home.ui.theme.SmartHomeTheme
 
-class NotificationsViewModel(private val inbox: NotificationInbox, private val context: Context) : ViewModel() {
+class NotificationsViewModel(private val inbox: NotificationInbox, private val notifications: NotificationManagerCompat) : ViewModel() {
     val entries: StateFlow<List<InboxEntry>> = inbox.entries
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), inbox.entries.value)
 
     fun label(entry: InboxEntry, label: String) {
         val id = entry.id ?: return
         // The notification may still be in the shade with its buttons: the question is answered.
-        NotificationManagerCompat.from(context).cancel(entry.tag, 0)
+        notifications.cancel(entry.notificationTag, 0)
         viewModelScope.launch { inbox.label(id, label, NotificationInbox.VIA_APP) }
     }
 }

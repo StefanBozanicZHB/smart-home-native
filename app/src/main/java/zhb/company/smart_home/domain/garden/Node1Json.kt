@@ -1,17 +1,19 @@
 package zhb.company.smart_home.domain.garden
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
-import zhb.company.smart_home.domain.node.NodeJson
+import zhb.company.smart_home.domain.node.bool
+import zhb.company.smart_home.domain.node.int
+import zhb.company.smart_home.domain.node.ints
+import zhb.company.smart_home.domain.node.long
+import zhb.company.smart_home.domain.node.obj
+import zhb.company.smart_home.domain.node.parseJsonObject
+import zhb.company.smart_home.domain.node.string
+import zhb.company.smart_home.domain.node.strings
 import zhb.company.smart_home.domain.schedule.ScheduleJson
 
 /**
@@ -23,7 +25,7 @@ object Node1Json {
 
     // ---- states ------------------------------------------------------------------------------
 
-    fun parseConfig(payload: String): Node1Config? = parseObject(payload)?.let { o ->
+    fun parseConfig(payload: String): Node1Config? = parseJsonObject(payload)?.let { o ->
         val limits = o.obj("limits")
         val d = Node1Limits()
         val soak = o.obj("soak")
@@ -46,7 +48,7 @@ object Node1Json {
         )
     }
 
-    fun parseState(payload: String): Node1State? = parseObject(payload)?.let { o ->
+    fun parseState(payload: String): Node1State? = parseJsonObject(payload)?.let { o ->
         val fountain = o.obj("fountain")
         Node1State(
             seq = o.long("seq") ?: return null,
@@ -82,7 +84,7 @@ object Node1Json {
         leftSeconds = r.ints("left") ?: emptyList(),
     )
 
-    fun parseRunEvent(payload: String): RunEvent? = parseObject(payload)?.let { o ->
+    fun parseRunEvent(payload: String): RunEvent? = parseJsonObject(payload)?.let { o ->
         RunEvent(
             seq = o.long("seq") ?: return null,
             atUptimeSeconds = o.long("at") ?: return null,
@@ -122,26 +124,4 @@ object Node1Json {
         put("id", id)
     }.toString()
 
-    fun runStopCommand(id: String): String = buildJsonObject { put("id", id) }.toString()
-
-    /** Fountain pump or light; [minutes] (1-1440) switches it off by itself after that time. */
-    fun fountainCommand(id: String, on: Boolean, minutes: Int? = null): String = NodeJson.switchCommand(id, on, minutes)
-
-    // ---- helpers -----------------------------------------------------------------------------
-
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun parseObject(payload: String): JsonObject? =
-        runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject
-
-    private fun JsonObject.prim(key: String) = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }
-    private fun JsonObject.obj(key: String) = this[key] as? JsonObject
-    private fun JsonObject.string(key: String) = prim(key)?.takeIf { it.isString }?.content
-    private fun JsonObject.bool(key: String) = prim(key)?.takeUnless { it.isString }?.booleanOrNull
-    private fun JsonObject.int(key: String) = prim(key)?.takeUnless { it.isString }?.intOrNull
-    private fun JsonObject.long(key: String) = prim(key)?.takeUnless { it.isString }?.longOrNull
-    private fun JsonObject.strings(key: String) =
-        (this[key] as? JsonArray)?.map { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content ?: return null }
-    private fun JsonObject.ints(key: String) =
-        (this[key] as? JsonArray)?.map { (it as? JsonPrimitive)?.takeUnless { p -> p.isString }?.intOrNull ?: return null }
 }

@@ -16,7 +16,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.WifiTethering
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -101,7 +101,7 @@ fun RoomTargetCard(state: HistoryState, zone: String, zoneLabel: String) {
     var selected by remember(period, zone) { mutableStateOf<Int?>(null) }
     val doc = state.doc(period)
     DashboardCard {
-        CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_room_target_title, zoneLabel)) {
+        CardHeader(Icons.AutoMirrored.Outlined.ShowChart, stringResource(R.string.history_room_target_title, zoneLabel)) {
             PeriodTabs(periodOptions(), period, { period = it })
         }
         val room = doc?.get(HistorySeriesNames.room(zone))?.takeIf { it.hasData }
@@ -168,7 +168,7 @@ fun PipeDeltaCard(state: HistoryState) {
     val heatColor = AppTheme.status.warm
     val wellColor = AppTheme.status.cold
     DashboardCard {
-        CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_delta_title)) {
+        CardHeader(Icons.AutoMirrored.Outlined.ShowChart, stringResource(R.string.history_delta_title)) {
             PeriodTabs(periodOptions(), period, { period = it })
         }
         if (doc == null || (heat == null && well == null)) {
@@ -285,7 +285,7 @@ fun ClimateHistoryCard(state: HistoryState) {
     val cold = AppTheme.status.cold
     val colors = remember(warm, active, cold) { mapOf(Place.GROUND to warm, Place.UPPER to active, Place.OUTDOOR to cold) }
     DashboardCard {
-        CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_climate_title)) {
+        CardHeader(Icons.AutoMirrored.Outlined.ShowChart, stringResource(R.string.history_climate_title)) {
             PeriodTabs(periodOptions(), period, { period = it })
         }
         val (temps, hums) = remember(doc) {

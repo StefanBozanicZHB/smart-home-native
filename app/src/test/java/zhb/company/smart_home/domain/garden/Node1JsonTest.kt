@@ -83,9 +83,9 @@ class Node1JsonTest {
         assertEquals("""{"pause_until":"2026-11-22","id":"a3"}""", Node1Json.configSetCommand("a3", Node1ConfigChange(pauseUntil = PauseUntil("2026-11-22"))))
         assertEquals("""{"zones":[1,3],"minutes":5,"id":"a4"}""", Node1Json.runStartCommand("a4", listOf(1, 3), 5))
         assertEquals("""{"id":"a5"}""", Node1Json.runStartCommand("a5"))
-        assertEquals("""{"id":"a6"}""", Node1Json.runStopCommand("a6"))
-        assertEquals("""{"on":true,"minutes":120,"id":"a7"}""", Node1Json.fountainCommand("a7", true, 120))
-        assertEquals("""{"on":false,"id":"a8"}""", Node1Json.fountainCommand("a8", false, 120))
+        assertEquals("""{"id":"a6"}""", zhb.company.smart_home.domain.node.NodeJson.idOnly("a6"))
+        assertEquals("""{"on":true,"minutes":120,"id":"a7"}""", zhb.company.smart_home.domain.node.NodeJson.switchCommand("a7", true, 120))
+        assertEquals("""{"on":false,"id":"a8"}""", zhb.company.smart_home.domain.node.NodeJson.switchCommand("a8", false, 120))
     }
 
     @Test

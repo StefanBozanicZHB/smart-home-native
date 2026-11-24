@@ -1,15 +1,13 @@
 package zhb.company.smart_home.domain.garden
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 import zhb.company.smart_home.domain.schedule.OutputSchedule
 import zhb.company.smart_home.domain.schedule.ScheduleJson
 import zhb.company.smart_home.domain.schedule.TodayWindow
+import zhb.company.smart_home.domain.node.bool
+import zhb.company.smart_home.domain.node.int
+import zhb.company.smart_home.domain.node.long
+import zhb.company.smart_home.domain.node.obj
+import zhb.company.smart_home.domain.node.parseJsonObject
 
 /**
  * Retained `node2/state` (yard, smart-home-mcu docs/mqtt_topics.md, section Node 2): the two lights
@@ -35,27 +33,24 @@ data class Node2State(
 data class Node2Config(val rev: Long, val schedules: Map<String, OutputSchedule?>)
 
 object Node2Json {
-    private val json = Json { ignoreUnknownKeys = true }
-
     fun parseState(payload: String): Node2State? {
-        val o = runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject ?: return null
-        fun prim(key: String) = (o[key] as? JsonPrimitive)?.takeUnless { it is JsonNull || it.isString }
+        val o = parseJsonObject(payload) ?: return null
         return Node2State(
-            seq = prim("seq")?.longOrNull ?: return null,
-            uptimeSeconds = prim("up")?.longOrNull ?: return null,
-            neon = prim("neon")?.booleanOrNull ?: false,
-            neonLeftSeconds = prim("neon_left")?.intOrNull,
-            lamp = prim("lamp")?.booleanOrNull ?: false,
-            lampLeftSeconds = prim("lamp_left")?.intOrNull,
-            sensorOk = prim("ds18b20")?.booleanOrNull,
+            seq = o.long("seq") ?: return null,
+            uptimeSeconds = o.long("up") ?: return null,
+            neon = o.bool("neon") ?: false,
+            neonLeftSeconds = o.int("neon_left"),
+            lamp = o.bool("lamp") ?: false,
+            lampLeftSeconds = o.int("lamp_left"),
+            sensorOk = o.bool("ds18b20"),
             today = o.keys.filter { it.endsWith(TODAY_SUFFIX) }.associate { it.removeSuffix(TODAY_SUFFIX) to ScheduleJson.parseToday(o[it]) },
         )
     }
 
     fun parseConfig(payload: String): Node2Config? {
-        val o = runCatching { json.parseToJsonElement(payload) }.getOrNull() as? JsonObject ?: return null
-        val rev = (o["rev"] as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull ?: return null
-        val schedules = o["schedules"] as? JsonObject ?: return null
+        val o = parseJsonObject(payload) ?: return null
+        val rev = o.long("rev") ?: return null
+        val schedules = o.obj("schedules") ?: return null
         return Node2Config(rev, ScheduleJson.parseSchedules(schedules))
     }
 

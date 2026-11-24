@@ -4,13 +4,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.mqtt.MqttConnectionState
-import zhb.company.smart_home.data.mqtt.MqttQualityOfService
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.data.node.NodeChannel
 import zhb.company.smart_home.data.node.NodeCommandClient
 import zhb.company.smart_home.domain.garden.Node2Config
 import zhb.company.smart_home.domain.garden.Node2Json
@@ -24,10 +20,8 @@ object Node2Topics {
     const val BASE = "bozaSub/kuca/node2/"
     const val NEON_SET = "${BASE}neon/set"
     const val LAMP_SET = "${BASE}lamp/set"
-    const val CONFIG_GET = "${BASE}config/get"
     const val CONFIG = "config"
     const val STATE = "state"
-    const val RESULT = "result"
 
     /** `<output>/schedule/set`, relative to [BASE] (also the `cmd` in the answer). */
     fun scheduleCommand(output: String) = "$output/schedule/set"
@@ -50,21 +44,10 @@ class Node2Repository(
     private val _config = MutableStateFlow<Node2Config?>(null)
     val config: StateFlow<Node2Config?> = _config.asStateFlow()
 
-    private val commands = NodeCommandClient(mqtt, commandTimeoutMs, newId)
+    private val channel = NodeChannel(mqtt, scope, Node2Topics.BASE, commandTimeoutMs, newId, ::onMessage)
+    private val commands = channel.commands
 
-    init {
-        mqtt.addMessageListener(::onMessage)
-        scope.launch {
-            mqtt.connectionState
-                .map { it is MqttConnectionState.Connected }
-                .distinctUntilChanged()
-                .collect { connected -> if (connected) requestState() }
-        }
-    }
-
-    suspend fun requestState() {
-        mqtt.publish(Node2Topics.CONFIG_GET, "{}", qos = MqttQualityOfService.AT_LEAST_ONCE)
-    }
+    suspend fun requestState() = channel.requestState()
 
     /** The LED strip on the terrace (`neon` in the firmware). */
     suspend fun setNeon(on: Boolean, minutes: Int? = null): CommandOutcome =
@@ -84,10 +67,8 @@ class Node2Repository(
         }
     }
 
-    private fun onMessage(topic: String, payload: String, @Suppress("UNUSED_PARAMETER") retained: Boolean) {
-        if (!topic.startsWith(Node2Topics.BASE)) return
-        when (topic.removePrefix(Node2Topics.BASE)) {
-            Node2Topics.RESULT -> commands.onResult(payload)
+    private fun onMessage(path: String, payload: String) {
+        when (path) {
             Node2Topics.STATE -> Node2Json.parseState(payload)?.let { _state.value = it }
             Node2Topics.CONFIG -> Node2Json.parseConfig(payload)?.let { _config.value = it }
         }

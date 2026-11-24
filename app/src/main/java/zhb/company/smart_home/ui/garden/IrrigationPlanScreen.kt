@@ -220,7 +220,7 @@ private fun DaysCard(draft: IrrigationDraft, enabled: Boolean, onIntent: (PlanIn
             }
         }
         if (draft.days.isEmpty()) {
-            Text(stringResource(R.string.plan_no_days), style = MaterialTheme.typography.bodySmall, color = AppThemeWarning())
+            Text(stringResource(R.string.plan_no_days), style = MaterialTheme.typography.bodySmall, color = zhb.company.smart_home.ui.theme.AppTheme.status.warning)
         }
     }
 }
@@ -257,7 +257,7 @@ private fun StartsCard(draft: IrrigationDraft, max: Int, enabled: Boolean, onInt
             }
         }
         if (draft.starts.isEmpty()) {
-            Text(stringResource(R.string.plan_no_starts), style = MaterialTheme.typography.bodySmall, color = AppThemeWarning())
+            Text(stringResource(R.string.plan_no_starts), style = MaterialTheme.typography.bodySmall, color = zhb.company.smart_home.ui.theme.AppTheme.status.warning)
         }
     }
     editing?.let { index ->
@@ -332,9 +332,6 @@ private fun SoakRow(label: String, value: Int, range: IntRange, enabled: Boolean
         }
     }
 }
-
-@Composable
-private fun AppThemeWarning() = zhb.company.smart_home.ui.theme.AppTheme.status.warning
 
 @Composable
 private fun problemText(problem: IrrigationProblem): String = when (problem) {

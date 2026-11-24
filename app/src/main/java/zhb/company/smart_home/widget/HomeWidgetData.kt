@@ -1,5 +1,6 @@
 package zhb.company.smart_home.widget
 
+import androidx.core.content.edit
 import android.content.Context
 import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
@@ -76,7 +77,7 @@ class WidgetStore(private val context: Context) {
             )
             // Live values change every few seconds; redraw only for a visible change or once a minute.
             val visible = prev == null || merged.copy(atMs = 0) != prev.copy(atMs = 0) || merged.atMs - prev.atMs > 60_000
-            if (visible) prefs.edit().putString(KEY, json.encodeToString(merged)).apply()
+            if (visible) prefs.edit { putString(KEY, json.encodeToString(merged)) }
             visible
         }
         if (changed) runCatching { HomeWidget().updateAll(context) }

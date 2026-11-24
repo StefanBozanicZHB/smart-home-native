@@ -4,14 +4,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.mqtt.MqttConnectionState
-import zhb.company.smart_home.data.mqtt.MqttQualityOfService
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.data.node.NodeChannel
 import zhb.company.smart_home.data.node.NodeCommandClient
 import zhb.company.smart_home.domain.heating.Hysteresis
 import zhb.company.smart_home.domain.heating.Node5Config
@@ -52,28 +48,13 @@ class Node5Repository(
 
     private val topics = Node5Topics()
 
-    private val commands = NodeCommandClient(mqtt, commandTimeoutMs, newId)
+    private val channel = NodeChannel(mqtt, scope, topics.base, commandTimeoutMs, newId, ::onMessage)
+    private val commands = channel.commands
 
-    init {
-        mqtt.addMessageListener(::onMessage)
-        scope.launch {
-            mqtt.connectionState
-                .map { it is MqttConnectionState.Connected }
-                .distinctUntilChanged()
-                .collect { connected ->
-                    // Retained topics arrive on subscribe anyway; this also covers a node that
-                    // restarted without retained data.
-                    if (connected) requestState()
-                }
-        }
-    }
-
-    suspend fun requestState() {
-        mqtt.publish(topics.configGet, "{}", qos = MqttQualityOfService.AT_LEAST_ONCE)
-    }
+    suspend fun requestState() = channel.requestState()
 
     suspend fun setMainSwitch(on: Boolean): CommandOutcome =
-        send(topics.mainSwitchSet) { id -> Node5Json.mainSwitchCommand(on, id) }
+        commands.send(topics.mainSwitchSet) { id -> Node5Json.mainSwitchCommand(on, id) }
 
     /** Sends only the parts that are not null; the node keeps the rest. */
     suspend fun updateZone(
@@ -81,19 +62,15 @@ class Node5Repository(
         hysteresis: Hysteresis? = null,
         workday: List<ScheduleSegment>? = null,
         weekend: List<ScheduleSegment>? = null,
-    ): CommandOutcome = send(topics.zoneSet(zone)) { id -> Node5Json.zoneSetCommand(id, hysteresis, workday, weekend) }
+    ): CommandOutcome = commands.send(topics.zoneSet(zone)) { id -> Node5Json.zoneSetCommand(id, hysteresis, workday, weekend) }
 
     /** Assigns, moves or removes pipe sensors; pipes not in [changes] keep their sensor. */
     suspend fun updateSensors(changes: Map<Pipe, PipeAssignment?>): CommandOutcome =
-        send(topics.sensorsSet) { id -> Node5Json.sensorsSetCommand(id, changes) }
+        commands.send(topics.sensorsSet) { id -> Node5Json.sensorsSetCommand(id, changes) }
 
-    private suspend fun send(topic: String, payload: (id: String) -> String): CommandOutcome = commands.send(topic, payload)
-
-    /** Called on the MQTT client's thread for every message on the shared subscription. */
-    private fun onMessage(topic: String, payload: String, @Suppress("UNUSED_PARAMETER") retained: Boolean) {
-        val path = topics.relative(topic) ?: return
+    /** Called on the MQTT client's thread with each Node 5 message ([path] relative to its base). */
+    private fun onMessage(path: String, payload: String) {
         when {
-            path == Node5Topics.RESULT -> commands.onResult(payload)
             path == Node5Topics.CONFIG -> Node5Json.parseConfig(payload)?.let { c -> _snapshot.update { it.copy(config = c) } }
             path == Node5Topics.STATE -> Node5Json.parseState(payload)?.let { s -> _snapshot.update { it.copy(live = s) } }
             path == Node5Topics.PUMP -> Node5Json.parsePump(payload)?.let { p -> _snapshot.update { it.copy(pump = p) } }

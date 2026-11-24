@@ -47,10 +47,6 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
         runBlocking { withTimeoutOrNull(RECEIPT_TIMEOUT_MS) { log.recordReceipt(payload, receivedMs, BuildConfig.VERSION_NAME) } }
     }
 
-    override fun onNewToken(token: String) {
-        // Topic messaging only: the SDK moves topic subscriptions to the new token itself.
-    }
-
     companion object {
         private const val RECEIPT_TIMEOUT_MS = 8_000L
 

@@ -4,18 +4,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import zhb.company.smart_home.data.mqtt.MqttConnectionState
-import zhb.company.smart_home.data.mqtt.MqttQualityOfService
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.data.node.NodeChannel
 import zhb.company.smart_home.data.node.NodeCommandClient
 import zhb.company.smart_home.domain.garden.Node1Config
 import zhb.company.smart_home.domain.garden.Node1ConfigChange
 import zhb.company.smart_home.domain.garden.Node1Json
+import zhb.company.smart_home.domain.node.NodeJson
 import zhb.company.smart_home.domain.garden.Node1State
 import zhb.company.smart_home.domain.garden.RunEvent
 import zhb.company.smart_home.domain.schedule.OutputSchedule
@@ -33,7 +30,6 @@ data class Node1Snapshot(
 object Node1Topics {
     const val BASE = "bozaSub/kuca/node1/"
     const val CONFIG_SET = "${BASE}config/set"
-    const val CONFIG_GET = "${BASE}config/get"
     const val RUN_START = "${BASE}run/start"
     const val RUN_STOP = "${BASE}run/stop"
     const val PUMP_SET = "${BASE}fountain/pump/set"
@@ -43,7 +39,6 @@ object Node1Topics {
     const val CONFIG = "config"
     const val STATE = "state"
     const val RUN = "run"
-    const val RESULT = "result"
 
     /** `fountain/<output>/schedule/set`, relative to [BASE] (also the `cmd` in the answer). */
     fun fountainScheduleCommand(output: String) = "fountain/$output/schedule/set"
@@ -62,21 +57,10 @@ class Node1Repository(
     private val _snapshot = MutableStateFlow(Node1Snapshot())
     val snapshot: StateFlow<Node1Snapshot> = _snapshot.asStateFlow()
 
-    private val commands = NodeCommandClient(mqtt, commandTimeoutMs, newId)
+    private val channel = NodeChannel(mqtt, scope, Node1Topics.BASE, commandTimeoutMs, newId, ::onMessage)
+    private val commands = channel.commands
 
-    init {
-        mqtt.addMessageListener(::onMessage)
-        scope.launch {
-            mqtt.connectionState
-                .map { it is MqttConnectionState.Connected }
-                .distinctUntilChanged()
-                .collect { connected -> if (connected) requestState() }
-        }
-    }
-
-    suspend fun requestState() {
-        mqtt.publish(Node1Topics.CONFIG_GET, "{}", qos = MqttQualityOfService.AT_LEAST_ONCE)
-    }
+    suspend fun requestState() = channel.requestState()
 
     suspend fun updateConfig(change: Node1ConfigChange): CommandOutcome =
         commands.send(Node1Topics.CONFIG_SET) { id -> Node1Json.configSetCommand(id, change) }
@@ -85,13 +69,13 @@ class Node1Repository(
     suspend fun startRun(zones: List<Int>? = null, minutes: Int? = null): CommandOutcome =
         commands.send(Node1Topics.RUN_START) { id -> Node1Json.runStartCommand(id, zones, minutes) }
 
-    suspend fun stopRun(): CommandOutcome = commands.send(Node1Topics.RUN_STOP) { id -> Node1Json.runStopCommand(id) }
+    suspend fun stopRun(): CommandOutcome = commands.send(Node1Topics.RUN_STOP) { id -> NodeJson.idOnly(id) }
 
     suspend fun setPump(on: Boolean, minutes: Int? = null): CommandOutcome =
-        commands.send(Node1Topics.PUMP_SET) { id -> Node1Json.fountainCommand(id, on, minutes) }
+        commands.send(Node1Topics.PUMP_SET) { id -> NodeJson.switchCommand(id, on, minutes) }
 
     suspend fun setLight(on: Boolean, minutes: Int? = null): CommandOutcome =
-        commands.send(Node1Topics.LIGHT_SET) { id -> Node1Json.fountainCommand(id, on, minutes) }
+        commands.send(Node1Topics.LIGHT_SET) { id -> NodeJson.switchCommand(id, on, minutes) }
 
     /** Daily schedule of a fountain output ([output] as in `node1/config` `fountain`); null removes it. */
     suspend fun setFountainSchedule(output: String, schedule: OutputSchedule?): CommandOutcome {
@@ -105,10 +89,8 @@ class Node1Repository(
     }
 
     /** Called on the MQTT client's thread for every message on the shared subscription. */
-    private fun onMessage(topic: String, payload: String, @Suppress("UNUSED_PARAMETER") retained: Boolean) {
-        if (!topic.startsWith(Node1Topics.BASE)) return
-        when (topic.removePrefix(Node1Topics.BASE)) {
-            Node1Topics.RESULT -> commands.onResult(payload)
+    private fun onMessage(path: String, payload: String) {
+        when (path) {
             Node1Topics.CONFIG -> Node1Json.parseConfig(payload)?.let { c -> _snapshot.update { it.copy(config = c) } }
             Node1Topics.STATE -> Node1Json.parseState(payload)?.let { s -> _snapshot.update { it.copy(state = s) } }
             Node1Topics.RUN -> Node1Json.parseRunEvent(payload)?.let { r -> _snapshot.update { it.copy(lastRun = r) } }
