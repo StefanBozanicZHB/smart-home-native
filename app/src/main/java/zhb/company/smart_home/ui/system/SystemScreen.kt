@@ -33,6 +33,7 @@ import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.theme.AppTheme
 import zhb.company.smart_home.ui.settings.ConnectionsList
 import zhb.company.smart_home.ui.settings.ConnectionsState
@@ -85,7 +86,7 @@ private fun SystemContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
+        animatedItem("system-1") {
             ScreenHeader(title = stringResource(R.string.system_title), horizontalPadding = 0.dp) {
                 StatusChip(
                     stringResource(R.string.system_online_count, online, nodes.size),
@@ -93,8 +94,8 @@ private fun SystemContent(
                 )
             }
         }
-        item { CompactRow(Icons.Outlined.Settings, stringResource(R.string.system_settings), onClick = onOpenSettings) }
-        item {
+        animatedItem("system-2") { CompactRow(Icons.Outlined.Settings, stringResource(R.string.system_settings), onClick = onOpenSettings) }
+        animatedItem("system-3") {
             DashboardCard {
                 CardHeader(Icons.Outlined.Dns, stringResource(if (connected) R.string.system_broker_connected else R.string.system_broker_disconnected)) {
                     StatusChip(
@@ -111,14 +112,14 @@ private fun SystemContent(
                 }
             }
         }
-        item {
+        animatedItem("system-4") {
             DashboardCard {
                 CardHeader(Icons.Outlined.Memory, stringResource(R.string.system_nodes))
                 ConnectionsList(ConnectionsState(nodes), onNodeClick = onOpenNode)
             }
         }
         // Nodes the RPi logger has no availability history for are left out by the card.
-        item { AvailabilityCard(history, nodes.map { it.nodeId to NodeLabels.of(it.nodeId) }) }
+        animatedItem("system-5") { AvailabilityCard(history, nodes.map { it.nodeId to NodeLabels.of(it.nodeId) }) }
     }
 }
 

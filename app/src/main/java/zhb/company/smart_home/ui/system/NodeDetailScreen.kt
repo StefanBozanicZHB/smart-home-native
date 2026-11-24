@@ -56,6 +56,7 @@ import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.components.isLargeFont
 import zhb.company.smart_home.ui.format.Durations
 import zhb.company.smart_home.ui.settings.NodeRow
@@ -87,7 +88,7 @@ private fun NodeDetailContent(row: NodeRow, nowMs: Long, onBack: () -> Unit = {}
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
+        animatedItem("node-1") {
             ScreenHeader(title = row.label, subtitle = row.nodeId, horizontalPadding = 0.dp, onBack = onBack) {
                 val (text, tone) = when (row.status) {
                     NodeStatus.ONLINE -> R.string.connections_online to Tone.ACTIVE
@@ -98,7 +99,7 @@ private fun NodeDetailContent(row: NodeRow, nowMs: Long, onBack: () -> Unit = {}
             }
         }
         if (health == null) {
-            item {
+            animatedItem("node-2") {
                 DashboardCard {
                     Text(stringResource(R.string.node_detail_no_data), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -106,7 +107,7 @@ private fun NodeDetailContent(row: NodeRow, nowMs: Long, onBack: () -> Unit = {}
             return@LazyColumn
         }
         if (health.recentlyRestarted(nowMs)) {
-            item {
+            animatedItem("node-3") {
                 AlertBanner(
                     Icons.Outlined.RestartAlt,
                     stringResource(R.string.node_detail_restarted, Durations.compact(health.uptimeSecondsAt(nowMs) ?: 0)),
@@ -115,11 +116,11 @@ private fun NodeDetailContent(row: NodeRow, nowMs: Long, onBack: () -> Unit = {}
                 )
             }
         }
-        item { ConnectionCard(health, nowMs) }
-        item { RunningCard(health, nowMs) }
-        item { VersionCard(health) }
-        item { NetworkCard(health) }
-        item {
+        animatedItem("node-4") { ConnectionCard(health, nowMs) }
+        animatedItem("node-5") { RunningCard(health, nowMs) }
+        animatedItem("node-6") { VersionCard(health) }
+        animatedItem("node-7") { NetworkCard(health) }
+        animatedItem("node-8") {
             Text(
                 stringResource(R.string.node_detail_footer),
                 style = MaterialTheme.typography.labelSmall,

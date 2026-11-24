@@ -218,8 +218,8 @@ fun DeviceTile(
                 Switch(checked = on, onCheckedChange = null, enabled = enabled, modifier = Modifier.scale(0.8f))
             }
             Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val second = if (!enabled) disabledReason else detail
-            if (second != null) {
+            // "gasi se za …", "čeka čvor…" come and go: the line opens instead of jumping in.
+            Appearing(if (!enabled) disabledReason else detail) { second ->
                 Text(
                     second,
                     style = MaterialTheme.typography.labelMedium,
@@ -260,7 +260,7 @@ fun AlertBanner(icon: ImageVector, text: String, tone: Tone, modifier: Modifier 
             Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = fg)
-                if (detail != null) Text(detail, style = MaterialTheme.typography.labelMedium, color = fg)
+                Appearing(detail) { Text(it, style = MaterialTheme.typography.labelMedium, color = fg) }
             }
         }
     }

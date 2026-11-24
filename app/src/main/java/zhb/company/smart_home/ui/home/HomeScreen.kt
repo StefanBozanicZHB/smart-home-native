@@ -62,6 +62,7 @@ import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.adaptiveColumns
+import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.format.NO_VALUE
 import zhb.company.smart_home.ui.heating.HeatPumpStatusLine
 import zhb.company.smart_home.ui.history.HistoryAutoLoad
@@ -120,10 +121,10 @@ private fun HomeContent(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // Keys keep the scroll position anchored when a block above appears or disappears.
-        item(key = "header") { HomeHeader(state.connected, now, toLabel, onOpenNotifications) }
-        state.alerts.forEach { alert -> item(key = alertKey(alert)) { HomeAlertBanner(alert) } }
+        animatedItem("header") { HomeHeader(state.connected, now, toLabel, onOpenNotifications) }
+        state.alerts.forEach { alert -> animatedItem(alertKey(alert)) { HomeAlertBanner(alert) } }
         state.sections.forEach { section ->
-            item(key = section.name) {
+            animatedItem(section.name) {
                 when (section) {
                     HomeSection.HEATING_HERO -> HeatingHeroCard(state.heating, onOpenHeating, history)
                     HomeSection.GARDEN_HERO -> GardenHeroCard(state, onOpenGarden)

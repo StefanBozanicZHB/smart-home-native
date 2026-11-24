@@ -1,6 +1,7 @@
 package zhb.company.smart_home.ui.heating
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -90,14 +91,17 @@ import zhb.company.smart_home.domain.heating.ScheduleSegment
 import zhb.company.smart_home.domain.heating.TimeOfDay
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.ui.components.AlertBanner
+import zhb.company.smart_home.ui.components.Appearing
 import zhb.company.smart_home.ui.components.BigValue
 import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.DashboardCard
+import zhb.company.smart_home.ui.components.Motion
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.StatTile
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.components.isLargeFont
 import zhb.company.smart_home.ui.theme.AppTheme
 
@@ -168,21 +172,21 @@ private fun HeatingContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { HeatingHeader(state, onIntent, onOpenReports) }
-        item { StatusBanners(state, onIntent) }
-        item { HeatPumpStatusCard(state.pumpStatus, onTurnOn = { onIntent(HeatingIntent.ToggleMainSwitch(true)) }.takeIf { state.connected }) }
+        animatedItem("heating-1") { HeatingHeader(state, onIntent, onOpenReports) }
+        animatedItem("heating-2") { StatusBanners(state, onIntent) }
+        animatedItem("heating-3") { HeatPumpStatusCard(state.pumpStatus, onTurnOn = { onIntent(HeatingIntent.ToggleMainSwitch(true)) }.takeIf { state.connected }) }
         if (!state.loading) {
-            if (state.zones.size > 1) item { ZoneSelector(state, onIntent) }
-            item { ZoneCard(state) }
+            if (state.zones.size > 1) animatedItem("heating-4") { ZoneSelector(state, onIntent) }
+            animatedItem("heating-5") { ZoneCard(state) }
         }
-        item { HeatPumpCard(state, onIntent, onOpenSensors) }
-        if (!state.loading) item { ScheduleCard(state, onIntent, initiallyEditing) }
+        animatedItem("heating-6") { HeatPumpCard(state, onIntent, onOpenSensors) }
+        if (!state.loading) animatedItem("heating-7") { ScheduleCard(state, onIntent, initiallyEditing) }
         // The flow temperature is already in the heat pump card; outdoor explains how hard it works.
-        item { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
+        animatedItem("heating-8") { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
         val zone = state.selectedZone ?: "ground"
-        item { RoomTargetCard(history, zone, zoneName(zone)) }
-        item { PumpRunCard(history) }
-        item { PipeDeltaCard(history) }
+        animatedItem("heating-9") { RoomTargetCard(history, zone, zoneName(zone)) }
+        animatedItem("heating-10") { PumpRunCard(history) }
+        animatedItem("heating-11") { PipeDeltaCard(history) }
     }
 }
 
@@ -219,7 +223,8 @@ private fun HeatingHeader(state: HeatingState, onIntent: (HeatingIntent) -> Unit
 /** Connection, node and safe-mode problems, most fundamental first. */
 @Composable
 private fun StatusBanners(state: HeatingState, onIntent: (HeatingIntent) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // One banner at most; its height changes smoothly when it appears, changes or goes.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.animateContentSize(Motion.standard())) {
         when {
             !state.connected -> AlertBanner(Icons.Outlined.CloudOff, stringResource(R.string.heating_not_connected), Tone.DANGER)
             state.online == false -> AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_node_offline), Tone.DANGER)
@@ -343,7 +348,7 @@ private fun HeatPumpCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
                 enabled = state.connected && !state.loading,
             )
         }
-        if (state.slowCommand == HeatingCommand.MAIN_SWITCH) Waiting()
+        Appearing(state.slowCommand == HeatingCommand.MAIN_SWITCH) { Waiting() }
         state.lastPumpChange?.let { change ->
             val whenText = buildString {
                 change.minutesAgo?.let { append(stringResource(R.string.heating_minutes_ago, it)).append(", ") }
@@ -454,10 +459,10 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
         val isToday = state.nodeIsWeekend != null && state.nodeIsWeekend == (state.selectedDay == DayType.WEEKEND)
         ScheduleTimeline(segments, state.limits, nowMinute = if (isToday) TimeOfDay.parse(state.nodeTime) else null)
 
-        if (state.dayNotSet && !state.scheduleDirty) Hint(stringResource(R.string.heating_day_not_set), warning = false)
-        if (state.remoteChangedWhileEditing) Hint(stringResource(R.string.heating_remote_changed), warning = true)
+        Appearing(state.dayNotSet && !state.scheduleDirty) { Hint(stringResource(R.string.heating_day_not_set), warning = false) }
+        Appearing(state.remoteChangedWhileEditing) { Hint(stringResource(R.string.heating_remote_changed), warning = true) }
 
-        if (showEditor) {
+        Appearing(showEditor) { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             segments.forEachIndexed { index, segment ->
                 ScheduleSegmentRow(
                     segment = segment,
@@ -469,7 +474,7 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
                     onDelete = if (segments.size > 1) ({ onIntent(HeatingIntent.RemoveSegment(index)) }) else null,
                 )
             }
-            state.scheduleProblem?.let { Hint(problemText(it), warning = true) }
+            Appearing(state.scheduleProblem) { Hint(problemText(it), warning = true) }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 if (segments.size < state.limits.segmentsMax) {
                     TextButton(onClick = { onIntent(HeatingIntent.AddSegment) }) {
@@ -489,7 +494,7 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
                     enabled = (state.scheduleDirty || state.dayNotSet) && state.scheduleProblem == null && state.connected,
                 ) { Text(stringResource(if (state.slowCommand == HeatingCommand.SCHEDULE) R.string.plan_saving else R.string.heating_save)) }
             }
-        }
+        } }
     }
 
     editingStartIndex?.let { index ->

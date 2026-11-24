@@ -85,6 +85,7 @@ import zhb.company.smart_home.domain.garden.RunSource
 import zhb.company.smart_home.domain.garden.SkipReason
 import zhb.company.smart_home.domain.garden.Weekday
 import zhb.company.smart_home.ui.components.AlertBanner
+import zhb.company.smart_home.ui.components.Appearing
 import zhb.company.smart_home.ui.components.BigValue
 import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.DashboardCard
@@ -98,6 +99,7 @@ import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.adaptiveColumns
 import zhb.company.smart_home.ui.components.animatedColor
+import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.components.isLargeFont
 import zhb.company.smart_home.ui.format.Durations
 import zhb.company.smart_home.ui.theme.AppTheme
@@ -155,7 +157,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
+        animatedItem("garden-1") {
             ScreenHeader(
                 title = stringResource(R.string.menu_garden),
                 subtitle = "${state.temperature}°",
@@ -163,12 +165,12 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
             )
         }
         if (state.yardOnline && !state.outdoorSensorOk) {
-            item { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.garden_sensor_missing), Tone.WARNING) }
+            animatedItem("garden-2") { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.garden_sensor_missing), Tone.WARNING) }
         }
-        item { SprinklerCard(state, onIntent, onOpenPlan) }
-        item { SoilMoistureCard() }
-        item { SectionLabel(stringResource(R.string.garden_fountain_and_lights)) }
-        item {
+        animatedItem("garden-3") { SprinklerCard(state, onIntent, onOpenPlan) }
+        animatedItem("garden-4") { SoilMoistureCard() }
+        animatedItem("garden-5") { SectionLabel(stringResource(R.string.garden_fountain_and_lights)) }
+        animatedItem("garden-6") {
             TileGrid(
                 columns = adaptiveColumns(2),
                 tiles = listOf(
@@ -207,7 +209,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                 ),
             )
         }
-        item {
+        animatedItem("garden-7") {
             Column {
                 TimerRow(
                     stringResource(R.string.garden_fountain_timer),
@@ -227,7 +229,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                 )
             }
         }
-        item { PoolCard(state, onIntent) }
+        animatedItem("garden-8") { PoolCard(state, onIntent) }
     }
 }
 
@@ -289,8 +291,8 @@ private fun SprinklerCard(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                 else -> StatusChip(stringResource(R.string.home_sprinklers_manual), Tone.NEUTRAL)
             }
         }
-        irrigation.storage?.let { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.irrigation_storage_problem), Tone.DANGER, detail = it) }
-        if (run != null) RunPanel(run, canCommand, onIntent)
+        Appearing(irrigation.storage) { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.irrigation_storage_problem), Tone.DANGER, detail = it) }
+        Appearing(run) { RunPanel(it, canCommand, onIntent) }
         ZoneButtons(irrigation, canCommand, onIntent)
         Text(
             when {
@@ -430,17 +432,17 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
             if (!state.poolOnline) StatusChip(stringResource(R.string.home_node_offline_tile), Tone.DANGER)
         }
         BigValue("${state.poolTemperature}°")
-        if (state.poolOnline && !state.poolSensorOk) {
+        Appearing(state.poolOnline && !state.poolSensorOk) {
             Text(stringResource(R.string.garden_pool_sensor_missing), style = MaterialTheme.typography.bodySmall, color = AppTheme.status.warning)
         }
         SwitchRow(stringResource(R.string.garden_pool_pump), state.poolPumpOn, state.poolOnline) { onIntent(GardenIntent.SetPoolPump(it)) }
-        waitingOr(GardenOutput.POOL_PUMP in state.slow, state.poolPumpLeftSeconds?.takeIf { state.poolPumpOn })?.let {
+        Appearing(waitingOr(GardenOutput.POOL_PUMP in state.slow, state.poolPumpLeftSeconds?.takeIf { state.poolPumpOn })) {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         val heatingOn = state.poolHeatingOn
         if (heatingOn != null) {
             SwitchRow(stringResource(R.string.garden_pool_heating), heatingOn, state.poolOnline) { onIntent(GardenIntent.SetPoolHeating(it)) }
-            waitingOr(GardenOutput.POOL_HEATING in state.slow, state.poolHeatingLeftSeconds?.takeIf { heatingOn })?.let {
+            Appearing(waitingOr(GardenOutput.POOL_HEATING in state.slow, state.poolHeatingLeftSeconds?.takeIf { heatingOn })) {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

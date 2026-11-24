@@ -64,6 +64,7 @@ import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatusChip
 import zhb.company.smart_home.ui.components.Tone
+import zhb.company.smart_home.ui.components.animatedItem
 
 /** While the screen is visible the node is asked for fresh readings this often. */
 private const val AUTO_REFRESH_MS = 10_000L
@@ -111,7 +112,7 @@ private fun PipeSensorsContent(state: PipeSensorsState, onIntent: (PipeSensorsIn
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
+        animatedItem("sensors-1") {
             ScreenHeader(title = stringResource(R.string.sensors_title), horizontalPadding = 0.dp, onBack = onBack) {
                 if (state.slow) {
                     // In place of the refresh button, so nothing on the screen moves.
@@ -125,25 +126,25 @@ private fun PipeSensorsContent(state: PipeSensorsState, onIntent: (PipeSensorsIn
                 }
             }
         }
-        if (!state.connected) item { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_not_connected), Tone.DANGER) }
+        if (!state.connected) animatedItem("sensors-2") { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_not_connected), Tone.DANGER) }
         if (state.loading) {
-            item { AlertBanner(Icons.Outlined.HourglassEmpty, stringResource(R.string.sensors_waiting, state.nodeId), Tone.NEUTRAL) }
+            animatedItem("sensors-3") { AlertBanner(Icons.Outlined.HourglassEmpty, stringResource(R.string.sensors_waiting, state.nodeId), Tone.NEUTRAL) }
             return@LazyColumn
         }
-        if (state.fallback) item { AlertBanner(Icons.Outlined.Info, stringResource(R.string.sensors_fallback), Tone.WARNING) }
-        item {
+        if (state.fallback) animatedItem("sensors-4") { AlertBanner(Icons.Outlined.Info, stringResource(R.string.sensors_fallback), Tone.WARNING) }
+        animatedItem("sensors-5") {
             Text(stringResource(R.string.sensors_identify_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        item { SectionLabel(stringResource(R.string.sensors_pipes)) }
-        state.pipes.forEach { row -> item(key = row.pipe.key) { PipeCard(row, state, onIntent) } }
-        item {
+        animatedItem("sensors-6") { SectionLabel(stringResource(R.string.sensors_pipes)) }
+        state.pipes.forEach { row -> animatedItem(row.pipe.key) { PipeCard(row, state, onIntent) } }
+        animatedItem("sensors-7") {
             SectionLabel(stringResource(R.string.sensors_bus)) {
                 TextButton(onClick = onOpenCalibration, enabled = state.connected && state.pipes.any { it.address != null }) {
                     Text(stringResource(R.string.sensors_calibrate))
                 }
             }
         }
-        item { BusCard(state, onIntent) }
+        animatedItem("sensors-8") { BusCard(state, onIntent) }
     }
 }
 
