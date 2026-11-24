@@ -9,7 +9,6 @@ import androidx.compose.material.icons.outlined.WifiTethering
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -102,12 +101,17 @@ fun RoomTargetCard(state: HistoryState, zone: String, zoneLabel: String) {
         }
         val roomColor = AppTheme.status.warm
         val targetColor = MaterialTheme.colorScheme.onSurfaceVariant
-        LineChart(
-            lines = listOfNotNull(
+        // Kept across recompositions (a touch on the chart recomposes the card), so the chart is
+        // only rebuilt when the data changes.
+        val lines = remember(room, target, roomColor, targetColor) {
+            listOfNotNull(
                 target?.let { ChartLine(it.avg, targetColor, dashed = true) },
                 ChartLine(room.avg, roomColor),
-            ),
-            xTicks = xTicks(doc.times, doc.endMs),
+            )
+        }
+        LineChart(
+            lines = lines,
+            xTicks = rememberXTicks(doc),
             leftFormat = { "${it.toInt()}°" },
             shade = pump?.avg,
             selected = selected,
@@ -145,8 +149,10 @@ fun PipeDeltaCard(state: HistoryState) {
     var period by rememberSaveable { mutableStateOf(HistoryPeriod.DAY) }
     var selected by remember(period) { mutableStateOf<Int?>(null) }
     val doc = state.doc(period)
-    val heat = HistoryCharts.delta(doc, HistorySeriesNames.PIPE_SUPPLY, HistorySeriesNames.PIPE_RETURN)
-    val well = HistoryCharts.delta(doc, HistorySeriesNames.PIPE_WELL_IN, HistorySeriesNames.PIPE_WELL_OUT)
+    val (heat, well) = remember(doc) {
+        HistoryCharts.delta(doc, HistorySeriesNames.PIPE_SUPPLY, HistorySeriesNames.PIPE_RETURN) to
+            HistoryCharts.delta(doc, HistorySeriesNames.PIPE_WELL_IN, HistorySeriesNames.PIPE_WELL_OUT)
+    }
     val heatColor = AppTheme.status.warm
     val wellColor = AppTheme.status.cold
     DashboardCard {
@@ -158,9 +164,12 @@ fun PipeDeltaCard(state: HistoryState) {
             else ChartReadout(stringResource(R.string.history_delta_waiting))
             return@DashboardCard
         }
+        val lines = remember(heat, well, heatColor, wellColor) {
+            listOfNotNull(heat?.let { ChartLine(it, heatColor) }, well?.let { ChartLine(it, wellColor) })
+        }
         LineChart(
-            lines = listOfNotNull(heat?.let { ChartLine(it, heatColor) }, well?.let { ChartLine(it, wellColor) }),
-            xTicks = xTicks(doc.times, doc.endMs),
+            lines = lines,
+            xTicks = rememberXTicks(doc),
             leftFormat = { "${formatDelta(it)}°" },
             selected = selected,
             onSelect = { selected = it },
@@ -194,7 +203,9 @@ private fun formatDelta(v: Float) = if (v == kotlin.math.floor(v)) v.toInt().toS
 fun PumpRunCard(state: HistoryState) {
     var period by rememberSaveable { mutableStateOf(HistoryPeriod.WEEK) }
     var selected by remember(period) { mutableStateOf<Int?>(null) }
-    val data = HistoryCharts.pumpRuns(period, state.doc(HistoryPeriod.DAY), state.doc(HistoryPeriod.MONTH))
+    val dayDoc = state.doc(HistoryPeriod.DAY)
+    val monthDoc = state.doc(HistoryPeriod.MONTH)
+    val data = remember(period, dayDoc, monthDoc) { HistoryCharts.pumpRuns(period, dayDoc, monthDoc) }
     DashboardCard {
         CardHeader(Icons.Outlined.BarChart, stringResource(R.string.history_pump_title)) {
             PeriodTabs(periodOptions(), period, { period = it })
@@ -212,7 +223,7 @@ fun PumpRunCard(state: HistoryState) {
             line = data.line,
             barColor = bars,
             lineColor = line,
-            xTicks = xTicks(data.starts, data.endMs),
+            xTicks = remember(data) { xTicks(data.starts, data.endMs) },
             barFormat = { "${zhb.company.smart_home.ui.components.formatAxis(it)} $unit" },
             lineFormat = { "${it.toInt()}°" },
             selected = selected,
@@ -237,7 +248,7 @@ fun PumpRunCard(state: HistoryState) {
             val total = data.bars.filterNotNull().sum()
             ChartReadout(stringResource(R.string.history_pump_total, runText(total, data.barUnit)))
             if (period != HistoryPeriod.DAY) {
-                val dd = HistoryCharts.hoursPerDegreeDay(state.doc(HistoryPeriod.MONTH), if (period == HistoryPeriod.WEEK) 7 else 30)
+                val dd = remember(period, monthDoc) { HistoryCharts.hoursPerDegreeDay(monthDoc, if (period == HistoryPeriod.WEEK) 7 else 30) }
                 dd?.ratio?.takeIf { dd.runHours > 0f }?.let { r ->
                     ChartReadout(stringResource(R.string.history_degree_days, String.format(SR, "%.2f", r), String.format(SR, "%.0f", dd.degreeDays)))
                 }
@@ -257,18 +268,26 @@ fun ClimateHistoryCard(state: HistoryState) {
     // Names of hidden places; a saveable list, so it survives rotation and leaving the screen.
     var hidden by rememberSaveable { mutableStateOf(setOf<String>()) }
     val doc = state.doc(period)
-    val colors = mapOf(Place.GROUND to AppTheme.status.warm, Place.UPPER to AppTheme.status.active, Place.OUTDOOR to AppTheme.status.cold)
+    val warm = AppTheme.status.warm
+    val active = AppTheme.status.active
+    val cold = AppTheme.status.cold
+    val colors = remember(warm, active, cold) { mapOf(Place.GROUND to warm, Place.UPPER to active, Place.OUTDOOR to cold) }
     DashboardCard {
         CardHeader(Icons.Outlined.ShowChart, stringResource(R.string.history_climate_title)) {
             PeriodTabs(periodOptions(), period, { period = it })
         }
-        val temps: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> doc?.get(p.temperature)?.takeIf { it.hasData }?.let { p to it } }
-        val hums: List<Pair<Place, HistorySeries>> = Place.entries.mapNotNull { p -> p.humidity?.let { doc?.get(it) }?.takeIf { it.hasData }?.let { p to it } }
+        val (temps, hums) = remember(doc) {
+            Place.entries.mapNotNull { p -> doc?.get(p.temperature)?.takeIf { it.hasData }?.let { p to it } } to
+                Place.entries.mapNotNull { p -> p.humidity?.let { doc?.get(it) }?.takeIf { it.hasData }?.let { p to it } }
+        }
         if (doc == null || (temps.isEmpty() && hums.isEmpty())) {
             HistoryPlaceholder(state.error, state.isLoading(period))
             return@DashboardCard
         }
-        val ticks = xTicks(doc.times, doc.endMs)
+        val ticks = rememberXTicks(doc)
+        // The visible lines, kept across touches on the charts.
+        val tempLines = remember(temps, hidden, colors) { temps.filter { it.first.name !in hidden }.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) } }
+        val humLines = remember(hums, hidden, colors) { hums.filter { it.first.name !in hidden }.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) } }
         val i = selected?.takeIf { it in doc.times.indices }
         val labels = Place.entries.associateWith { stringResource(it.label) }
         // Tap a place in the legend to hide its lines (e.g. outdoor, which squeezes the indoor ones).
@@ -284,7 +303,7 @@ fun ClimateHistoryCard(state: HistoryState) {
         if (temps.isNotEmpty()) {
             SectionCaption(stringResource(R.string.history_temperature_title))
             LineChart(
-                lines = temps.filter { it.first.name !in hidden }.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
+                lines = tempLines,
                 xTicks = ticks,
                 leftFormat = { "${it.toInt()}°" },
                 selected = i,
@@ -297,10 +316,10 @@ fun ClimateHistoryCard(state: HistoryState) {
         if (hums.isNotEmpty()) {
             SectionCaption(stringResource(R.string.history_humidity_title))
             LineChart(
-                lines = hums.filter { it.first.name !in hidden }.map { (p, s) -> ChartLine(s.avg, colors.getValue(p)) },
+                lines = humLines,
                 xTicks = ticks,
                 leftFormat = { "${it.toInt()} %" },
-                leftBounds = 0f..100f,
+                leftBounds = HUMIDITY_BOUNDS,
                 selected = i,
                 onSelect = { selected = it },
                 height = 140.dp,
@@ -331,24 +350,25 @@ private fun SectionCaption(text: String) {
 @Composable
 fun AvailabilityCard(state: HistoryState, nodes: List<Pair<String, String>>) {
     val month = state.doc(HistoryPeriod.MONTH)
-    val withData = nodes.filter { (id, _) -> HistoryCharts.availability(month, id).any { it.second != null } }
-    var node by rememberSaveable { mutableStateOf(nodes.firstOrNull()?.first.orEmpty()) }
-    LaunchedEffect(withData) {
-        if (withData.isNotEmpty() && withData.none { it.first == node }) node = withData.first().first
-    }
+    // Days per node, worked out once per document rather than on every recomposition.
+    val byNode = remember(month, nodes) { nodes.associate { (id, _) -> id to HistoryCharts.availability(month, id) } }
+    val withData = remember(byNode) { nodes.filter { (id, _) -> byNode[id].orEmpty().any { it.second != null } } }
+    var picked by rememberSaveable { mutableStateOf(nodes.firstOrNull()?.first.orEmpty()) }
+    // A picked node without history falls back to the first one that has it.
+    val node = if (withData.isEmpty() || withData.any { it.first == picked }) picked else withData.first().first
     DashboardCard {
         CardHeader(Icons.Outlined.WifiTethering, stringResource(R.string.history_availability_title)) {
-            if (withData.size > 1) PeriodTabs(withData.map { it.first to it.first }, node, { node = it })
+            if (withData.size > 1) PeriodTabs(remember(withData) { withData.map { it.first to it.first } }, node, { picked = it })
             else if (withData.size == 1) Text(withData.first().first, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        val days = HistoryCharts.availability(month, node)
+        val days = byNode[node].orEmpty()
         if (days.none { it.second != null }) {
             HistoryPlaceholder(state.error, state.isLoading(HistoryPeriod.MONTH))
             return@DashboardCard
         }
         AvailabilityStrip(
             values = days.map { it.second },
-            labels = days.map { it.first.format(DateTimeFormatter.ofPattern("EEEEE", SR)).uppercase(SR) },
+            labels = days.map { it.first.format(NARROW_WEEKDAY).uppercase(SR) },
         )
         val known = days.mapNotNull { it.second }
         val avg = known.average() * 100
@@ -397,15 +417,30 @@ private fun granularity(period: HistoryPeriod) = when (period) {
     HistoryPeriod.MONTH -> Granularity.DAY
 }
 
+// Formatters are immutable and thread-safe; made once instead of per label.
+private val HOUR_MINUTE = DateTimeFormatter.ofPattern("HH:mm", SR)
+private val WEEKDAY_TIME = DateTimeFormatter.ofPattern("EEE HH:mm", SR)
+private val WEEKDAY_DATE = DateTimeFormatter.ofPattern("EEE d. M.", SR)
+private val HOUR = DateTimeFormatter.ofPattern("HH", SR)
+private val WEEKDAY = DateTimeFormatter.ofPattern("EEE", SR)
+private val NARROW_WEEKDAY = DateTimeFormatter.ofPattern("EEEEE", SR)
+private val DAY_MONTH = DateTimeFormatter.ofPattern("d.M.", SR)
+
+private val HUMIDITY_BOUNDS = 0f..100f
+
 private fun pointLabel(ms: Long, g: Granularity, zone: ZoneId = ZoneId.systemDefault()): String {
     val t = Instant.ofEpochMilli(ms).atZone(zone)
-    val pattern = when (g) {
-        Granularity.MINUTE -> "HH:mm"
-        Granularity.HOUR -> "EEE HH:mm"
-        Granularity.DAY -> "EEE d. M."
+    val formatter = when (g) {
+        Granularity.MINUTE -> HOUR_MINUTE
+        Granularity.HOUR -> WEEKDAY_TIME
+        Granularity.DAY -> WEEKDAY_DATE
     }
-    return t.format(DateTimeFormatter.ofPattern(pattern, SR))
+    return t.format(formatter)
 }
+
+/** [xTicks] of [doc], kept until another document arrives. */
+@Composable
+private fun rememberXTicks(doc: HistoryDoc): List<XTick> = remember(doc) { xTicks(doc.times, doc.endMs) }
 
 /**
  * Labels under the x axis, chosen from the spacing of the points: every 6 hours within a day,
@@ -418,14 +453,14 @@ fun xTicks(times: List<Long>, endMs: Long, zone: ZoneId = ZoneId.systemDefault()
     val zoned = times.map { Instant.ofEpochMilli(it).atZone(zone) }
     return when {
         step < 3_600_000L * 2 && span <= 26 * 3_600_000L -> zoned.mapIndexedNotNull { i, t ->
-            if (t.minute == 0 && t.hour % 6 == 0) XTick(i, t.format(DateTimeFormatter.ofPattern("HH", SR))) else null
+            if (t.minute == 0 && t.hour % 6 == 0) XTick(i, t.format(HOUR)) else null
         }
         step < 3_600_000L * 2 -> zoned.mapIndexedNotNull { i, t ->
-            if (t.minute == 0 && t.hour == 0) XTick(i, t.format(DateTimeFormatter.ofPattern("EEE", SR))) else null
+            if (t.minute == 0 && t.hour == 0) XTick(i, t.format(WEEKDAY)) else null
         }
-        times.size <= 7 -> zoned.mapIndexed { i, t -> XTick(i, t.format(DateTimeFormatter.ofPattern("EEE", SR))) }
+        times.size <= 7 -> zoned.mapIndexed { i, t -> XTick(i, t.format(WEEKDAY)) }
         else -> zoned.mapIndexedNotNull { i, t ->
-            if ((times.size - 1 - i) % 7 == 0) XTick(i, t.format(DateTimeFormatter.ofPattern("d.M.", SR))) else null
+            if ((times.size - 1 - i) % 7 == 0) XTick(i, t.format(DAY_MONTH)) else null
         }
     }
 }
