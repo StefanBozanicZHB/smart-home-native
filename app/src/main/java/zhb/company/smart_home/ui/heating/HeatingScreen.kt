@@ -186,7 +186,7 @@ private fun HeatingContent(
         animatedItem("heating-6") { HeatPumpCard(state, onIntent, onOpenSensors) }
         if (!state.loading) animatedItem("heating-7") { ScheduleCard(state, onIntent, initiallyEditing) }
         // The flow temperature is already in the heat pump card; outdoor explains how hard it works.
-        animatedItem("heating-8") { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth()) }
+        animatedItem("heating-8") { StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", Modifier.fillMaxWidth(), staleSince = state.outdoorStaleSince) }
         val zone = state.selectedZone ?: "ground"
         animatedItem("heating-9") { RoomTargetCard(history, zone, zoneName(zone)) }
         animatedItem("heating-10") { PumpRunCard(history) }

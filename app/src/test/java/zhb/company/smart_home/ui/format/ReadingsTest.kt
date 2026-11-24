@@ -27,4 +27,12 @@ class ReadingsTest {
         assertEquals("81", Readings.percent("80.6"))
         assertEquals(NO_VALUE, Readings.percent("--"))
     }
+
+    @Test
+    fun `update time shows the date only when it is not today`() {
+        val zone = java.time.ZoneId.of("Europe/Belgrade")
+        val at = java.time.ZonedDateTime.of(2026, 11, 23, 14, 32, 0, 0, zone).toInstant().toEpochMilli()
+        assertEquals("14:32", Readings.updatedAt(at, java.time.LocalDate.of(2026, 11, 23), zone))
+        assertEquals("23. 11. 14:32", Readings.updatedAt(at, java.time.LocalDate.of(2026, 11, 24), zone))
+    }
 }

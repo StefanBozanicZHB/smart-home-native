@@ -105,6 +105,9 @@ import zhb.company.smart_home.ui.components.animatedColor
 import zhb.company.smart_home.ui.components.animatedItem
 import zhb.company.smart_home.ui.components.isLargeFont
 import zhb.company.smart_home.ui.format.Durations
+import zhb.company.smart_home.ui.format.staleText
+import zhb.company.smart_home.ui.components.staleValueColor
+import androidx.compose.ui.graphics.Color
 import zhb.company.smart_home.ui.theme.AppTheme
 
 @Composable
@@ -163,7 +166,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
         animatedItem("garden-1") {
             ScreenHeader(
                 title = stringResource(R.string.menu_garden),
-                subtitle = "${state.temperature}°",
+                subtitle = "${state.temperature}°" + (state.temperatureStaleSince?.let { " · " + staleText(it) } ?: ""),
                 horizontalPadding = 0.dp,
             )
         }
@@ -440,7 +443,8 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
         CardHeader(Icons.Outlined.Pool, stringResource(R.string.garden_pool)) {
             if (!state.poolOnline) StatusChip(stringResource(R.string.home_node_offline_tile), Tone.DANGER)
         }
-        BigValue("${state.poolTemperature}°")
+        BigValue("${state.poolTemperature}°", color = if (state.poolStaleSince != null) staleValueColor() else Color.Unspecified)
+        state.poolStaleSince?.let { Text(staleText(it), style = MaterialTheme.typography.bodySmall, color = AppTheme.status.warning) }
         Appearing(state.poolOnline && !state.poolSensorOk) {
             Text(stringResource(R.string.garden_pool_sensor_missing), style = MaterialTheme.typography.bodySmall, color = AppTheme.status.warning)
         }

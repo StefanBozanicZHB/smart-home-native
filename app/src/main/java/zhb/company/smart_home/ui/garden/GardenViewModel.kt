@@ -16,6 +16,7 @@ import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.garden.Node6Repository
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.node.CommandOutcome
+import zhb.company.smart_home.domain.model.Reading
 import zhb.company.smart_home.domain.garden.IrrigationRules
 import zhb.company.smart_home.domain.garden.Node2State
 import zhb.company.smart_home.domain.garden.Node6State
@@ -62,6 +63,7 @@ class GardenViewModel(
             node1Ready = config != null && live != null,
             poolOnline = home.isNodeOnline(6),
             temperature = Readings.temperature(home.temperatureOutdoor),
+            temperatureStaleSince = home.staleSince(Reading.OUTDOOR_TEMPERATURE),
             outdoorSensorOk = lights?.sensorOk != false,
             ledStripOn = shown(GardenOutput.LED_STRIP, lights?.neon ?: false),
             ledStripLeftSeconds = lights?.neonLeftSeconds,
@@ -81,6 +83,7 @@ class GardenViewModel(
             poolHeatingOn = pool?.heating?.let { shown(GardenOutput.POOL_HEATING, it) },
             poolHeatingLeftSeconds = pool?.heatingLeftSeconds,
             poolTemperature = Readings.temperature(home.temperaturePool),
+            poolStaleSince = home.staleSince(Reading.POOL_TEMPERATURE),
             poolSensorOk = pool?.sensorOk != false,
             irrigation = IrrigationUi(
                 auto = config?.auto ?: live?.auto ?: false,

@@ -34,6 +34,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import zhb.company.smart_home.MainActivity
 import zhb.company.smart_home.R
+import zhb.company.smart_home.ui.format.Readings
 
 /**
  * Home screen widget: outdoor, ground floor and upper floor temperature and whether the heat pump
@@ -56,10 +57,17 @@ class HomeWidget : GlanceAppWidget(), KoinComponent {
     }
 }
 
+/**
+ * Values older than this are drawn muted, with the time in the error color. The background refresh
+ * runs every 30 min, so this means at least one refresh brought nothing new.
+ */
+private const val STALE_MS = 60 * 60_000L
+
 @Composable
 private fun Content(s: WidgetSnapshot?) {
     val context = LocalContext.current
     val wide = LocalSize.current.height >= 100.dp
+    val stale = s != null && System.currentTimeMillis() - s.atMs > STALE_MS
     Column(
         modifier = GlanceModifier.fillMaxSize()
             .background(GlanceTheme.colors.widgetBackground)
@@ -79,25 +87,32 @@ private fun Content(s: WidgetSnapshot?) {
                     style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium),
                     modifier = GlanceModifier.defaultWeight(),
                 )
-                Text(age(context, s.atMs), style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp))
+                Text(
+                    age(context, s.atMs),
+                    style = TextStyle(color = if (stale) GlanceTheme.colors.error else GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                )
             }
             Spacer(GlanceModifier.height(8.dp))
         }
         Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Reading(context.getString(R.string.widget_outdoor), s.outdoor, GlanceModifier.defaultWeight(), wide)
-            Reading(context.getString(R.string.home_room_ground), s.ground, GlanceModifier.defaultWeight(), wide)
-            Reading(context.getString(R.string.home_room_upper), s.upper, GlanceModifier.defaultWeight(), wide)
+            Reading(context.getString(R.string.widget_outdoor), s.outdoor, GlanceModifier.defaultWeight(), wide, stale)
+            Reading(context.getString(R.string.home_room_ground), s.ground, GlanceModifier.defaultWeight(), wide, stale)
+            Reading(context.getString(R.string.home_room_upper), s.upper, GlanceModifier.defaultWeight(), wide, stale)
         }
     }
 }
 
 @Composable
-private fun Reading(label: String, value: Float?, modifier: GlanceModifier, wide: Boolean) {
+private fun Reading(label: String, value: Float?, modifier: GlanceModifier, wide: Boolean, stale: Boolean) {
     Column(modifier = modifier) {
         Text(label, style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp), maxLines = 1)
         Text(
             value?.let { String.format(Locale.ROOT, "%.1f°", it) } ?: "--",
-            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = if (wide) 22.sp else 17.sp, fontWeight = FontWeight.Medium),
+            style = TextStyle(
+                color = if (stale) GlanceTheme.colors.onSurfaceVariant else GlanceTheme.colors.onSurface,
+                fontSize = if (wide) 22.sp else 17.sp,
+                fontWeight = FontWeight.Medium,
+            ),
         )
     }
 }
@@ -110,9 +125,8 @@ private fun heatingText(h: WidgetHeating): Int = when (h) {
     WidgetHeating.UNKNOWN -> R.string.widget_heating_unknown
 }
 
-/** Clock time of the values (a relative "5 min ago" would go stale between redraws). */
-private fun age(context: Context, atMs: Long): String =
-    context.getString(R.string.widget_at, java.time.Instant.ofEpochMilli(atMs).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")))
+/** Clock time of the values, with the date when not today (a relative "5 min ago" would go stale between redraws). */
+private fun age(context: Context, atMs: Long): String = context.getString(R.string.widget_at, Readings.updatedAt(atMs))
 
 class HomeWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HomeWidget()

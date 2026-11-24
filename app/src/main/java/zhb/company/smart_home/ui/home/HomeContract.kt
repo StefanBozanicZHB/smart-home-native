@@ -1,6 +1,7 @@
 package zhb.company.smart_home.ui.home
 
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
+import zhb.company.smart_home.domain.model.Reading
 import zhb.company.smart_home.ui.format.NO_VALUE
 
 /** Something wrong right now; shown at the top of the home screen until it is resolved. */
@@ -45,6 +46,8 @@ data class HomeState(
     val upperTemp: String = NO_VALUE,
     val upperHumidity: String = NO_VALUE,
     val poolTemp: String = NO_VALUE,
+    /** Readings that stopped updating, with the time of their last update. */
+    val staleSince: Map<Reading, Long> = emptyMap(),
 
     val sprinklerAuto: Boolean = false,
     /** Next scheduled start ("HH:MM", node time), "--:--" if none. */

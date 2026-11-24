@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import zhb.company.smart_home.data.remote.MqttConfigSource
+import zhb.company.smart_home.domain.model.Reading
 import zhb.company.smart_home.domain.model.SmartHomeState
 
 /**
@@ -303,27 +304,36 @@ class SmartHomeRepository(
     /** Re-evaluates heartbeat timeouts; called periodically, since a silent node sends nothing to react to. */
     fun refreshNodeHealth() {
         val health = synchronized(nodeStatus) { nodeStatus.snapshot(clock()) }
-        _state.update { if (it.nodeHealth == health) it else it.copy(nodeHealth = health) }
+        // Also the moment a silent reading turns stale: nothing arrives to react to.
+        _state.update { (if (it.nodeHealth == health) it else it.copy(nodeHealth = health)).withStale(clock()) }
     }
 
     /** Without a broker connection nothing is known about any node (instead of keeping stale "online"). */
     private fun clearNodeStatus() {
         synchronized(nodeStatus) { nodeStatus.clear() }
-        _state.update { it.copy(nodeHealth = emptyMap()) }
+        _state.update { it.copy(nodeHealth = emptyMap()).withStale(clock()) }
     }
 
     private fun dispatch(topic: String, payload: String, state: SmartHomeState): SmartHomeState {
         // An empty payload (value withdrawn by the node) passes through and shows as "--".
         return when (topic) {
-            MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload))
-            MqttTopics.NODE4_TEMPERATURE -> state.copy(temperatureLivingRoomDown = formatTemperature(payload))
-            MqttTopics.NODE4_HUMIDITY -> state.copy(humidityLivingRoomDown = payload)
-            MqttTopics.NODE6_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload))
-            MqttTopics.NODE8_TEMPERATURE -> state.copy(temperatureLivingRoomUp = formatTemperature(payload))
-            MqttTopics.NODE8_HUMIDITY -> state.copy(humidityLivingRoomUp = payload)
+            MqttTopics.NODE2_TEMPERATURE -> state.copy(temperatureOutdoor = formatTemperature(payload)).arrived(Reading.OUTDOOR_TEMPERATURE)
+            MqttTopics.NODE4_TEMPERATURE -> state.copy(temperatureLivingRoomDown = formatTemperature(payload)).arrived(Reading.GROUND_TEMPERATURE)
+            MqttTopics.NODE4_HUMIDITY -> state.copy(humidityLivingRoomDown = payload).arrived(Reading.GROUND_HUMIDITY)
+            MqttTopics.NODE6_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload)).arrived(Reading.POOL_TEMPERATURE)
+            MqttTopics.NODE8_TEMPERATURE -> state.copy(temperatureLivingRoomUp = formatTemperature(payload)).arrived(Reading.UPPER_TEMPERATURE)
+            MqttTopics.NODE8_HUMIDITY -> state.copy(humidityLivingRoomUp = payload).arrived(Reading.UPPER_HUMIDITY)
 
             else -> state
-        }
+        }.withStale(clock())
+    }
+
+    private fun SmartHomeState.arrived(reading: Reading) = copy(readingAt = readingAt + (reading to clock()))
+
+    /** Keeps [SmartHomeState.staleReadings] current; returns the same instance when nothing changed. */
+    private fun SmartHomeState.withStale(nowMs: Long): SmartHomeState {
+        val stale = computeStale(nowMs)
+        return if (stale == staleReadings) this else copy(staleReadings = stale)
     }
 
     /** Every temperature reading is displayed with exactly 2 decimal places; non-numeric payloads pass through untouched. */

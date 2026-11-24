@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import zhb.company.smart_home.R
+import zhb.company.smart_home.ui.format.staleText
 import zhb.company.smart_home.ui.theme.AppTheme
 
 /*
@@ -165,19 +166,36 @@ fun StatusChip(text: String, tone: Tone, modifier: Modifier = Modifier) {
     }
 }
 
-/** A big number with a muted label above and an optional line below, e.g. "Napolju / 3.5° / 81 %". */
+/**
+ * A big number with a muted label above and an optional line below, e.g. "Napolju / 3.5° / 81 %".
+ * With [staleSince] the value is grayed and the line below says since when it has not changed.
+ */
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail: String? = null, valueColor: Color = Color.Unspecified) {
+fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    detail: String? = null,
+    valueColor: Color = Color.Unspecified,
+    staleSince: Long? = null,
+) {
     Surface(shape = TileShape, color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-            AnimatedText(value) { Text(it, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = valueColor, maxLines = 1) }
-            if (detail != null) {
+            val shownColor = if (staleSince != null) staleValueColor() else valueColor
+            AnimatedText(value) { Text(it, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = shownColor, maxLines = 1) }
+            if (staleSince != null) {
+                Text(staleText(staleSince), style = MaterialTheme.typography.labelMedium, color = AppTheme.status.warning, maxLines = 2)
+            } else if (detail != null) {
                 Text(detail, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
     }
 }
+
+/** Color of a value that is no longer current (see [StatTile]). */
+@Composable
+fun staleValueColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
 
 /** Value in the large display style used inside cards ("21.5°"); a new value cross-fades in. */
 @Composable

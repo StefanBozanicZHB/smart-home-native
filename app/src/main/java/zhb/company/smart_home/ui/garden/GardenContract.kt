@@ -32,6 +32,8 @@ data class GardenState(
     /** Pool (node6). */
     val poolOnline: Boolean = false,
     val temperature: String = NO_VALUE,
+    /** Last update of [temperature] when it stopped updating, else null. */
+    val temperatureStaleSince: Long? = null,
     /** False when Node 2 reports that its DS18B20 did not answer. */
     val outdoorSensorOk: Boolean = true,
     val ledStripOn: Boolean = false,
@@ -55,6 +57,8 @@ data class GardenState(
     val poolHeatingOn: Boolean? = null,
     val poolHeatingLeftSeconds: Int? = null,
     val poolTemperature: String = NO_VALUE,
+    /** Last update of [poolTemperature] when it stopped updating, else null. */
+    val poolStaleSince: Long? = null,
     /** False when Node 6 reports that its water temperature sensor did not answer. */
     val poolSensorOk: Boolean = true,
     val irrigation: IrrigationUi = IrrigationUi(),

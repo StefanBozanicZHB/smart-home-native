@@ -60,7 +60,7 @@ private fun RoomCard(icon: ImageVector, title: String, room: RoomUi) {
             if (!room.online) StatusChip(stringResource(R.string.home_node_offline_tile), Tone.DANGER)
         }
         val tiles = buildList<@Composable (Modifier) -> Unit> {
-            add { m -> StatTile(stringResource(R.string.house_temperature), "${room.temperature}°", m) }
+            add { m -> StatTile(stringResource(R.string.house_temperature), "${room.temperature}°", m, staleSince = room.staleSince) }
             add { m -> StatTile(stringResource(R.string.house_humidity), stringResource(R.string.home_humidity, room.humidity), m) }
             room.extras.forEach { extra -> add { m -> StatTile(stringResource(extra.label), extra.value, m) } }
         }

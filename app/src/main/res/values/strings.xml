@@ -462,6 +462,7 @@
     <string name="goodnight_toast_off">Svi uređaji su ugašeni.</string>
     <string name="goodnight_toast_already_off">Svi uređaji su već ugašeni.</string>
     <string name="goodnight_toast_failed">Nisu potvrdili gašenje: %1$s. Proveri ih.</string>
+    <string name="reading_stale">nije osveženo od %1$s</string>
 
     <!-- Push notifications (RPi notifier -> FCM) -->
     <string name="notification_channel_nodes">Dostupnost čvorova</string>

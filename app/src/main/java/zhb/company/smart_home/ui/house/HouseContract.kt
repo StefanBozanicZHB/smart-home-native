@@ -10,6 +10,8 @@ import zhb.company.smart_home.ui.format.NO_VALUE
 data class RoomUi(
     val online: Boolean = false,
     val temperature: String = NO_VALUE,
+    /** Last update of the temperature when it stopped updating, else null. */
+    val staleSince: Long? = null,
     val humidity: String = NO_VALUE,
     val extras: List<RoomReading> = emptyList(),
 )

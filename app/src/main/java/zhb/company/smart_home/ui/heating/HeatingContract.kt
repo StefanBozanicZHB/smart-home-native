@@ -17,6 +17,8 @@ data class HeatingState(
     val loading: Boolean = true,
 
     val outdoorTemp: String = "--",
+    /** Last update of [outdoorTemp] when it stopped updating, else null. */
+    val outdoorStaleSince: Long? = null,
     val mainSwitch: Boolean = false,
     val pump: Boolean = false,
     val demand: Boolean = false,

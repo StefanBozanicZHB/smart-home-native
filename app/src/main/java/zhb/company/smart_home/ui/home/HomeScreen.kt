@@ -54,6 +54,10 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.data.history.HistoryPeriod
 import zhb.company.smart_home.data.notifications.NotificationInbox
 import zhb.company.smart_home.domain.GoodNightDevice
+import zhb.company.smart_home.domain.model.Reading
+import zhb.company.smart_home.ui.components.staleValueColor
+import zhb.company.smart_home.ui.format.staleText
+import androidx.compose.ui.graphics.Color
 import zhb.company.smart_home.ui.components.ActionTile
 import zhb.company.smart_home.ui.components.AlertBanner
 import zhb.company.smart_home.ui.components.BigValue
@@ -304,7 +308,9 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.home_outdoor), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                BigValue("${state.outdoorTemp}°")
+                val stale = state.staleSince[Reading.OUTDOOR_TEMPERATURE]
+                BigValue("${state.outdoorTemp}°", color = if (stale != null) staleValueColor() else Color.Unspecified)
+                if (stale != null) Text(staleText(stale), style = MaterialTheme.typography.labelMedium, color = AppTheme.status.warning)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.home_next_watering), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -318,9 +324,20 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
 private fun RoomTemps(state: HomeState, showOutdoor: Boolean) {
     val tiles = buildList<@Composable (Modifier) -> Unit> {
         // In summer the yard card already shows the outdoor reading.
-        if (showOutdoor) add { m -> StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", m) }
-        add { m -> StatTile(stringResource(R.string.home_room_ground), "${state.groundTemp}°", m, detail = stringResource(R.string.home_humidity, state.groundHumidity)) }
-        add { m -> StatTile(stringResource(R.string.home_room_upper), "${state.upperTemp}°", m, detail = stringResource(R.string.home_humidity, state.upperHumidity)) }
+        val stale = state.staleSince
+        if (showOutdoor) add { m -> StatTile(stringResource(R.string.home_outdoor), "${state.outdoorTemp}°", m, staleSince = stale[Reading.OUTDOOR_TEMPERATURE]) }
+        add { m ->
+            StatTile(
+                stringResource(R.string.home_room_ground), "${state.groundTemp}°", m,
+                detail = stringResource(R.string.home_humidity, state.groundHumidity), staleSince = stale[Reading.GROUND_TEMPERATURE],
+            )
+        }
+        add { m ->
+            StatTile(
+                stringResource(R.string.home_room_upper), "${state.upperTemp}°", m,
+                detail = stringResource(R.string.home_humidity, state.upperHumidity), staleSince = stale[Reading.UPPER_TEMPERATURE],
+            )
+        }
     }
     TileGrid(columns = adaptiveColumns(tiles.size), tiles = tiles)
 }

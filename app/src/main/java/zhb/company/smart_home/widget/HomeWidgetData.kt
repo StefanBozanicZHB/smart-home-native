@@ -126,6 +126,8 @@ class WidgetRefreshWorker(context: Context, params: WorkerParameters) : Coroutin
     private val store: WidgetStore by inject()
 
     override suspend fun doWork(): Result {
+        // Redraw first: even when nothing new can be fetched, old values then show as old.
+        runCatching { HomeWidget().updateAll(applicationContext) }
         if (!auth.hasSavedSession()) return Result.success() // signed out
         val day = history.get(HistoryPeriod.DAY, maxAgeMs = 60_000).getOrElse { error ->
             // Only network trouble is worth retrying; a revoked session would fail again and again.

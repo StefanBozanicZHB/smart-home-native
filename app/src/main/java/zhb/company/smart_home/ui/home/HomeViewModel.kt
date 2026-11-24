@@ -117,6 +117,7 @@ class HomeViewModel(
             upperTemp = Readings.temperature(home.temperatureLivingRoomUp),
             upperHumidity = Readings.percent(home.humidityLivingRoomUp),
             poolTemp = Readings.temperature(home.temperaturePool),
+            staleSince = home.staleReadings.associateWith { home.readingAt.getValue(it) },
             sprinklerAuto = sprinklerAuto,
             sprinklerStartTime = yardState?.next?.time ?: "--:--",
             sprinklerRunningZone = yardState?.run?.zone,

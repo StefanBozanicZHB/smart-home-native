@@ -15,6 +15,7 @@ import zhb.company.smart_home.data.heating.Node5Snapshot
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.domain.model.Reading
 import zhb.company.smart_home.domain.heating.DayType
 import zhb.company.smart_home.domain.heating.HeatPumpStatus
 import zhb.company.smart_home.domain.heating.Hysteresis
@@ -87,6 +88,7 @@ class HeatingViewModel(
             },
             loading = config == null || zoneSettings == null,
             outdoorTemp = Readings.temperature(home.temperatureOutdoor),
+            outdoorStaleSince = home.staleSince(Reading.OUTDOOR_TEMPERATURE),
             mainSwitch = ui.mainSwitchRequested ?: config?.mainSwitch ?: live?.mainSwitch ?: false,
             pump = live?.pump ?: false,
             demand = live?.demand ?: false,

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.domain.model.Reading
 import zhb.company.smart_home.ui.format.Readings
 
 /** Room climate: ground floor (Node 4) and upper floor (Node 8). */
@@ -17,11 +18,13 @@ class HouseViewModel(repository: SmartHomeRepository) : ViewModel() {
             ground = RoomUi(
                 online = home.isNodeOnline(4),
                 temperature = Readings.temperature(home.temperatureLivingRoomDown),
+                staleSince = home.staleSince(Reading.GROUND_TEMPERATURE),
                 humidity = Readings.percent(home.humidityLivingRoomDown),
             ),
             upper = RoomUi(
                 online = home.isNodeOnline(8),
                 temperature = Readings.temperature(home.temperatureLivingRoomUp),
+                staleSince = home.staleSince(Reading.UPPER_TEMPERATURE),
                 humidity = Readings.percent(home.humidityLivingRoomUp),
             ),
         )

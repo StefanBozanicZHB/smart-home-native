@@ -232,4 +232,29 @@ class SmartHomeRepositoryTest {
         assertEquals("--", zhb.company.smart_home.ui.format.Readings.percent(repo.state.value.humidityLivingRoomDown))
     }
 
+
+    @Test
+    fun `a reading that stops updating, or whose node goes offline, becomes stale`() {
+        var now = 0L
+        val repo = SmartHomeRepository(
+            MqttConfigSource { Result.success(config) }, FakeMqttConnector(), UnconfinedTestDispatcher(), clock = { now },
+        )
+        val reading = zhb.company.smart_home.domain.model.Reading.GROUND_TEMPERATURE
+
+        repo.handleMessage("bozaSub/kuca/node4/temperature", "21.48", retained = false)
+        assertTrue(repo.state.value.staleReadings.isEmpty())
+
+        now = 3 * 60_000L + 1
+        repo.refreshNodeHealth() // the periodic check, nothing arrived
+        assertEquals(setOf(reading), repo.state.value.staleReadings)
+        assertEquals("last update kept for the label", 0L, repo.state.value.staleSince(reading))
+        assertEquals("the value stays visible", "21.48", repo.state.value.temperatureLivingRoomDown)
+
+        repo.handleMessage("bozaSub/kuca/node4/temperature", "21.50", retained = false)
+        assertTrue(repo.state.value.staleReadings.isEmpty())
+
+        repo.handleMessage("bozaSub/kuca/node4/status", "offline", retained = true)
+        assertEquals(setOf(reading), repo.state.value.staleReadings)
+        assertFalse("other nodes are not affected", zhb.company.smart_home.domain.model.Reading.OUTDOOR_TEMPERATURE in repo.state.value.staleReadings)
+    }
 }
