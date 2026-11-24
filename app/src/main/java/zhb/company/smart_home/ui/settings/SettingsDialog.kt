@@ -39,11 +39,29 @@ import zhb.company.smart_home.data.notifications.QuietHours
 
 /** System settings (opened from the system tab): theme, notifications, quiet hours. Applied right away. */
 @Composable
-fun SystemSettingsDialog(onDismiss: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
+fun SystemSettingsDialog(onDismiss: () -> Unit, onSignedOut: () -> Unit = {}, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsState()
     val quiet by viewModel.quietHours.collectAsState()
+    var confirmSignOut by remember { mutableStateOf(false) }
+
+    if (confirmSignOut) {
+        AlertDialog(
+            onDismissRequest = { confirmSignOut = false },
+            title = { Text(stringResource(R.string.settings_sign_out_title)) },
+            text = { Text(stringResource(R.string.settings_sign_out_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmSignOut = false
+                    viewModel.signOut(onDone = onSignedOut)
+                }) { Text(stringResource(R.string.settings_sign_out), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.settings_sign_out_cancel)) } },
+        )
+        return
+    }
 
     AlertDialog(
+        dismissButton = { TextButton(onClick = { confirmSignOut = true }) { Text(stringResource(R.string.settings_sign_out), color = MaterialTheme.colorScheme.error) } },
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_title)) },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_close)) } },

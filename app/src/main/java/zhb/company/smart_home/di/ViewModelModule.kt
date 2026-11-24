@@ -33,7 +33,7 @@ val viewModelModule = module {
     viewModel { PipeSensorsViewModel(get(), get()) }
     viewModel { PipeCalibrationViewModel(get()) }
     viewModel { HouseViewModel(get()) }
-    viewModel { SettingsViewModel(get()) }
+    viewModel { SettingsViewModel(get(), get(), get()) }
     viewModel { ConnectionsViewModel(get()) }
     viewModel { params -> NodeDetailViewModel(params.get(), get()) }
     viewModel { ThemeStateHolder(get()) }

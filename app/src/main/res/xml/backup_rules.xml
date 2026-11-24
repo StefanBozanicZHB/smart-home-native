@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older (full backup). The preferences hold the sign-in session: it is encrypted
+     with a Keystore key that never leaves the phone, so a copy is useless and is left out. -->
 <full-backup-content>
+    <exclude domain="file" path="datastore/smart_home_prefs.preferences_pb" />
 </full-backup-content>

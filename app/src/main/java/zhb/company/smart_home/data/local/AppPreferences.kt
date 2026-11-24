@@ -12,11 +12,29 @@ import zhb.company.smart_home.data.notifications.QuietHours
 
 private val Context.dataStore by preferencesDataStore(name = "smart_home_prefs")
 
-/** App settings and the saved sign-in, in DataStore. */
-class AppPreferences(private val context: Context) {
+/** Where the sign-in session is kept between app starts. */
+interface SessionStore {
+    suspend fun savedEmail(): String?
+
+    /** The refresh token, encrypted ([SecretCipher]). */
+    suspend fun sealedRefreshToken(): String?
+
+    /** The password an older app version kept in plain text; only read once to replace it with a token. */
+    suspend fun legacyPassword(): String?
+
+    /** Saves the session and drops any legacy password. */
+    suspend fun saveSession(email: String, sealedRefreshToken: String)
+
+    /** Forgets the session (the email stays, to fill in the sign-in form). */
+    suspend fun clearSession()
+}
+
+/** App settings and the saved sign-in session, in DataStore. */
+class AppPreferences(private val context: Context) : SessionStore {
 
     private object Keys {
         val USERNAME = stringPreferencesKey("username")
+        val SESSION = stringPreferencesKey("session")
         val PASSWORD = stringPreferencesKey("password")
         val DARK_THEME = booleanPreferencesKey("dark_theme")
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
@@ -26,8 +44,6 @@ class AppPreferences(private val context: Context) {
         val QUIET_END = stringPreferencesKey("quiet_hours_end")
     }
 
-    val username: Flow<String?> = context.dataStore.data.map { it[Keys.USERNAME] }
-    val password: Flow<String?> = context.dataStore.data.map { it[Keys.PASSWORD] }
     val isDarkTheme: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_THEME] ?: false }
 
     /** Push notifications from the house system (FCM topic); on by default. */
@@ -65,13 +81,24 @@ class AppPreferences(private val context: Context) {
         return wasAsked
     }
 
-    suspend fun savedUsername(): String? = username.first()
-    suspend fun savedPassword(): String? = password.first()
+    override suspend fun savedEmail(): String? = context.dataStore.data.first()[Keys.USERNAME]
 
-    suspend fun saveCredentials(username: String, password: String) {
+    override suspend fun sealedRefreshToken(): String? = context.dataStore.data.first()[Keys.SESSION]
+
+    override suspend fun legacyPassword(): String? = context.dataStore.data.first()[Keys.PASSWORD]
+
+    override suspend fun saveSession(email: String, sealedRefreshToken: String) {
         context.dataStore.edit {
-            it[Keys.USERNAME] = username
-            it[Keys.PASSWORD] = password
+            it[Keys.USERNAME] = email
+            it[Keys.SESSION] = sealedRefreshToken
+            it.remove(Keys.PASSWORD)
+        }
+    }
+
+    override suspend fun clearSession() {
+        context.dataStore.edit {
+            it.remove(Keys.SESSION)
+            it.remove(Keys.PASSWORD)
         }
     }
 

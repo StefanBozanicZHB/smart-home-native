@@ -51,6 +51,7 @@ import zhb.company.smart_home.ui.history.loggerStatusText
 @Composable
 fun SystemScreen(
     onOpenNode: (String) -> Unit,
+    onSignedOut: () -> Unit = {},
     viewModel: ConnectionsViewModel = koinViewModel(),
     repository: SmartHomeRepository = koinInject(),
     historyViewModel: HistoryViewModel = koinViewModel(),
@@ -68,7 +69,7 @@ fun SystemScreen(
         onOpenNode = onOpenNode,
         history = history,
     )
-    if (showSettings) SystemSettingsDialog(onDismiss = { showSettings = false })
+    if (showSettings) SystemSettingsDialog(onDismiss = { showSettings = false }, onSignedOut = onSignedOut)
 }
 
 @Composable

@@ -9,8 +9,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import zhb.company.smart_home.data.remote.FirebaseAuthApi
 import zhb.company.smart_home.data.repository.AuthRepository
 
+/**
+ * Sign-in. With a saved session the phone's own lock (fingerprint or PIN) opens it; the password is
+ * never stored or shown. Cancelling the unlock leaves the form, which needs the real password.
+ */
 class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
     private val _state = MutableStateFlow(AuthState())
@@ -21,11 +26,10 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            val saved = authRepository.trySavedCredentials()
-            if (saved != null) {
-                _state.update { it.copy(email = saved.first, password = saved.second, canUseBiometrics = true) }
-                _effects.send(AuthEffect.RequestBiometricPrompt)
-            }
+            val email = authRepository.savedEmail().orEmpty()
+            val canUnlock = authRepository.hasSavedSession()
+            _state.update { it.copy(email = email, canUnlock = canUnlock) }
+            if (canUnlock) _effects.send(AuthEffect.RequestUnlock)
         }
     }
 
@@ -34,8 +38,26 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             is AuthIntent.EmailChanged -> _state.update { it.copy(email = intent.value) }
             is AuthIntent.PasswordChanged -> _state.update { it.copy(password = intent.value) }
             AuthIntent.Submit -> submit()
-            AuthIntent.BiometricSucceeded -> submit()
-            AuthIntent.UseBiometrics -> viewModelScope.launch { _effects.send(AuthEffect.RequestBiometricPrompt) }
+            AuthIntent.Unlocked, AuthIntent.NoScreenLock -> resume()
+            AuthIntent.UseUnlock -> viewModelScope.launch { _effects.send(AuthEffect.RequestUnlock) }
+        }
+    }
+
+    private fun resume() {
+        if (!_state.value.canUnlock || _state.value.isLoading) return
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            val result = authRepository.resume()
+            val stillSaved = authRepository.hasSavedSession()
+            _state.update { it.copy(isLoading = false, canUnlock = stillSaved) }
+            result.fold(
+                onSuccess = { _effects.send(AuthEffect.NavigateToMqttConnect) },
+                onFailure = { error ->
+                    // A network problem keeps the session; anything else means the password is needed again.
+                    val code = if (error.message == FirebaseAuthApi.NETWORK_ERROR) FirebaseAuthApi.NETWORK_ERROR else SESSION_EXPIRED
+                    _state.update { it.copy(errorMessage = code) }
+                },
+            )
         }
     }
 
@@ -54,10 +76,18 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             val result = authRepository.login(current.email, current.password)
             _state.update { it.copy(isLoading = false) }
             result.fold(
-                onSuccess = { _effects.send(AuthEffect.NavigateToMqttConnect) },
+                onSuccess = {
+                    _state.update { it.copy(password = "") } // not kept in memory longer than needed
+                    _effects.send(AuthEffect.NavigateToMqttConnect)
+                },
                 // Firebase error codes (e.g. INVALID_LOGIN_CREDENTIALS) are mapped to text by the screen.
                 onFailure = { error -> _state.update { it.copy(errorMessage = error.message ?: "auth_failed") } },
             )
         }
+    }
+
+    companion object {
+        /** Error code: the saved session no longer works (e.g. password changed elsewhere). */
+        const val SESSION_EXPIRED = "session_expired"
     }
 }

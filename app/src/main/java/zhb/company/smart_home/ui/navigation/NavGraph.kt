@@ -248,7 +248,10 @@ fun SmartHomeNavGraph(
                 PipeCalibrationScreen(onDone = { navController.popBackStack() })
             }
             composable(Destination.System.route) {
-                SystemScreen(onOpenNode = { navController.navigate(Destination.NodeDetail.of(it)) })
+                SystemScreen(
+                    onOpenNode = { navController.navigate(Destination.NodeDetail.of(it)) },
+                    onSignedOut = { navController.navigateReplacing(Destination.Auth.route) },
+                )
             }
             composable(Destination.NodeDetail.route) { entry ->
                 NodeDetailScreen(nodeId = entry.arguments?.getString(Destination.NodeDetail.ARG).orEmpty(), onBack = { navController.navigateUp() })

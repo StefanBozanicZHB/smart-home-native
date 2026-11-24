@@ -19,7 +19,10 @@ class RtdbReader(private val httpClient: HttpClient, private val auth: AuthRepos
 
     /** The JSON at [path], or [JsonNull] when nothing is stored there. */
     suspend fun get(path: String, params: HttpRequestBuilder.() -> Unit = {}): JsonElement {
-        val token = auth.freshIdToken() ?: throw RtdbException(RtdbError.NOT_SIGNED_IN)
+        val token = auth.idTokenResult().getOrElse { error ->
+            // Without network the session is still there: report it like any other network failure.
+            throw RtdbException(if (error.message == FirebaseAuthApi.NETWORK_ERROR) RtdbError.HTTP else RtdbError.NOT_SIGNED_IN)
+        }
         val response = httpClient.get("${FirebaseUrls.RTDB}/$path.json") {
             parameter("auth", token)
             params()

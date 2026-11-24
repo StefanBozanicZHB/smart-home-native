@@ -7,15 +7,16 @@
     <string name="auth_email_hint">Email adresa</string>
     <string name="auth_password_hint">Lozinka</string>
     <string name="auth_submit">Prijavite se</string>
-    <string name="auth_biometric_title">Prijavljivanje pomoću otiska prsta</string>
-    <string name="auth_biometric_subtitle">Potvrdite identitet da biste se prijavili</string>
+    <string name="auth_biometric_title">Otključavanje aplikacije</string>
+    <string name="auth_biometric_subtitle">Otiskom prsta ili PIN-om telefona</string>
     <string name="auth_error_wrong_credentials">Pogrešan email ili lozinka.</string>
     <string name="auth_error_too_many">Previše pokušaja. Sačekaj malo pa pokušaj ponovo.</string>
-    <string name="auth_use_biometrics">Otključaj otiskom prsta</string>
+    <string name="auth_use_biometrics">Otključaj (otisak ili PIN)</string>
     <string name="auth_error_generic">Došlo je do greške, pokušajte ponovo.</string>
     <string name="auth_error_network">Nema veze sa internetom (Firebase nije dostupan). Proverite mrežu pa pokušajte ponovo.</string>
     <string name="auth_error_invalid_email">Unesite ispravnu email adresu.</string>
     <string name="auth_error_invalid_password">Lozinka mora imati najmanje 5 karaktera.</string>
+    <string name="auth_error_session_expired">Sačuvana prijava više ne važi (npr. lozinka je promenjena). Prijavite se lozinkom.</string>
 
     <!-- MQTT connect -->
     <string name="mqtt_connecting">Povezivanje sa serverom…</string>
@@ -395,6 +396,10 @@
     <string name="settings_dark_theme">Tamna tema</string>
     <string name="settings_save">Sačuvaj</string>
     <string name="settings_close">Zatvori</string>
+    <string name="settings_sign_out">Odjavi se</string>
+    <string name="settings_sign_out_title">Odjava</string>
+    <string name="settings_sign_out_text">Prijava se briše sa ovog telefona: sledeći put je potrebna lozinka, a widget i potvrde iz obaveštenja ne rade dok se ponovo ne prijaviš.</string>
+    <string name="settings_sign_out_cancel">Otkaži</string>
 
     <!-- Connections / node status dialog -->
     <string name="connections_online">Onlajn</string>

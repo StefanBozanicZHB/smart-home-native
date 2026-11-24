@@ -25,6 +25,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import zhb.company.smart_home.data.remote.RtdbError
+import zhb.company.smart_home.data.remote.toRtdbError
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.data.history.HistoryCharts
 import zhb.company.smart_home.data.history.HistoryPeriod
@@ -124,8 +126,11 @@ class WidgetRefreshWorker(context: Context, params: WorkerParameters) : Coroutin
     private val store: WidgetStore by inject()
 
     override suspend fun doWork(): Result {
-        if (auth.trySavedCredentials() == null) return Result.success() // not signed in with "remember me"
-        val day = history.get(HistoryPeriod.DAY, maxAgeMs = 60_000).getOrElse { return Result.retry() } ?: return Result.success()
+        if (!auth.hasSavedSession()) return Result.success() // signed out
+        val day = history.get(HistoryPeriod.DAY, maxAgeMs = 60_000).getOrElse { error ->
+            // Only network trouble is worth retrying; a revoked session would fail again and again.
+            return if (error.toRtdbError() == RtdbError.HTTP) Result.retry() else Result.success()
+        } ?: return Result.success()
         fun latest(name: String) = HistoryCharts.latest(day, name)
         val pump = latest(HistorySeriesNames.PUMP)
         val points = listOfNotNull(

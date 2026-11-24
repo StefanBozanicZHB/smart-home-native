@@ -1,5 +1,6 @@
 package zhb.company.smart_home.ui.auth
 
+import android.app.KeyguardManager
 import androidx.activity.compose.LocalActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -65,24 +66,33 @@ fun AuthScreen(viewModel: AuthViewModel = koinViewModel(), onAuthenticated: () -
     val state by viewModel.state.collectAsStateWithLifecycle()
     val activity = LocalActivity.current as? FragmentActivity
 
-    fun launchBiometricPrompt() {
+    /**
+     * Asks the phone to confirm the user: fingerprint or face, or the screen-lock PIN/pattern. A phone
+     * without any screen lock has nothing to ask, so the saved session opens directly; if the lock
+     * exists but cannot be used right now, the form stays (sign in with the password).
+     */
+    fun requestUnlock() {
         val fragmentActivity = activity ?: return
-        val canAuthenticate = BiometricManager.from(fragmentActivity).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
-        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) return
+        val keyguard = fragmentActivity.getSystemService(KeyguardManager::class.java)
+        if (keyguard?.isDeviceSecure == false) {
+            viewModel.onIntent(AuthIntent.NoScreenLock)
+            return
+        }
+        if (BiometricManager.from(fragmentActivity).canAuthenticate(UNLOCK_AUTHENTICATORS) != BiometricManager.BIOMETRIC_SUCCESS) return
         val prompt = BiometricPrompt(
             fragmentActivity,
             ContextCompat.getMainExecutor(fragmentActivity),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.onIntent(AuthIntent.BiometricSucceeded)
+                    viewModel.onIntent(AuthIntent.Unlocked)
                 }
             },
         )
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(fragmentActivity.getString(R.string.auth_biometric_title))
             .setSubtitle(fragmentActivity.getString(R.string.auth_biometric_subtitle))
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
-            .setNegativeButtonText(fragmentActivity.getString(android.R.string.cancel))
+            // With the device credential allowed the prompt brings its own way out (no negative button).
+            .setAllowedAuthenticators(UNLOCK_AUTHENTICATORS)
             .build()
         prompt.authenticate(promptInfo)
     }
@@ -91,7 +101,7 @@ fun AuthScreen(viewModel: AuthViewModel = koinViewModel(), onAuthenticated: () -
         viewModel.effects.collect { effect ->
             when (effect) {
                 AuthEffect.NavigateToMqttConnect -> onAuthenticated()
-                AuthEffect.RequestBiometricPrompt -> launchBiometricPrompt()
+                AuthEffect.RequestUnlock -> requestUnlock()
             }
         }
     }
@@ -164,9 +174,9 @@ private fun AuthContent(state: AuthState, onIntent: (AuthIntent) -> Unit) {
                     Text(stringResource(R.string.auth_submit), style = MaterialTheme.typography.titleSmall)
                 }
             }
-            if (state.canUseBiometrics) {
+            if (state.canUnlock) {
                 OutlinedButton(
-                    onClick = { onIntent(AuthIntent.UseBiometrics) },
+                    onClick = { onIntent(AuthIntent.UseUnlock) },
                     enabled = !state.isLoading,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -184,6 +194,7 @@ private fun AuthContent(state: AuthState, onIntent: (AuthIntent) -> Unit) {
 private fun errorMessageFor(code: String): String = when {
     code == "invalid_email" -> stringResource(R.string.auth_error_invalid_email)
     code == "invalid_password" -> stringResource(R.string.auth_error_invalid_password)
+    code == AuthViewModel.SESSION_EXPIRED -> stringResource(R.string.auth_error_session_expired)
     code.startsWith("INVALID_LOGIN_CREDENTIALS") || code.startsWith("INVALID_PASSWORD") || code.startsWith("EMAIL_NOT_FOUND") ->
         stringResource(R.string.auth_error_wrong_credentials)
     code.startsWith("TOO_MANY_ATTEMPTS") -> stringResource(R.string.auth_error_too_many)
@@ -198,9 +209,12 @@ private fun AuthPreview() {
     zhb.company.smart_home.ui.theme.SmartHomeTheme(darkTheme = false) {
         Surface {
             AuthContent(
-                AuthState(email = "ime@primer.rs", password = "secret12", errorMessage = "INVALID_LOGIN_CREDENTIALS", canUseBiometrics = true),
+                AuthState(email = "ime@primer.rs", password = "secret12", errorMessage = "INVALID_LOGIN_CREDENTIALS", canUnlock = true),
                 onIntent = {},
             )
         }
     }
 }
+
+/** Fingerprint or face, or the phone's screen-lock PIN, pattern or password. */
+private const val UNLOCK_AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL

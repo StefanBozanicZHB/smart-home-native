@@ -8,10 +8,25 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import zhb.company.smart_home.data.local.AppPreferences
+import zhb.company.smart_home.data.mqtt.SmartHomeRepository
+import zhb.company.smart_home.data.repository.AuthRepository
 import zhb.company.smart_home.data.notifications.QuietHours
 
-/** App settings on the System tab: theme, notifications, quiet hours. Applied right away. */
-class SettingsViewModel(private val preferences: AppPreferences) : ViewModel() {
+/** App settings on the System tab: theme, notifications, quiet hours, sign-out. Applied right away. */
+class SettingsViewModel(
+    private val preferences: AppPreferences,
+    private val auth: AuthRepository,
+    private val mqtt: SmartHomeRepository,
+) : ViewModel() {
+
+    /** Forgets the saved session and closes the broker connection, then calls [onDone]. */
+    fun signOut(onDone: () -> Unit) {
+        viewModelScope.launch {
+            auth.signOut()
+            mqtt.disconnect()
+            onDone()
+        }
+    }
 
     val state: StateFlow<SettingsState> = combine(
         preferences.isDarkTheme,

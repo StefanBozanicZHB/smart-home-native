@@ -1,5 +1,6 @@
 package zhb.company.smart_home.data.remote.dto
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -19,6 +20,14 @@ data class SignInResponse(
     val refreshToken: String = "",
     val expiresIn: String = "3600",
     val localId: String = "",
+)
+
+/** Secure Token API answer to a refresh (`grant_type=refresh_token`); field names are snake_case there. */
+@Serializable
+data class RefreshResponse(
+    @SerialName("id_token") val idToken: String = "",
+    @SerialName("refresh_token") val refreshToken: String = "",
+    @SerialName("expires_in") val expiresIn: String = "3600",
 )
 
 @Serializable
