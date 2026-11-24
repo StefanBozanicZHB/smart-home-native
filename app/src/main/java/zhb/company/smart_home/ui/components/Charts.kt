@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -85,11 +86,13 @@ fun Sparkline(
     description: String? = null,
 ) {
     val refColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val drawn = rememberDrawProgress(drawKey(values))
     Canvas(
         modifier = modifier.fillMaxWidth().height(height).semantics { description?.let { contentDescription = it } },
     ) {
         val n = values.size
         if (n == 0) return@Canvas
+        drawRevealed(drawn) {
         val w = size.width / n
         shade?.forEachIndexed { i, f ->
             if (f != null && f > 0f) {
@@ -97,12 +100,13 @@ fun Sparkline(
             }
         }
         val all = values.filterNotNull() + reference.orEmpty().filterNotNull()
-        if (all.isEmpty()) return@Canvas
+        if (all.isEmpty()) return@drawRevealed
         val range = paddedRange(all.min(), all.max(), minSpan = 1f)
         val y = { v: Float -> size.height * (1f - (v - range.first) / (range.second - range.first)) }
         val x = { i: Int -> (i + 0.5f) * w }
         reference?.let { drawSeries(it, x, y, refColor.copy(alpha = 0.7f), 1.dp.toPx(), dashed = true) }
         drawSeries(values, x, y, color, 2.dp.toPx(), dashed = false)
+        }
     }
 }
 
@@ -126,7 +130,7 @@ fun LineChart(
 ) {
     val n = lines.maxOfOrNull { it.values.size } ?: 0
     val hasRight = lines.any { it.axis == ChartAxis.RIGHT && it.values.any { v -> v != null } }
-    ChartFrame(n, xTicks, hasRight, selected, onSelect, height, modifier, description) { plot, labels ->
+    ChartFrame(n, xTicks, hasRight, selected, onSelect, height, modifier, description, data = lines.map { drawKey(it.values) }) { plot, labels ->
         val left = lines.filter { it.axis == ChartAxis.LEFT }.flatMap { l -> l.values.filterNotNull() + l.low.orEmpty().filterNotNull() + l.high.orEmpty().filterNotNull() }
         val right = lines.filter { it.axis == ChartAxis.RIGHT }.flatMap { l -> l.values.filterNotNull() + l.low.orEmpty().filterNotNull() + l.high.orEmpty().filterNotNull() }
         val leftRange = if (left.isEmpty()) null else paddedRange(left.min(), left.max(), minSpan = 2f).let { r ->
@@ -173,7 +177,7 @@ fun BarLineChart(
     description: String? = null,
 ) {
     val hasLine = line.any { it != null }
-    ChartFrame(bars.size, xTicks, hasLine, selected, onSelect, height, modifier, description) { plot, labels ->
+    ChartFrame(bars.size, xTicks, hasLine, selected, onSelect, height, modifier, description, data = listOf(drawKey(bars), drawKey(line))) { plot, labels ->
         val maxBar = (bars.filterNotNull().maxOrNull() ?: 0f).coerceAtLeast(1f)
         val barRange = 0f to niceCeil(maxBar)
         labels.axis(barRange, ChartAxis.LEFT, barFormat)
@@ -365,8 +369,11 @@ private fun ChartFrame(
     height: Dp,
     modifier: Modifier,
     description: String?,
+    /** What the chart shows ([drawKey]); when it changes the chart draws itself again from the left. */
+    data: Any?,
     content: DrawScope.(PlotArea, AxisLabels) -> Unit,
 ) {
+    val drawn = rememberDrawProgress(data)
     val measurer = rememberTextMeasurer()
     val labelStyle: TextStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val grid = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
@@ -406,7 +413,7 @@ private fun ChartFrame(
             val x = if (alignRight) at.x - layout.size.width else at.x
             drawText(layout, topLeft = Offset(x, at.y - layout.size.height / 2f))
         }
-        content(plot, AxisLabels(this, plot, drawLabel, grid))
+        drawRevealed(drawn) { content(plot, AxisLabels(this, plot, drawLabel, grid)) }
         xTicks.forEach { t ->
             if (t.index !in 0 until n) return@forEach
             val layout = measurer.measure(t.label, labelStyle)
@@ -416,6 +423,21 @@ private fun ChartFrame(
         selected?.takeIf { it in 0 until n }?.let { i ->
             drawLine(guide, Offset(plot.x(i), plot.top), Offset(plot.x(i), plot.bottom), strokeWidth = 1.dp.toPx())
         }
+    }
+}
+
+/**
+ * When a chart draws itself again: when data first arrives or another period is picked (the number
+ * of points changes), not when a periodic refresh only updates the values.
+ */
+private fun drawKey(values: List<Float?>): Pair<Int, Boolean> = values.size to values.any { it != null }
+
+/** Draws [block] clipped to the left [progress] of the width (all of it once progress is 1). */
+private inline fun DrawScope.drawRevealed(progress: Float, block: DrawScope.() -> Unit) {
+    if (progress >= 1f) {
+        block()
+    } else {
+        clipRect(right = size.width * progress) { block() }
     }
 }
 

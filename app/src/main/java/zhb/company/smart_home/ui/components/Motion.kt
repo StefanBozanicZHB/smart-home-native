@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
@@ -16,12 +17,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
 
 /*
  * Motion shared by every screen. Rules:
@@ -38,8 +41,11 @@ object Motion {
     /** Most state changes: a tile turning on, a value changing, a block opening. */
     const val MEDIUM_MS = 250
 
-    /** Larger movements: a screen sliding in, a chart drawing. */
+    /** Larger movements: a screen sliding in. */
     const val LONG_MS = 400
+
+    /** A chart drawing itself from left to right. */
+    const val DRAW_MS = 700
 
     fun <T> standard(durationMs: Int = MEDIUM_MS): FiniteAnimationSpec<T> = tween(durationMs, easing = FastOutSlowInEasing)
 }
@@ -100,4 +106,20 @@ fun AnimatedText(text: String, content: @Composable (String) -> Unit) {
         },
         label = "text",
     ) { content(it) }
+}
+
+/**
+ * 0..1 progress of a chart drawing itself, restarted whenever [data] changes. Charts pass what
+ * they show (number of points, any data at all), so a refresh of the values does not restart it.
+ */
+@Composable
+fun rememberDrawProgress(data: Any?): Float {
+    val progress = remember { Animatable(1f) }
+    // Previews and screenshot tests show the finished chart.
+    if (LocalInspectionMode.current) return 1f
+    LaunchedEffect(data) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(Motion.DRAW_MS, easing = FastOutSlowInEasing))
+    }
+    return progress.value
 }
