@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,9 +20,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -37,9 +41,11 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.ceil
@@ -47,9 +53,13 @@ import kotlin.math.floor
 import zhb.company.smart_home.ui.theme.AppTheme
 
 /**
- * Small charts drawn on a Canvas (no chart library). Points are spaced evenly by index; a null
- * value is a gap. Charts that take [selected]/[onSelect] show a guide at the touched point and
- * let the caller print its values ([ChartReadout]).
+ * Small charts (no chart library). Points are spaced evenly by index; a null value is a gap.
+ * Charts that take [selected]/[onSelect] show a guide at the touched point and let the caller
+ * print its values ([ChartReadout]).
+ *
+ * Everything a chart draws (paths, ranges, measured labels) is prepared once per size and data in
+ * drawWithCache; animation frames and touches only replay it. Callers keep their [ChartLine] lists
+ * and [XTick]s in `remember`, so a recomposition with the same data does not rebuild the chart.
  */
 
 enum class ChartAxis { LEFT, RIGHT }
@@ -87,27 +97,27 @@ fun Sparkline(
 ) {
     val refColor = MaterialTheme.colorScheme.onSurfaceVariant
     val drawn = rememberDrawProgress(drawKey(values))
-    Canvas(
-        modifier = modifier.fillMaxWidth().height(height).semantics { description?.let { contentDescription = it } },
-    ) {
-        val n = values.size
-        if (n == 0) return@Canvas
-        drawRevealed(drawn) {
-        val w = size.width / n
-        shade?.forEachIndexed { i, f ->
-            if (f != null && f > 0f) {
-                drawRect(shadeColor.copy(alpha = 0.35f * f.coerceAtMost(1f)), Offset(i * w, 0f), Size(w + 0.5f, size.height))
-            }
-        }
-        val all = values.filterNotNull() + reference.orEmpty().filterNotNull()
-        if (all.isEmpty()) return@drawRevealed
-        val range = paddedRange(all.min(), all.max(), minSpan = 1f)
-        val y = { v: Float -> size.height * (1f - (v - range.first) / (range.second - range.first)) }
-        val x = { i: Int -> (i + 0.5f) * w }
-        reference?.let { drawSeries(it, x, y, refColor.copy(alpha = 0.7f), 1.dp.toPx(), dashed = true) }
-        drawSeries(values, x, y, color, 2.dp.toPx(), dashed = false)
-        }
-    }
+    Spacer(
+        modifier = modifier.fillMaxWidth().height(height)
+            .semantics { description?.let { contentDescription = it } }
+            .drawWithCache {
+                val ops = ChartOps()
+                val n = values.size
+                if (n > 0) {
+                    val w = size.width / n
+                    shade?.let { ops.shade(it, left = 0f, top = 0f, bottom = size.height, slot = w, color = shadeColor, alpha = 0.35f) }
+                    val all = values.filterNotNull() + reference.orEmpty().filterNotNull()
+                    if (all.isNotEmpty()) {
+                        val range = paddedRange(all.min(), all.max(), minSpan = 1f)
+                        val y = { v: Float -> size.height * (1f - (v - range.first) / (range.second - range.first)) }
+                        val x = { i: Int -> (i + 0.5f) * w }
+                        reference?.let { ops.series(it, x, y, refColor.copy(alpha = 0.7f), 1.dp.toPx(), dashed = true) }
+                        ops.series(values, x, y, color, 2.dp.toPx(), dashed = false)
+                    }
+                }
+                onDrawBehind { drawRevealed(drawn.value) { ops.drawAll(this) } }
+            },
+    )
 }
 
 /** Lines with a left axis (and a right one if any line uses it), x labels and touch readout. */
@@ -130,32 +140,21 @@ fun LineChart(
 ) {
     val n = lines.maxOfOrNull { it.values.size } ?: 0
     val hasRight = lines.any { it.axis == ChartAxis.RIGHT && it.values.any { v -> v != null } }
-    ChartFrame(n, xTicks, hasRight, selected, onSelect, height, modifier, description, data = lines.map { drawKey(it.values) }) { plot, labels ->
+    ChartFrame(n, xTicks, hasRight, selected, onSelect, height, modifier, description, data = lines.map { drawKey(it.values) }) {
         val left = lines.filter { it.axis == ChartAxis.LEFT }.flatMap { l -> l.values.filterNotNull() + l.low.orEmpty().filterNotNull() + l.high.orEmpty().filterNotNull() }
         val right = lines.filter { it.axis == ChartAxis.RIGHT }.flatMap { l -> l.values.filterNotNull() + l.low.orEmpty().filterNotNull() + l.high.orEmpty().filterNotNull() }
         val leftRange = if (left.isEmpty()) null else paddedRange(left.min(), left.max(), minSpan = 2f).let { r ->
             if (leftBounds == null) r else r.first.coerceIn(leftBounds) to r.second.coerceIn(leftBounds)
         }
         val rightRange = if (right.isEmpty()) null else paddedRange(right.min(), right.max(), minSpan = 10f)
-        shade?.let { s ->
-            val w = plot.width / n.coerceAtLeast(1)
-            s.forEachIndexed { i, f ->
-                if (f != null && f > 0f) {
-                    drawRect(
-                        shadeColor.copy(alpha = 0.3f * f.coerceAtMost(1f)),
-                        topLeft = Offset(plot.left + i * w, plot.top),
-                        size = Size(w + 0.5f, plot.bottom - plot.top),
-                    )
-                }
-            }
-        }
-        leftRange?.let { labels.axis(it, ChartAxis.LEFT, leftFormat) }
-        if (hasRight) rightRange?.let { labels.axis(it, ChartAxis.RIGHT, rightFormat) }
+        shade?.let { ops.shade(it, plot.left, plot.top, plot.bottom, slot = plot.width / n.coerceAtLeast(1), color = shadeColor, alpha = 0.3f) }
+        leftRange?.let { axis(it, ChartAxis.LEFT, leftFormat) }
+        if (hasRight) rightRange?.let { axis(it, ChartAxis.RIGHT, rightFormat) }
         lines.forEach { line ->
             val range = (if (line.axis == ChartAxis.LEFT) leftRange else rightRange) ?: return@forEach
             val y = plot.y(range)
-            if (line.low != null && line.high != null) drawBand(line.low, line.high, plot.x, y, line.color.copy(alpha = 0.15f))
-            drawSeries(line.values, plot.x, y, line.color, 2.dp.toPx(), line.dashed)
+            if (line.low != null && line.high != null) ops.band(line.low, line.high, plot.x, y, line.color.copy(alpha = 0.15f))
+            ops.series(line.values, plot.x, y, line.color, 2.dp.toPx(), line.dashed)
         }
     }
 }
@@ -177,28 +176,26 @@ fun BarLineChart(
     description: String? = null,
 ) {
     val hasLine = line.any { it != null }
-    ChartFrame(bars.size, xTicks, hasLine, selected, onSelect, height, modifier, description, data = listOf(drawKey(bars), drawKey(line))) { plot, labels ->
+    ChartFrame(bars.size, xTicks, hasLine, selected, onSelect, height, modifier, description, data = listOf(drawKey(bars), drawKey(line))) {
         val maxBar = (bars.filterNotNull().maxOrNull() ?: 0f).coerceAtLeast(1f)
         val barRange = 0f to niceCeil(maxBar)
-        labels.axis(barRange, ChartAxis.LEFT, barFormat)
+        axis(barRange, ChartAxis.LEFT, barFormat)
         val yBar = plot.y(barRange)
         val slot = plot.width / bars.size.coerceAtLeast(1)
         val barW = (slot * 0.62f).coerceAtLeast(1f)
+        val corner = CornerRadius((barW / 4).coerceAtMost(3.dp.toPx()))
         bars.forEachIndexed { i, v ->
             if (v == null || v <= 0f) return@forEachIndexed
             val top = yBar(v)
-            drawRoundRect(
-                barColor,
-                topLeft = Offset(plot.x(i) - barW / 2, top),
-                size = Size(barW, plot.bottom - top),
-                cornerRadius = CornerRadius((barW / 4).coerceAtMost(3.dp.toPx())),
-            )
+            val topLeft = Offset(plot.x(i) - barW / 2, top)
+            val barSize = Size(barW, plot.bottom - top)
+            ops.add { drawRoundRect(barColor, topLeft = topLeft, size = barSize, cornerRadius = corner) }
         }
         if (hasLine) {
             val v = line.filterNotNull()
             val range = paddedRange(v.min(), v.max(), minSpan = 4f)
-            labels.axis(range, ChartAxis.RIGHT, lineFormat)
-            drawSeries(line, plot.x, plot.y(range), lineColor, 2.dp.toPx(), dashed = false)
+            axis(range, ChartAxis.RIGHT, lineFormat)
+            ops.series(line, plot.x, plot.y(range), lineColor, 2.dp.toPx(), dashed = false)
         }
     }
 }
@@ -335,7 +332,7 @@ fun ToggleLegend(items: List<LegendToggle>, modifier: Modifier = Modifier) {
 // --- frame, scales, drawing ---------------------------------------------------------------
 
 /** Plot area geometry handed to a chart's drawing code. */
-class PlotArea(val left: Float, val top: Float, val right: Float, val bottom: Float, private val n: Int) {
+private class PlotArea(val left: Float, val top: Float, val right: Float, val bottom: Float, private val n: Int) {
     val width: Float get() = right - left
     val x: (Int) -> Float = { i -> left + (i + 0.5f) * width / n.coerceAtLeast(1) }
     fun y(range: Pair<Float, Float>): (Float) -> Float = { v ->
@@ -344,16 +341,109 @@ class PlotArea(val left: Float, val top: Float, val right: Float, val bottom: Fl
     fun indexAt(px: Float): Int = floor((px - left) / width * n).toInt().coerceIn(0, n - 1)
 }
 
-/** Draws axis labels; the frame's grid lines follow the left axis. */
-class AxisLabels(private val scope: DrawScope, private val plot: PlotArea, private val draw: DrawScope.(String, Offset, Boolean) -> Unit, private val grid: Color) {
+/**
+ * Drawing steps of a chart. Built once per size and data inside drawWithCache (paths, colors and
+ * text layouts are made there) and replayed on every frame.
+ */
+private class ChartOps {
+    private val steps = ArrayList<DrawScope.() -> Unit>()
+
+    fun add(step: DrawScope.() -> Unit) {
+        steps += step
+    }
+
+    fun drawAll(scope: DrawScope) {
+        for (i in steps.indices) steps[i](scope)
+    }
+
+    fun text(layout: TextLayoutResult, topLeft: Offset) = add { drawText(layout, topLeft = topLeft) }
+
+    /** Per point 0..1 background bands, [slot] wide, from [left]. */
+    fun shade(values: List<Float?>, left: Float, top: Float, bottom: Float, slot: Float, color: Color, alpha: Float) {
+        values.forEachIndexed { i, f ->
+            if (f != null && f > 0f) {
+                val c = color.copy(alpha = alpha * f.coerceAtMost(1f))
+                val topLeft = Offset(left + i * slot, top)
+                val bandSize = Size(slot + 0.5f, bottom - top)
+                add { drawRect(c, topLeft, bandSize) }
+            }
+        }
+    }
+
+    /** A line broken at null values; a single point between gaps becomes a dot. */
+    fun series(values: List<Float?>, x: (Int) -> Float, y: (Float) -> Float, color: Color, width: Float, dashed: Boolean) {
+        val stroke = Stroke(
+            width = width,
+            cap = StrokeCap.Round,
+            pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(width * 2.5f, width * 2f)) else null,
+        )
+        var path: Path? = null
+        var runLength = 0
+        fun flush(lastIndex: Int) {
+            val p = path ?: return
+            if (runLength == 1) {
+                val center = Offset(x(lastIndex), y(values[lastIndex]!!))
+                add { drawCircle(color, radius = width, center = center) }
+            } else {
+                add { drawPath(p, color, style = stroke) }
+            }
+            path = null
+            runLength = 0
+        }
+        values.forEachIndexed { i, v ->
+            if (v == null) {
+                flush(i - 1)
+            } else {
+                val p = path ?: Path().also { path = it; it.moveTo(x(i), y(v)) }
+                if (runLength > 0) p.lineTo(x(i), y(v))
+                runLength++
+            }
+        }
+        flush(values.lastIndex)
+    }
+
+    /** Filled area between [low] and [high], broken where either is missing. */
+    fun band(low: List<Float?>, high: List<Float?>, x: (Int) -> Float, y: (Float) -> Float, color: Color) {
+        var start = -1
+        fun fill(from: Int, to: Int) {
+            if (to <= from) return
+            val p = Path()
+            p.moveTo(x(from), y(high[from]!!))
+            for (i in from + 1..to) p.lineTo(x(i), y(high[i]!!))
+            for (i in to downTo from) p.lineTo(x(i), y(low[i]!!))
+            p.close()
+            add { drawPath(p, color) }
+        }
+        for (i in 0..low.size) {
+            val ok = i < low.size && low[i] != null && high.getOrNull(i) != null
+            if (ok && start < 0) start = i
+            if (!ok && start >= 0) {
+                fill(start, i - 1)
+                start = -1
+            }
+        }
+    }
+}
+
+/** What a chart's drawing code gets: the plot area, its steps and axis labels (grid lines follow the left axis). */
+private class ChartScope(
+    val plot: PlotArea,
+    val ops: ChartOps,
+    density: Density,
+    private val measure: (String) -> TextLayoutResult,
+    private val grid: Color,
+) : Density by density {
     fun axis(range: Pair<Float, Float>, side: ChartAxis, format: (Float) -> String) {
         val y = plot.y(range)
         listOf(range.first, (range.first + range.second) / 2, range.second).forEach { v ->
+            val at = y(v)
+            val layout = measure(format(v))
+            val top = at - layout.size.height / 2f
             if (side == ChartAxis.LEFT) {
-                scope.drawLine(grid, Offset(plot.left, y(v)), Offset(plot.right, y(v)), strokeWidth = 1f)
-                scope.draw(format(v), Offset(plot.left - 4f, y(v)), true)
+                ops.add { drawLine(grid, Offset(plot.left, at), Offset(plot.right, at), strokeWidth = 1f) }
+                ops.text(layout, Offset(plot.left - 4f - layout.size.width, top))
             } else {
-                scope.draw(format(v), Offset(plot.right + 4f, y(v)), false)
+                ops.text(layout, Offset(plot.right + 4f, top))
             }
         }
     }
@@ -371,15 +461,17 @@ private fun ChartFrame(
     description: String?,
     /** What the chart shows ([drawKey]); when it changes the chart draws itself again from the left. */
     data: Any?,
-    content: DrawScope.(PlotArea, AxisLabels) -> Unit,
+    content: ChartScope.() -> Unit,
 ) {
     val drawn = rememberDrawProgress(data)
     val measurer = rememberTextMeasurer()
     val labelStyle: TextStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val grid = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
     val guide = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    // Written while drawing, read by the touch handler (which outlives a single composition).
-    val plotRef = androidx.compose.runtime.remember { arrayOfNulls<PlotArea>(1) }
+    // Read only while drawing: moving the finger redraws the guide without rebuilding the chart.
+    val currentSelected = rememberUpdatedState(selected)
+    // Written when the chart is laid out, read by the touch handler (which outlives a single composition).
+    val plotRef = remember { arrayOfNulls<PlotArea>(1) }
     val touch = if (onSelect == null || n == 0) Modifier else Modifier.pointerInput(n) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
@@ -394,36 +486,42 @@ private fun ChartFrame(
             } while (change.pressed)
         }
     }
-    Canvas(
+    Spacer(
         modifier = modifier.fillMaxWidth().height(height).then(touch)
-            .semantics { description?.let { contentDescription = it } },
-    ) {
-        val labelW = AxisLabelWidth.toPx()
-        val plot = PlotArea(
-            left = labelW,
-            top = 6.dp.toPx(),
-            right = size.width - if (rightAxis) labelW else 6.dp.toPx(),
-            bottom = size.height - XLabelHeight.toPx(),
-            n = n,
-        )
-        plotRef[0] = plot
-        if (n == 0) return@Canvas
-        val drawLabel: DrawScope.(String, Offset, Boolean) -> Unit = { text, at, alignRight ->
-            val layout = measurer.measure(text, labelStyle)
-            val x = if (alignRight) at.x - layout.size.width else at.x
-            drawText(layout, topLeft = Offset(x, at.y - layout.size.height / 2f))
-        }
-        drawRevealed(drawn) { content(plot, AxisLabels(this, plot, drawLabel, grid)) }
-        xTicks.forEach { t ->
-            if (t.index !in 0 until n) return@forEach
-            val layout = measurer.measure(t.label, labelStyle)
-            val x = (plot.x(t.index) - layout.size.width / 2f).coerceIn(0f, size.width - layout.size.width)
-            drawText(layout, topLeft = Offset(x, plot.bottom + 2.dp.toPx()))
-        }
-        selected?.takeIf { it in 0 until n }?.let { i ->
-            drawLine(guide, Offset(plot.x(i), plot.top), Offset(plot.x(i), plot.bottom), strokeWidth = 1.dp.toPx())
-        }
-    }
+            .semantics { description?.let { contentDescription = it } }
+            .drawWithCache {
+                val labelW = AxisLabelWidth.toPx()
+                val plot = PlotArea(
+                    left = labelW,
+                    top = 6.dp.toPx(),
+                    right = size.width - if (rightAxis) labelW else 6.dp.toPx(),
+                    bottom = size.height - XLabelHeight.toPx(),
+                    n = n,
+                )
+                plotRef[0] = plot
+                val ops = ChartOps()
+                val ticks = ChartOps()
+                if (n > 0) {
+                    ChartScope(plot, ops, this, { measurer.measure(it, labelStyle) }, grid).content()
+                    val tickTop = plot.bottom + 2.dp.toPx()
+                    xTicks.forEach { t ->
+                        if (t.index !in 0 until n) return@forEach
+                        val layout = measurer.measure(t.label, labelStyle)
+                        val x = (plot.x(t.index) - layout.size.width / 2f).coerceIn(0f, size.width - layout.size.width)
+                        ticks.text(layout, Offset(x, tickTop))
+                    }
+                }
+                val guideWidth = 1.dp.toPx()
+                onDrawBehind {
+                    if (n == 0) return@onDrawBehind
+                    drawRevealed(drawn.value) { ops.drawAll(this) }
+                    ticks.drawAll(this)
+                    currentSelected.value?.takeIf { it in 0 until n }?.let { i ->
+                        drawLine(guide, Offset(plot.x(i), plot.top), Offset(plot.x(i), plot.bottom), strokeWidth = guideWidth)
+                    }
+                }
+            },
+    )
 }
 
 /**
@@ -438,53 +536,6 @@ private inline fun DrawScope.drawRevealed(progress: Float, block: DrawScope.() -
         block()
     } else {
         clipRect(right = size.width * progress) { block() }
-    }
-}
-
-private fun DrawScope.drawSeries(values: List<Float?>, x: (Int) -> Float, y: (Float) -> Float, color: Color, width: Float, dashed: Boolean) {
-    var path: Path? = null
-    var runLength = 0
-    val effect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(width * 2.5f, width * 2f)) else null
-    fun flush(lastIndex: Int) {
-        val p = path ?: return
-        if (runLength == 1) {
-            drawCircle(color, radius = width, center = Offset(x(lastIndex), y(values[lastIndex]!!)))
-        } else {
-            drawPath(p, color, style = Stroke(width = width, cap = StrokeCap.Round, pathEffect = effect))
-        }
-        path = null
-        runLength = 0
-    }
-    values.forEachIndexed { i, v ->
-        if (v == null) {
-            flush(i - 1)
-        } else {
-            val p = path ?: Path().also { path = it; it.moveTo(x(i), y(v)) }
-            if (runLength > 0) p.lineTo(x(i), y(v))
-            runLength++
-        }
-    }
-    flush(values.lastIndex)
-}
-
-private fun DrawScope.drawBand(low: List<Float?>, high: List<Float?>, x: (Int) -> Float, y: (Float) -> Float, color: Color) {
-    var start = -1
-    fun fill(from: Int, to: Int) {
-        if (to <= from) return
-        val p = Path()
-        p.moveTo(x(from), y(high[from]!!))
-        for (i in from + 1..to) p.lineTo(x(i), y(high[i]!!))
-        for (i in to downTo from) p.lineTo(x(i), y(low[i]!!))
-        p.close()
-        drawPath(p, color)
-    }
-    for (i in 0..low.size) {
-        val ok = i < low.size && low[i] != null && high.getOrNull(i) != null
-        if (ok && start < 0) start = i
-        if (!ok && start >= 0) {
-            fill(start, i - 1)
-            start = -1
-        }
     }
 }
 

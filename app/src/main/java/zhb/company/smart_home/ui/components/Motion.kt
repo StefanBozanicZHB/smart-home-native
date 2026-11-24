@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -111,15 +112,17 @@ fun AnimatedText(text: String, content: @Composable (String) -> Unit) {
 /**
  * 0..1 progress of a chart drawing itself, restarted whenever [data] changes. Charts pass what
  * they show (number of points, any data at all), so a refresh of the values does not restart it.
+ * Read the value only while drawing, so the animation redraws the chart without recomposing it.
  */
 @Composable
-fun rememberDrawProgress(data: Any?): Float {
+fun rememberDrawProgress(data: Any?): State<Float> {
     val progress = remember { Animatable(1f) }
     // Previews and screenshot tests show the finished chart.
-    if (LocalInspectionMode.current) return 1f
-    LaunchedEffect(data) {
-        progress.snapTo(0f)
-        progress.animateTo(1f, tween(Motion.DRAW_MS, easing = FastOutSlowInEasing))
+    if (!LocalInspectionMode.current) {
+        LaunchedEffect(data) {
+            progress.snapTo(0f)
+            progress.animateTo(1f, tween(Motion.DRAW_MS, easing = FastOutSlowInEasing))
+        }
     }
-    return progress.value
+    return progress.asState()
 }
