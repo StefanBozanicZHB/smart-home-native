@@ -2,6 +2,7 @@ package zhb.company.smart_home.ui.garden
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -88,6 +89,7 @@ import zhb.company.smart_home.ui.components.BigValue
 import zhb.company.smart_home.ui.components.CardHeader
 import zhb.company.smart_home.ui.components.DashboardCard
 import zhb.company.smart_home.ui.components.DeviceTile
+import zhb.company.smart_home.ui.components.Motion
 import zhb.company.smart_home.ui.components.ScreenHeader
 import zhb.company.smart_home.ui.components.SectionLabel
 import zhb.company.smart_home.ui.components.StatusChip
@@ -95,6 +97,7 @@ import zhb.company.smart_home.ui.components.TileGrid
 import zhb.company.smart_home.ui.components.TileShape
 import zhb.company.smart_home.ui.components.Tone
 import zhb.company.smart_home.ui.components.adaptiveColumns
+import zhb.company.smart_home.ui.components.animatedColor
 import zhb.company.smart_home.ui.components.isLargeFont
 import zhb.company.smart_home.ui.format.Durations
 import zhb.company.smart_home.ui.theme.AppTheme
@@ -368,7 +371,7 @@ private fun ZoneButtons(irrigation: IrrigationUi, enabled: Boolean, onIntent: (G
                     onClick = { onIntent(GardenIntent.StartZone(zone)) },
                     enabled = enabled,
                     shape = TileShape,
-                    color = if (running) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    color = animatedColor(if (running) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest, "zoneBg"),
                     border = if (queued) BorderStroke(1.5.dp, AppTheme.status.active) else null,
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp).semantics {
                         contentDescription = description
@@ -376,12 +379,12 @@ private fun ZoneButtons(irrigation: IrrigationUi, enabled: Boolean, onIntent: (G
                     },
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, modifier = Modifier.padding(vertical = 6.dp)) {
-                        val fg = if (running) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface
+                        val fg = animatedColor(if (running) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface, "zoneFg")
                         Text("$zone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fg)
                         Text(
                             if (minutes > 0) stringResource(R.string.garden_minutes_short, minutes) else "–",
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (running) fg else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = animatedColor(if (running) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurfaceVariant, "zoneMinutes"),
                         )
                     }
                 }
@@ -539,15 +542,15 @@ private fun LocationDialog(activeIndex: Int, onDismiss: () -> Unit) {
                             }
                             Surface(
                                 shape = CircleShape,
-                                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                color = animatedColor(if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), "pinBg"),
                                 border = if (isActive) null else BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
                                 shadowElevation = 3.dp,
-                                modifier = Modifier.size(if (isActive) 30.dp else 22.dp),
+                                modifier = Modifier.size(animateDpAsState(if (isActive) 30.dp else 22.dp, Motion.standard(), label = "pinSize").value),
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Text(
                                         text = "$number",
-                                        color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = animatedColor(if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, "pinFg"),
                                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                                         fontSize = if (isActive) 14.sp else 11.sp,
                                     )

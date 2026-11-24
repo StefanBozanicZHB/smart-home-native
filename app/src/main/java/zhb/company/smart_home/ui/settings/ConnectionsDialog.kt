@@ -40,6 +40,7 @@ import zhb.company.smart_home.R
 import zhb.company.smart_home.data.mqtt.NodeStatus
 import zhb.company.smart_home.data.mqtt.OfflineReason
 import zhb.company.smart_home.data.mqtt.SignalQuality
+import zhb.company.smart_home.ui.components.animatedColor
 import zhb.company.smart_home.ui.theme.AppTheme
 
 /** Node list with status, signal and firmware; used on the system screen. */
@@ -96,12 +97,12 @@ private fun NodeStatusRow(row: NodeRow, onClick: (() -> Unit)?) {
 /** Four bars plus dBm; colored by quality while the node is online, gray (last known value) otherwise. */
 @Composable
 internal fun SignalIndicator(rssi: Int, quality: SignalQuality, live: Boolean) {
-    val color = when {
+    val color = animatedColor(when {
         !live -> MaterialTheme.colorScheme.outline
         quality == SignalQuality.EXCELLENT || quality == SignalQuality.GOOD -> AppTheme.status.active
         quality == SignalQuality.WEAK -> AppTheme.status.warning
         else -> AppTheme.status.danger
-    }
+    }, "signal")
     val empty = MaterialTheme.colorScheme.outlineVariant
     val label = stringResource(R.string.connections_signal, signalName(quality), rssi)
     Column(

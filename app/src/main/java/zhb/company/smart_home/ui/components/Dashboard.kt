@@ -1,5 +1,9 @@
 package zhb.company.smart_home.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,14 +147,21 @@ private fun toneColors(tone: Tone): Pair<Color, Color> {
 @Composable
 fun StatusChip(text: String, tone: Tone, modifier: Modifier = Modifier) {
     val (bg, fg) = toneColors(tone)
-    Surface(color = bg, shape = RoundedCornerShape(50), modifier = modifier) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelMedium,
-            color = fg,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-        )
+    Surface(color = animatedColor(bg, "chipBg"), shape = RoundedCornerShape(50), modifier = modifier) {
+        // A new text fades in and the chip resizes smoothly ("Povezano" -> "Nije povezano").
+        AnimatedContent(
+            targetState = text,
+            transitionSpec = { fadeIn(Motion.standard()) togetherWith fadeOut(Motion.standard(Motion.SHORT_MS)) },
+            label = "chipText",
+        ) { shown ->
+            Text(
+                shown,
+                style = MaterialTheme.typography.labelMedium,
+                color = animatedColor(fg, "chipFg"),
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+            )
+        }
     }
 }
 
@@ -190,8 +201,8 @@ fun DeviceTile(
     disabledReason: String? = null,
 ) {
     val s = AppTheme.status
-    val bg = if (on && enabled) s.activeContainer else MaterialTheme.colorScheme.surfaceContainer
-    val fg = if (on && enabled) s.onActiveContainer else MaterialTheme.colorScheme.onSurface
+    val bg = animatedColor(if (on && enabled) s.activeContainer else MaterialTheme.colorScheme.surfaceContainer, "tileBg")
+    val fg = animatedColor(if (on && enabled) s.onActiveContainer else MaterialTheme.colorScheme.onSurface, "tileFg")
     val stateText = if (on) "uključeno" else "isključeno"
     Surface(
         shape = TileShape,
@@ -241,7 +252,9 @@ fun ActionTile(icon: ImageVector, label: String, onClick: () -> Unit, modifier: 
 /** Full-width warning/error strip shown only while the problem exists. */
 @Composable
 fun AlertBanner(icon: ImageVector, text: String, tone: Tone, modifier: Modifier = Modifier, detail: String? = null) {
-    val (bg, fg) = toneColors(tone)
+    val (toneBg, toneFg) = toneColors(tone)
+    val bg = animatedColor(toneBg, "bannerBg")
+    val fg = animatedColor(toneFg, "bannerFg")
     Surface(shape = TileShape, color = bg, modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
@@ -368,14 +381,14 @@ fun <T> ChoiceGroup(
                         onClick = { onSelect(value) },
                         enabled = enabled,
                         shape = TileShape,
-                        color = if (isSelected) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = animatedColor(if (isSelected) AppTheme.status.activeContainer else MaterialTheme.colorScheme.surfaceContainerHighest, "choiceBg"),
                         modifier = m.semantics { this.selected = isSelected },
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp)) {
                             Text(
                                 label,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = if (isSelected) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface,
+                                color = animatedColor(if (isSelected) AppTheme.status.onActiveContainer else MaterialTheme.colorScheme.onSurface, "choiceFg"),
                             )
                         }
                     }
