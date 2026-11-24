@@ -35,7 +35,7 @@ data class HomeState(
     val connected: Boolean = false,
     val alerts: List<HomeAlert> = emptyList(),
     val sections: List<HomeSection> = HomeLayout.sections(
-        HomeSignals(false, false, false, false),
+        HomeSignals(false, false, false),
     ),
     val heating: HeatingSummary = HeatingSummary(),
 
@@ -57,6 +57,8 @@ data class HomeState(
     val poolPumpOn: Boolean = false,
     /** Null while Node 6 does not report a heating relay (firmware before `node6-2.0.1`). */
     val poolHeatingOn: Boolean? = null,
+    /** Tiles whose command answer is late (over a second); they say "čeka čvor…". */
+    val slowTiles: Set<HomeTile> = emptySet(),
 
     /** Online state of the nodes behind the home tiles; an offline node's tile is disabled. */
     val yardNodeOnline: Boolean = false,
@@ -69,6 +71,9 @@ data class HomeState(
     val showDevicesOnDialog: Boolean = false,
     val showUnlockConfirm: Boolean = false,
 )
+
+/** Switch tiles on the home screen. */
+enum class HomeTile { LED_STRIP, FOUNTAIN, POOL_PUMP, POOL_HEATING }
 
 sealed interface HomeIntent {
     data object RequestUnlockFrontDoor : HomeIntent

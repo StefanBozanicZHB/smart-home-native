@@ -71,8 +71,6 @@
     <string name="home_on_count">Uključeno (%1$d)</string>
     <string name="home_devices">Uređaji</string>
     <string name="home_all_devices">Svi uređaji</string>
-    <string name="home_pool_running">pumpa radi</string>
-    <string name="home_pool_heating_running">greje se</string>
     <string name="home_node_offline_tile">čvor oflajn</string>
     <string name="home_unlock">otključaj</string>
     <string name="home_unlock_title">Otključati ulazna vrata?</string>

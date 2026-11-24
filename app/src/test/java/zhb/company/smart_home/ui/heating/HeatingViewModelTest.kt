@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -12,6 +13,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import zhb.company.smart_home.data.heating.Node5Repository
@@ -20,6 +22,7 @@ import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto
 import zhb.company.smart_home.domain.heating.DayType
+import zhb.company.smart_home.ui.command.SLOW_ANSWER_MS
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HeatingViewModelTest {
@@ -100,5 +103,55 @@ class HeatingViewModelTest {
         runCurrent()
         assertFalse(f.vm.state.value.scheduleDirty)
         assertFalse(f.vm.state.value.remoteChangedWhileEditing)
+    }
+
+    @Test
+    fun `the main switch moves at once, nothing else waits, and a hint only when the answer is late`() = runTest {
+        val f = fixture()
+        f.mqtt.connect("token")
+        f.deliver("config", config)
+        f.deliver("zones/ground", zone(rev = 1))
+        runCurrent()
+
+        f.vm.onIntent(HeatingIntent.ToggleMainSwitch(false))
+        f.vm.onIntent(HeatingIntent.ConfirmMainSwitchOff)
+        runCurrent()
+        assertFalse(f.vm.state.value.mainSwitch)
+        assertNull(f.vm.state.value.slowCommand)
+
+        advanceTimeBy(SLOW_ANSWER_MS + 1)
+        assertEquals(HeatingCommand.MAIN_SWITCH, f.vm.state.value.slowCommand)
+
+        f.deliver("config", config.replace(""""main_switch":true""", """"main_switch":false"""))
+        f.deliver("result", """{"cmd":"main_switch/set","id":"id-1","ok":true,"rev":2}""")
+        runCurrent()
+        assertFalse(f.vm.state.value.mainSwitch)
+        assertNull(f.vm.state.value.slowCommand)
+        assertEquals(HeatingMessage.Saved, f.vm.state.value.message)
+    }
+
+    @Test
+    fun `a saved program stays in the editor until the node shows it`() = runTest {
+        val f = fixture()
+        f.mqtt.connect("token")
+        f.deliver("config", config)
+        f.deliver("zones/ground", zone(rev = 1))
+        runCurrent()
+
+        f.vm.onIntent(HeatingIntent.SelectDay(DayType.WORKDAY))
+        f.vm.onIntent(HeatingIntent.ChangeSegmentTemp(1, 1))
+        f.vm.onIntent(HeatingIntent.SaveSchedule)
+        runCurrent()
+
+        // The answer comes before the republished zone: the editor keeps 21.6, not the old 21.5.
+        f.deliver("result", """{"cmd":"zones/ground/set","id":"id-1","ok":true,"rev":2}""")
+        runCurrent()
+        assertEquals(216, f.vm.state.value.editorSegments[1].tempTenths)
+
+        f.deliver("zones/ground", zone(rev = 2, workdayDay = "21.6"))
+        runCurrent()
+        assertEquals(216, f.vm.state.value.editorSegments[1].tempTenths)
+        assertFalse(f.vm.state.value.scheduleDirty)
+        assertEquals(HeatingMessage.Saved, f.vm.state.value.message)
     }
 }

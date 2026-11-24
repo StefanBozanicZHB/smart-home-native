@@ -36,6 +36,8 @@ import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.model.SmartHomeState
 import zhb.company.smart_home.ui.format.Readings
 import zhb.company.smart_home.ui.system.NodeLabels
+import zhb.company.smart_home.ui.command.awaitNodeState
+import zhb.company.smart_home.ui.command.withSlowHint
 
 class HomeViewModel(
     private val repository: SmartHomeRepository,
@@ -47,7 +49,13 @@ class HomeViewModel(
     private val node6: Node6Repository,
 ) : ViewModel() {
 
-    private data class UiExtras(val showDevicesOnDialog: Boolean = false, val showUnlockConfirm: Boolean = false)
+    private data class UiExtras(
+        val showDevicesOnDialog: Boolean = false,
+        val showUnlockConfirm: Boolean = false,
+        /** Requested position per tile while its command waits for the answer. */
+        val pending: Map<HomeTile, Boolean> = emptyMap(),
+        val slow: Set<HomeTile> = emptySet(),
+    )
 
     private val extras = MutableStateFlow(UiExtras())
 
@@ -100,7 +108,6 @@ class HomeViewModel(
                     heatingMainSwitch = heatingSummary.mainSwitch,
                     sprinklerAuto = sprinklerAuto,
                     sprinklerRunning = sprinklerRunning,
-                    poolPumpOn = pool?.pump == true || pool?.heating == true,
                 ),
             ),
             heating = heatingSummary,
@@ -113,10 +120,11 @@ class HomeViewModel(
             sprinklerAuto = sprinklerAuto,
             sprinklerStartTime = yardState?.next?.time ?: "--:--",
             sprinklerRunningZone = yardState?.run?.zone,
-            ledStripOn = lights?.neon ?: false,
-            fountainOn = yardState?.fountain?.pump ?: false,
-            poolPumpOn = pool?.pump ?: false,
-            poolHeatingOn = pool?.heating,
+            ledStripOn = ui.pending[HomeTile.LED_STRIP] ?: lights?.neon ?: false,
+            fountainOn = ui.pending[HomeTile.FOUNTAIN] ?: yardState?.fountain?.pump ?: false,
+            poolPumpOn = ui.pending[HomeTile.POOL_PUMP] ?: pool?.pump ?: false,
+            poolHeatingOn = pool?.heating?.let { ui.pending[HomeTile.POOL_HEATING] ?: it },
+            slowTiles = ui.slow,
             yardNodeOnline = home.isNodeOnline(2),
             fountainNodeOnline = home.isNodeOnline(1),
             poolNodeOnline = home.isNodeOnline(6),
@@ -188,22 +196,10 @@ class HomeViewModel(
                     _effects.send(HomeEffect.ShowToast(message))
                 }
             }
-            is HomeIntent.ToggleLedStrip -> viewModelScope.launch {
-                val outcome = node2.setNeon(intent.on)
-                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
-            }
-            is HomeIntent.ToggleFountain -> viewModelScope.launch {
-                val outcome = node1.setPump(intent.on)
-                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
-            }
-            is HomeIntent.TogglePoolPump -> viewModelScope.launch {
-                val outcome = node6.setPump(intent.on)
-                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
-            }
-            is HomeIntent.TogglePoolHeating -> viewModelScope.launch {
-                val outcome = node6.setHeating(intent.on)
-                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
-            }
+            is HomeIntent.ToggleLedStrip -> switch(HomeTile.LED_STRIP, intent.on) { node2.setNeon(intent.on) }
+            is HomeIntent.ToggleFountain -> switch(HomeTile.FOUNTAIN, intent.on) { node1.setPump(intent.on) }
+            is HomeIntent.TogglePoolPump -> switch(HomeTile.POOL_PUMP, intent.on) { node6.setPump(intent.on) }
+            is HomeIntent.TogglePoolHeating -> switch(HomeTile.POOL_HEATING, intent.on) { node6.setHeating(intent.on) }
             HomeIntent.TurnHeatingOn -> viewModelScope.launch {
                 val message = when (node5.setMainSwitch(true)) {
                     is CommandOutcome.Accepted -> R.string.home_heating_turned_on
@@ -220,5 +216,32 @@ class HomeViewModel(
                 _effects.send(HomeEffect.ShowToast(if (turnedOff) R.string.goodnight_toast_off else R.string.goodnight_toast_already_off))
             }
         }
+    }
+
+    /**
+     * The tile shows [on] at once; only that tile waits for the answer (a second tap meanwhile is
+     * ignored). On failure it returns to the real state with a message.
+     */
+    private fun switch(tile: HomeTile, on: Boolean, send: suspend () -> CommandOutcome) {
+        if (tile in extras.value.pending) return
+        extras.update { it.copy(pending = it.pending + (tile to on)) }
+        viewModelScope.launch {
+            val outcome = withSlowHint({ extras.update { it.copy(slow = it.slow + tile) } }) {
+                send().also { if (it is CommandOutcome.Accepted) awaitNodeState(actualStates()) { a -> actual(tile, a) == on } }
+            }
+            extras.update { it.copy(pending = it.pending - tile, slow = it.slow - tile) }
+            if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
+        }
+    }
+
+    private data class Actual(val yard: Node1Snapshot, val lights: Node2State?, val pool: Node6State?)
+
+    private fun actualStates() = combine(node1.snapshot, node2.state, node6.state, ::Actual)
+
+    private fun actual(tile: HomeTile, a: Actual): Boolean? = when (tile) {
+        HomeTile.LED_STRIP -> a.lights?.neon
+        HomeTile.FOUNTAIN -> a.yard.state?.fountain?.pump
+        HomeTile.POOL_PUMP -> a.pool?.pump
+        HomeTile.POOL_HEATING -> a.pool?.heating
     }
 }

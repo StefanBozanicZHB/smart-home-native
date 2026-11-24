@@ -2,6 +2,7 @@ package zhb.company.smart_home.ui.heating
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -24,7 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -112,12 +113,18 @@ private fun PipeSensorsContent(state: PipeSensorsState, onIntent: (PipeSensorsIn
     ) {
         item {
             ScreenHeader(title = stringResource(R.string.sensors_title), horizontalPadding = 0.dp, onBack = onBack) {
-                IconButton(onClick = { onIntent(PipeSensorsIntent.Refresh) }, enabled = state.connected) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.sensors_refresh))
+                if (state.slow) {
+                    // In place of the refresh button, so nothing on the screen moves.
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                    }
+                } else {
+                    IconButton(onClick = { onIntent(PipeSensorsIntent.Refresh) }, enabled = state.connected) {
+                        Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.sensors_refresh))
+                    }
                 }
             }
         }
-        if (state.sending) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         if (!state.connected) item { AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.heating_not_connected), Tone.DANGER) }
         if (state.loading) {
             item { AlertBanner(Icons.Outlined.HourglassEmpty, stringResource(R.string.sensors_waiting, state.nodeId), Tone.NEUTRAL) }
@@ -176,10 +183,10 @@ private fun PipeCard(row: PipeRowUi, state: PipeSensorsState, onIntent: (PipeSen
         }
         if (row.missingOnBus) AlertBanner(Icons.Outlined.WarningAmber, stringResource(R.string.sensors_missing), Tone.DANGER)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onIntent(PipeSensorsIntent.EditOffset(row.pipe)) }, enabled = state.connected && !state.sending) {
+            OutlinedButton(onClick = { onIntent(PipeSensorsIntent.EditOffset(row.pipe)) }, enabled = state.connected) {
                 Text(stringResource(R.string.sensors_edit_offset))
             }
-            TextButton(onClick = { onIntent(PipeSensorsIntent.RequestRemove(row.pipe)) }, enabled = state.connected && !state.sending) {
+            TextButton(onClick = { onIntent(PipeSensorsIntent.RequestRemove(row.pipe)) }, enabled = state.connected) {
                 Text(stringResource(R.string.sensors_remove), color = MaterialTheme.colorScheme.error)
             }
         }
@@ -198,7 +205,7 @@ private fun BusCard(state: PipeSensorsState, onIntent: (PipeSensorsIntent) -> Un
             if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Surface(
                 onClick = { onIntent(PipeSensorsIntent.PickSensor(sensor.address)) },
-                enabled = state.connected && !state.sending,
+                enabled = state.connected,
                 color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {

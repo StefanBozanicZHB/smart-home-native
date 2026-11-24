@@ -13,6 +13,7 @@ import zhb.company.smart_home.data.node.CommandOutcome
 import zhb.company.smart_home.data.heating.Node5Repository
 import zhb.company.smart_home.domain.heating.BusSensor
 import zhb.company.smart_home.domain.heating.PipeCalibration
+import zhb.company.smart_home.ui.command.withSlowHint
 
 enum class CalibrationPhase { INTRO, SAMPLING, RESULT }
 
@@ -24,6 +25,8 @@ data class PipeCalibrationState(
     val bus: List<BusSensor> = emptyList(),
     val result: PipeCalibration.Result? = null,
     val sending: Boolean = false,
+    /** The answer is late (over a second); only then is a progress bar shown. */
+    val slow: Boolean = false,
     val message: HeatingMessage? = null,
     /** Offsets were accepted by the node; the screen closes. */
     val done: Boolean = false,
@@ -81,10 +84,11 @@ class PipeCalibrationViewModel(private val node5: Node5Repository) : ViewModel()
         if (_state.value.sending || proposal.rows.isEmpty()) return
         _state.update { it.copy(sending = true) }
         viewModelScope.launch {
-            val outcome = node5.updateSensors(proposal.changes())
+            val outcome = withSlowHint({ _state.update { it.copy(slow = true) } }) { node5.updateSensors(proposal.changes()) }
             _state.update {
                 it.copy(
                     sending = false,
+                    slow = false,
                     done = outcome is CommandOutcome.Accepted,
                     message = when (outcome) {
                         is CommandOutcome.Accepted -> HeatingMessage.Saved

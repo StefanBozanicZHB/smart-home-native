@@ -152,7 +152,7 @@ private fun ResultCard(state: PipeCalibrationState, onIntent: (PipeCalibrationIn
                         Text(stringResource(R.string.calibration_again))
                     }
                 }
-                if (state.sending) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                if (state.slow) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             else -> {
                 Text(stringResource(R.string.calibration_too_few), style = MaterialTheme.typography.bodyMedium)

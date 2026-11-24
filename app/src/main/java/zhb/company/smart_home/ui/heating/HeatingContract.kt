@@ -54,11 +54,18 @@ data class HeatingState(
     val minOffSeconds: Int? = null,
     val configRev: Long? = null,
 
-    val sending: Boolean = false,
+    /**
+     * The command whose answer is late (over a second); only then does the screen say so.
+     * Commands are sent one at a time; a second one while the first waits is ignored.
+     */
+    val slowCommand: HeatingCommand? = null,
     val showSettingsDialog: Boolean = false,
     val showMainSwitchOffConfirm: Boolean = false,
     val message: HeatingMessage? = null,
 )
+
+/** Node 5 commands the heating screen sends. */
+enum class HeatingCommand { MAIN_SWITCH, SCHEDULE, HYSTERESIS }
 
 data class ZoneUi(
     val id: String,

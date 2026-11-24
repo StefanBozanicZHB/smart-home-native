@@ -56,15 +56,12 @@ data class GardenState(
      * out meanwhile, since a normal answer takes a fraction of a second and that would flicker.
      */
     val pending: Set<GardenOutput> = emptySet(),
-    /** Pending outputs whose answer is late (over [SLOW_ANSWER_MS]); only these say "čeka čvor…". */
+    /** Pending outputs whose answer is late; only these say "čeka čvor…". */
     val slow: Set<GardenOutput> = emptySet(),
     val dialog: GardenDialog? = null,
     val message: GardenMessage? = null,
     val showLocationDialog: Boolean = false,
 )
-
-/** A normal answer takes a fraction of a second; a hint shown for that long would only flicker. */
-const val SLOW_ANSWER_MS = 1_000L
 
 /** Switchable outputs on the yard screen. */
 enum class GardenOutput { FOUNTAIN_PUMP, FOUNTAIN_LIGHT, LED_STRIP, BULB, POOL_PUMP, POOL_HEATING }

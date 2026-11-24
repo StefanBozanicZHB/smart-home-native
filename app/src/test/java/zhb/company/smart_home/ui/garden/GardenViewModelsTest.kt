@@ -24,6 +24,7 @@ import zhb.company.smart_home.data.mqtt.FakeMqttConnector
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.remote.MqttConfigSource
 import zhb.company.smart_home.data.remote.dto.MqttClientConfigDto
+import zhb.company.smart_home.ui.command.SLOW_ANSWER_MS
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GardenViewModelsTest {

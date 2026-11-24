@@ -22,6 +22,8 @@ import zhb.company.smart_home.domain.heating.ScheduleRules
 import zhb.company.smart_home.domain.heating.ScheduleSegment
 import zhb.company.smart_home.domain.heating.formatTenths
 import zhb.company.smart_home.domain.heating.TimeOfDay
+import zhb.company.smart_home.ui.command.awaitNodeState
+import zhb.company.smart_home.ui.command.withSlowHint
 import zhb.company.smart_home.ui.format.Readings
 import zhb.company.smart_home.domain.model.SmartHomeState
 
@@ -39,7 +41,12 @@ class HeatingViewModel(
         val selectedZone: String? = null,
         val selectedDay: DayType? = null,
         val drafts: Map<DraftKey, Draft> = emptyMap(),
-        val sending: Boolean = false,
+        /** The command waiting for its answer; null when none is. */
+        val sending: HeatingCommand? = null,
+        val slow: Boolean = false,
+        /** Shown at once while the main switch or hysteresis command waits for its answer. */
+        val mainSwitchRequested: Boolean? = null,
+        val hysteresisRequested: Hysteresis? = null,
         val showSettingsDialog: Boolean = false,
         val showMainSwitchOffConfirm: Boolean = false,
         val showDiscardDraftsConfirm: Boolean = false,
@@ -80,7 +87,7 @@ class HeatingViewModel(
             },
             loading = config == null || zoneSettings == null,
             outdoorTemp = Readings.temperature(home.temperatureOutdoor),
-            mainSwitch = config?.mainSwitch ?: live?.mainSwitch ?: false,
+            mainSwitch = ui.mainSwitchRequested ?: config?.mainSwitch ?: live?.mainSwitch ?: false,
             pump = live?.pump ?: false,
             demand = live?.demand ?: false,
             flowTemp = Readings.temperature(live?.pipes?.supply),
@@ -128,11 +135,11 @@ class HeatingViewModel(
             scheduleProblem = ScheduleRules.validateDay(segments, limits),
             // Only a draft that really differs can conflict; our own saves move baseRev forward (rebaseDrafts).
             remoteChangedWhileEditing = draft != null && draft.segments != nodeDay && draft.baseRev != zoneSettings?.rev,
-            hysteresis = zoneSettings?.hysteresis,
+            hysteresis = ui.hysteresisRequested ?: zoneSettings?.hysteresis,
             minOnSeconds = config?.minOnSeconds,
             minOffSeconds = config?.minOffSeconds,
             configRev = config?.rev,
-            sending = ui.sending,
+            slowCommand = ui.sending?.takeIf { ui.slow },
             showSettingsDialog = ui.showSettingsDialog,
             showMainSwitchOffConfirm = ui.showMainSwitchOffConfirm,
             message = ui.message,
@@ -157,11 +164,11 @@ class HeatingViewModel(
         when (intent) {
             is HeatingIntent.ToggleMainSwitch ->
                 // Turning off stops the heat pump immediately (no minimum run time), so ask first.
-                if (intent.on) runCommand { node5.setMainSwitch(true) }
+                if (intent.on) setMainSwitch(true)
                 else extras.update { it.copy(showMainSwitchOffConfirm = true) }
             HeatingIntent.ConfirmMainSwitchOff -> {
                 extras.update { it.copy(showMainSwitchOffConfirm = false) }
-                runCommand { node5.setMainSwitch(false) }
+                setMainSwitch(false)
             }
             HeatingIntent.DismissMainSwitchOff -> extras.update { it.copy(showMainSwitchOffConfirm = false) }
 
@@ -182,7 +189,12 @@ class HeatingViewModel(
             is HeatingIntent.SaveHysteresis -> {
                 val zone = state.value.selectedZone ?: return
                 extras.update { it.copy(showSettingsDialog = false) }
-                runCommand(onAccepted = { accepted -> rebaseDrafts(zone, accepted.rev) }) { node5.updateZone(zone, hysteresis = intent.hysteresis) }
+                runCommand(
+                    HeatingCommand.HYSTERESIS,
+                    requested = { it.copy(hysteresisRequested = intent.hysteresis) },
+                    applied = { it.zones[zone]?.hysteresis == intent.hysteresis },
+                    onAccepted = { accepted -> rebaseDrafts(zone, accepted.rev) },
+                ) { node5.updateZone(zone, hysteresis = intent.hysteresis) }
             }
             HeatingIntent.Refresh -> viewModelScope.launch { node5.requestState() }
             HeatingIntent.MessageShown -> extras.update { it.copy(message = null) }
@@ -216,10 +228,15 @@ class HeatingViewModel(
         val key = currentDraftKey() ?: return
         if (s.scheduleProblem != null || s.loading) return
         val segments = s.editorSegments
-        runCommand(onAccepted = { accepted ->
-            extras.update { it.copy(drafts = it.drafts - key) }
-            rebaseDrafts(key.zone, accepted.rev)
-        }) {
+        // The draft stays until the node shows the new program, so the editor does not flash the old one.
+        runCommand(
+            HeatingCommand.SCHEDULE,
+            applied = { it.zones[key.zone]?.day(key.day) == segments },
+            onAccepted = { accepted ->
+                extras.update { it.copy(drafts = it.drafts - key) }
+                rebaseDrafts(key.zone, accepted.rev)
+            },
+        ) {
             when (key.day) {
                 DayType.WORKDAY -> node5.updateZone(key.zone, workday = segments)
                 DayType.WEEKEND -> node5.updateZone(key.zone, weekend = segments)
@@ -238,11 +255,29 @@ class HeatingViewModel(
         }
     }
 
-    private fun runCommand(onAccepted: (CommandOutcome.Accepted) -> Unit = {}, command: suspend () -> CommandOutcome) {
-        if (extras.value.sending) return
-        extras.update { it.copy(sending = true) }
+    private fun setMainSwitch(on: Boolean) = runCommand(
+        HeatingCommand.MAIN_SWITCH,
+        requested = { it.copy(mainSwitchRequested = on) },
+        applied = { it.config?.mainSwitch == on },
+    ) { node5.setMainSwitch(on) }
+
+    /**
+     * Sends one command at a time. [requested] shows the new value at once; after an accepted
+     * command it waits briefly until the node's state shows it ([applied]), then [onAccepted].
+     */
+    private fun runCommand(
+        command: HeatingCommand,
+        requested: (UiExtras) -> UiExtras = { it },
+        applied: (Node5Snapshot) -> Boolean = { true },
+        onAccepted: (CommandOutcome.Accepted) -> Unit = {},
+        send: suspend () -> CommandOutcome,
+    ) {
+        if (extras.value.sending != null) return
+        extras.update { requested(it.copy(sending = command)) }
         viewModelScope.launch {
-            val outcome = command()
+            val outcome = withSlowHint({ extras.update { it.copy(slow = true) } }) {
+                send().also { if (it is CommandOutcome.Accepted) awaitNodeState(node5.snapshot, applied) }
+            }
             if (outcome is CommandOutcome.Accepted) onAccepted(outcome)
             val message = when (outcome) {
                 is CommandOutcome.Accepted -> HeatingMessage.Saved
@@ -250,7 +285,9 @@ class HeatingViewModel(
                 CommandOutcome.Timeout -> HeatingMessage.Timeout
                 CommandOutcome.NotConnected -> HeatingMessage.NotConnected
             }
-            extras.update { it.copy(sending = false, message = message) }
+            extras.update {
+                it.copy(sending = null, slow = false, mainSwitchRequested = null, hysteresisRequested = null, message = message)
+            }
         }
     }
 }

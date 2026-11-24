@@ -17,6 +17,7 @@ import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.domain.heating.Pipe
 import zhb.company.smart_home.domain.heating.PipeAssignment
 import zhb.company.smart_home.domain.heating.PipeSensorRules
+import zhb.company.smart_home.ui.command.withSlowHint
 import zhb.company.smart_home.ui.format.Readings
 
 /** Pipe sensor assignment (node5/sensors, sensors/set): an admin screen next to heating. */
@@ -27,6 +28,7 @@ class PipeSensorsViewModel(
 
     private data class Ui(
         val sending: Boolean = false,
+        val slow: Boolean = false,
         val message: HeatingMessage? = null,
         val pickingFor: String? = null,
         val editingOffset: Pipe? = null,
@@ -64,7 +66,7 @@ class PipeSensorsViewModel(
             bus = sensors?.bus.orEmpty()
                 .sortedByDescending { it.rawTemp ?: Double.NEGATIVE_INFINITY }
                 .map { BusRowUi(it.address, Readings.temperature(it.rawTemp), it.pipe, warmest = sensors!!.bus.size > 1 && it.address == warmest) },
-            sending = u.sending,
+            slow = u.sending && u.slow,
             message = u.message,
             pickingFor = u.pickingFor,
             editingOffset = u.editingOffset,
@@ -110,18 +112,22 @@ class PipeSensorsViewModel(
         }
     }
 
-    /** Sends a sensors/set and reports the node's answer (matched by id) as a message. */
+    /**
+     * Sends a sensors/set and reports the node's answer (matched by id) as a message. One at a
+     * time: another change while it waits is ignored.
+     */
     fun send(changes: Map<Pipe, PipeAssignment?>) {
         if (ui.value.sending) return
         ui.update { it.copy(sending = true) }
         viewModelScope.launch {
-            val message = when (val outcome = node5.updateSensors(changes)) {
+            val outcome = withSlowHint({ ui.update { it.copy(slow = true) } }) { node5.updateSensors(changes) }
+            val message = when (outcome) {
                 is CommandOutcome.Accepted -> HeatingMessage.Saved
                 is CommandOutcome.Rejected -> HeatingMessage.Rejected(outcome.error)
                 CommandOutcome.Timeout -> HeatingMessage.Timeout
                 CommandOutcome.NotConnected -> HeatingMessage.NotConnected
             }
-            ui.update { it.copy(sending = false, message = message) }
+            ui.update { it.copy(sending = false, slow = false, message = message) }
         }
     }
 }

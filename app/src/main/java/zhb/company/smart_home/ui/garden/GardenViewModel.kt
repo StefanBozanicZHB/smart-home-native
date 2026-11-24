@@ -3,16 +3,13 @@ package zhb.company.smart_home.ui.garden
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.time.LocalDate
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
 import zhb.company.smart_home.data.garden.Node2Repository
@@ -23,6 +20,8 @@ import zhb.company.smart_home.domain.garden.IrrigationRules
 import zhb.company.smart_home.domain.garden.Node2State
 import zhb.company.smart_home.domain.garden.Node6State
 import zhb.company.smart_home.domain.model.SmartHomeState
+import zhb.company.smart_home.ui.command.awaitNodeState
+import zhb.company.smart_home.ui.command.withSlowHint
 import zhb.company.smart_home.ui.format.Readings
 
 class GardenViewModel(
@@ -151,15 +150,9 @@ class GardenViewModel(
         if (output in extras.value.pending) return
         viewModelScope.launch {
             extras.update { it.copy(pending = it.pending + (output to on)) }
-            val slowHint = launch {
-                delay(SLOW_ANSWER_MS)
-                extras.update { it.copy(slow = it.slow + output) }
+            val outcome = withSlowHint({ extras.update { it.copy(slow = it.slow + output) } }) {
+                block().also { if (it is CommandOutcome.Accepted) awaitNodeState(actualStates()) { a -> actual(output, a) == on } }
             }
-            val outcome = block()
-            if (outcome is CommandOutcome.Accepted) {
-                withTimeoutOrNull(STATE_AFTER_ANSWER_MS) { actualStates().first { actual(output, it) == on } }
-            }
-            slowHint.cancel()
             val message = messageFor(outcome, success = null)
             extras.update { it.copy(pending = it.pending - output, slow = it.slow - output, message = message ?: it.message) }
         }
@@ -192,10 +185,5 @@ class GardenViewModel(
         is CommandOutcome.Rejected -> GardenMessage.Rejected(outcome.error)
         CommandOutcome.Timeout -> GardenMessage.Timeout
         CommandOutcome.NotConnected -> GardenMessage.NotConnected
-    }
-
-    private companion object {
-        /** The node publishes its state right around the answer; this only bridges the gap. */
-        const val STATE_AFTER_ANSWER_MS = 3_000L
     }
 }

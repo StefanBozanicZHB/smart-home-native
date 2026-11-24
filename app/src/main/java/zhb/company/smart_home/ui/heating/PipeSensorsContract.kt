@@ -31,7 +31,8 @@ data class PipeSensorsState(
     val fallback: Boolean = false,
     val pipes: List<PipeRowUi> = Pipe.entries.map { PipeRowUi(it) },
     val bus: List<BusRowUi> = emptyList(),
-    val sending: Boolean = false,
+    /** A sensors/set answer is late (over a second); shown in the header, nothing else moves. */
+    val slow: Boolean = false,
     val message: HeatingMessage? = null,
     /** Bus sensor chosen for assignment; the pipe picker is open while set. */
     val pickingFor: String? = null,

@@ -119,14 +119,14 @@ private fun HomeContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { HomeHeader(state.connected, now, toLabel, onOpenNotifications) }
-        state.alerts.forEach { alert -> item { HomeAlertBanner(alert) } }
+        // Keys keep the scroll position anchored when a block above appears or disappears.
+        item(key = "header") { HomeHeader(state.connected, now, toLabel, onOpenNotifications) }
+        state.alerts.forEach { alert -> item(key = alertKey(alert)) { HomeAlertBanner(alert) } }
         state.sections.forEach { section ->
             item(key = section.name) {
                 when (section) {
                     HomeSection.HEATING_HERO -> HeatingHeroCard(state.heating, onOpenHeating, history)
                     HomeSection.GARDEN_HERO -> GardenHeroCard(state, onOpenGarden)
-                    HomeSection.SUMMER_TILES -> SummerTiles(state, onOpenGarden)
                     HomeSection.ROOM_TEMPS -> RoomTemps(state, showOutdoor = HomeSection.GARDEN_HERO !in state.sections)
                     HomeSection.DEVICES -> Devices(state, onIntent)
                     HomeSection.HEATING_ROW -> CompactRow(
@@ -179,6 +179,12 @@ private fun HomeHeader(connected: Boolean, now: LocalDateTime, toLabel: Int = 0,
             tone = if (connected) Tone.ACTIVE else Tone.DANGER,
         )
     }
+}
+
+/** Stable per alert (not per reconnect attempt), so the list does not jump while it updates. */
+private fun alertKey(alert: HomeAlert): String = when (alert) {
+    is HomeAlert.NodeOffline -> "alert:offline:${alert.label}"
+    else -> "alert:${alert::class.simpleName}"
 }
 
 @Composable
@@ -271,26 +277,6 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit) {
-    val tiles = buildList<@Composable (Modifier) -> Unit> {
-        val poolHeating = state.poolHeatingOn == true
-        if (state.poolPumpOn || poolHeating) add { m ->
-            ActionTile(
-                icon = Icons.Outlined.Pool,
-                label = "${stringResource(R.string.garden_pool)} · ${state.poolTemp}°",
-                detail = listOfNotNull(
-                    stringResource(R.string.home_pool_running).takeIf { state.poolPumpOn },
-                    stringResource(R.string.home_pool_heating_running).takeIf { poolHeating },
-                ).joinToString(", "),
-                onClick = onOpenGarden,
-                modifier = m,
-            )
-        }
-    }
-    TileGrid(columns = adaptiveColumns(2), tiles = tiles)
-}
-
-@Composable
 private fun RoomTemps(state: HomeState, showOutdoor: Boolean) {
     val tiles = buildList<@Composable (Modifier) -> Unit> {
         // In summer the yard card already shows the outdoor reading.
@@ -319,21 +305,21 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
                     DeviceTile(
                         Icons.Outlined.Lightbulb, stringResource(R.string.home_led_strip), state.ledStripOn,
                         { onIntent(HomeIntent.ToggleLedStrip(it)) }, m,
-                        detail = yard, enabled = state.yardNodeOnline, disabledReason = offline,
+                        detail = waitingOr(HomeTile.LED_STRIP in state.slowTiles, yard), enabled = state.yardNodeOnline, disabledReason = offline,
                     )
                 },
                 { m ->
                     DeviceTile(
                         Icons.Outlined.Water, stringResource(R.string.home_fountain), state.fountainOn,
                         { onIntent(HomeIntent.ToggleFountain(it)) }, m,
-                        detail = yard, enabled = state.fountainNodeOnline, disabledReason = offline,
+                        detail = waitingOr(HomeTile.FOUNTAIN in state.slowTiles, yard), enabled = state.fountainNodeOnline, disabledReason = offline,
                     )
                 },
                 { m ->
                     DeviceTile(
                         Icons.Outlined.Pool, stringResource(R.string.home_pool_pump), state.poolPumpOn,
                         { onIntent(HomeIntent.TogglePoolPump(it)) }, m,
-                        detail = "${state.poolTemp}°", enabled = state.poolNodeOnline, disabledReason = offline,
+                        detail = waitingOr(HomeTile.POOL_PUMP in state.slowTiles, "${state.poolTemp}°"), enabled = state.poolNodeOnline, disabledReason = offline,
                     )
                 },
                 state.poolHeatingOn?.let { heatingOn ->
@@ -341,7 +327,7 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
                         DeviceTile(
                             Icons.Outlined.LocalFireDepartment, stringResource(R.string.home_pool_heating), heatingOn,
                             { onIntent(HomeIntent.TogglePoolHeating(it)) }, m,
-                            detail = "${state.poolTemp}°", enabled = state.poolNodeOnline, disabledReason = offline,
+                            detail = waitingOr(HomeTile.POOL_HEATING in state.slowTiles, "${state.poolTemp}°"), enabled = state.poolNodeOnline, disabledReason = offline,
                         )
                     }
                 },
@@ -362,6 +348,10 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
         )
     }
 }
+
+/** "čeka čvor…" while the tile's command answer is late, else [detail]. */
+@Composable
+private fun waitingOr(slow: Boolean, detail: String): String = if (slow) stringResource(R.string.garden_waiting) else detail
 
 @Composable
 private fun DevicesOnDialog(devices: List<String>, onDismiss: () -> Unit) {
@@ -416,7 +406,7 @@ private fun lastAccessText(event: zhb.company.smart_home.domain.door.AccessEvent
 private val PreviewWinter = HomeState(
     connected = true,
     alerts = listOf(HomeAlert.NodeOffline("Ulazna vrata", lastWill = false)),
-    sections = HomeLayout.sections(HomeSignals(true, false, false, false)),
+    sections = HomeLayout.sections(HomeSignals(true, false, false)),
     heating = HeatingSummary(
         online = true, mainSwitch = true, pump = true, flowTemp = "34.3",
         status = zhb.company.smart_home.domain.heating.HeatPumpStatus.Running(minutes = 12, demand = true, minRunLeftMinutes = null),
@@ -429,7 +419,7 @@ private val PreviewWinter = HomeState(
 
 private val PreviewSummer = HomeState(
     connected = true,
-    sections = HomeLayout.sections(HomeSignals(false, true, false, true)),
+    sections = HomeLayout.sections(HomeSignals(false, true, false)),
     heating = HeatingSummary(online = true, mainSwitch = false),
     outdoorTemp = "31.2", groundTemp = "25.1", groundHumidity = "52", upperTemp = "26.8", upperHumidity = "48",
     poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true, poolHeatingOn = true,

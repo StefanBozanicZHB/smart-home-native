@@ -34,7 +34,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
@@ -170,9 +169,8 @@ private fun HeatingContent(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item { HeatingHeader(state, onIntent, onOpenReports) }
-        if (state.sending) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         item { StatusBanners(state, onIntent) }
-        item { HeatPumpStatusCard(state.pumpStatus, onTurnOn = { onIntent(HeatingIntent.ToggleMainSwitch(true)) }.takeIf { state.connected && !state.sending }) }
+        item { HeatPumpStatusCard(state.pumpStatus, onTurnOn = { onIntent(HeatingIntent.ToggleMainSwitch(true)) }.takeIf { state.connected }) }
         if (!state.loading) {
             if (state.zones.size > 1) item { ZoneSelector(state, onIntent) }
             item { ZoneCard(state) }
@@ -272,8 +270,9 @@ private fun ZoneCard(state: HeatingState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 state.hysteresis?.let { h ->
+                    val waiting = if (state.slowCommand == HeatingCommand.HYSTERESIS) " · " + stringResource(R.string.garden_waiting) else ""
                     Text(
-                        stringResource(R.string.heating_hysteresis_short, formatTenths(h.lowerTenths), formatTenths(h.upperTenths)),
+                        stringResource(R.string.heating_hysteresis_short, formatTenths(h.lowerTenths), formatTenths(h.upperTenths)) + waiting,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -341,9 +340,10 @@ private fun HeatPumpCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
             Switch(
                 checked = state.mainSwitch,
                 onCheckedChange = { onIntent(HeatingIntent.ToggleMainSwitch(it)) },
-                enabled = state.connected && !state.loading && !state.sending,
+                enabled = state.connected && !state.loading,
             )
         }
+        if (state.slowCommand == HeatingCommand.MAIN_SWITCH) Waiting()
         state.lastPumpChange?.let { change ->
             val whenText = buildString {
                 change.minutesAgo?.let { append(stringResource(R.string.heating_minutes_ago, it)).append(", ") }
@@ -479,15 +479,15 @@ private fun ScheduleCard(state: HeatingState, onIntent: (HeatingIntent) -> Unit,
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 if (state.scheduleDirty) {
-                    OutlinedButton(onClick = { onIntent(HeatingIntent.DiscardSchedule) }, enabled = !state.sending) {
+                    OutlinedButton(onClick = { onIntent(HeatingIntent.DiscardSchedule) }) {
                         Text(stringResource(R.string.heating_discard))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 Button(
                     onClick = { onIntent(HeatingIntent.SaveSchedule) },
-                    enabled = (state.scheduleDirty || state.dayNotSet) && state.scheduleProblem == null && state.connected && !state.sending,
-                ) { Text(stringResource(R.string.heating_save)) }
+                    enabled = (state.scheduleDirty || state.dayNotSet) && state.scheduleProblem == null && state.connected,
+                ) { Text(stringResource(if (state.slowCommand == HeatingCommand.SCHEDULE) R.string.plan_saving else R.string.heating_save)) }
             }
         }
     }
@@ -731,7 +731,7 @@ private fun HeatingSettingsDialog(state: HeatingState, onIntent: (HeatingIntent)
         confirmButton = {
             TextButton(
                 onClick = { onIntent(HeatingIntent.SaveHysteresis(Hysteresis(lower, upper))) },
-                enabled = state.connected && !state.sending && Hysteresis(lower, upper) != state.hysteresis,
+                enabled = state.connected && Hysteresis(lower, upper) != state.hysteresis,
             ) { Text(stringResource(R.string.heating_save)) }
         },
         dismissButton = {
@@ -870,4 +870,10 @@ private fun HeatingInvalidDraftPreview() {
             )
         }
     }
+}
+
+/** "čeka čvor…" under a control whose command answer is late. */
+@Composable
+private fun Waiting() {
+    Text(stringResource(R.string.garden_waiting), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
