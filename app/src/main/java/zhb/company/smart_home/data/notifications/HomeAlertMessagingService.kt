@@ -36,7 +36,8 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
         val payload = AlertPayload.parse(message.data, n?.title, n?.body, n?.channelId, n?.tag) ?: return
         // Into the in-app list first: it keeps the message even if notifications are off.
         runBlocking { inbox.add(payload, receivedMs) }
-        if (push.hasPermission()) {
+        // Turned off in the app's settings: only the list keeps it (also while unsubscribing is pending).
+        if (push.hasPermission() && runBlocking { preferences.notificationsEnabled.first() }) {
             val quiet = runBlocking { preferences.quietHours.first() }
             val now = java.time.LocalTime.now()
             show(this, payload, silent = quiet.silence(payload, now.hour * 60 + now.minute))
@@ -55,7 +56,7 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
 
         @SuppressLint("MissingPermission") // callers check PushNotifications.hasPermission()
         fun show(context: Context, p: AlertPayload, silent: Boolean = false) {
-            val base = (p.tag ?: p.title).hashCode()
+            val base = p.notificationTag.hashCode()
             val open = PendingIntent.getActivity(
                 context,
                 base,
@@ -79,7 +80,7 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
                 builder.addAction(0, context.getString(R.string.feedback_ok), feedbackIntent(context, p, AlertPayload.LABEL_OK, base + 1))
                 builder.addAction(0, context.getString(R.string.feedback_problem), feedbackIntent(context, p, AlertPayload.LABEL_PROBLEM, base + 2))
             }
-            NotificationManagerCompat.from(context).notify(p.tag, 0, builder.build())
+            NotificationManagerCompat.from(context).notify(p.notificationTag, 0, builder.build())
         }
 
         private fun feedbackIntent(context: Context, p: AlertPayload, label: String, requestCode: Int): PendingIntent =
@@ -89,7 +90,7 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
                 Intent(context, FeedbackReceiver::class.java)
                     .putExtra(FeedbackReceiver.EXTRA_ID, p.id)
                     .putExtra(FeedbackReceiver.EXTRA_LABEL, label)
-                    .putExtra(FeedbackReceiver.EXTRA_TAG, p.tag)
+                    .putExtra(FeedbackReceiver.EXTRA_TAG, p.notificationTag)
                     .putExtra(FeedbackReceiver.EXTRA_CHANNEL, p.channel)
                     .putExtra(FeedbackReceiver.EXTRA_TITLE, p.title),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

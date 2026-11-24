@@ -41,6 +41,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +53,7 @@ import org.koin.compose.koinInject
 import zhb.company.smart_home.R
 import zhb.company.smart_home.data.history.HistoryPeriod
 import zhb.company.smart_home.data.notifications.NotificationInbox
+import zhb.company.smart_home.domain.GoodNightDevice
 import zhb.company.smart_home.ui.components.ActionTile
 import zhb.company.smart_home.ui.components.AlertBanner
 import zhb.company.smart_home.ui.components.BigValue
@@ -93,11 +95,16 @@ fun HomeScreen(
     // Only the winter heating card has a chart.
     if (HomeSection.HEATING_HERO in state.sections) HistoryAutoLoad(historyViewModel, setOf(HistoryPeriod.DAY))
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 is HomeEffect.ShowToast -> Toast.makeText(context, effect.messageRes, Toast.LENGTH_SHORT).show()
+                is HomeEffect.GoodnightIncomplete -> {
+                    val names = effect.devices.joinToString(", ") { resources.getString(goodNightLabel(it)) }
+                    Toast.makeText(context, resources.getString(R.string.goodnight_toast_failed, names), Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
@@ -184,6 +191,16 @@ private fun HomeHeader(connected: Boolean, now: LocalDateTime, toLabel: Int = 0,
             tone = if (connected) Tone.ACTIVE else Tone.DANGER,
         )
     }
+}
+
+private fun goodNightLabel(device: GoodNightDevice): Int = when (device) {
+    GoodNightDevice.FOUNTAIN_PUMP -> R.string.garden_fountain_pump
+    GoodNightDevice.FOUNTAIN_LIGHT -> R.string.garden_fountain_light
+    GoodNightDevice.WATERING -> R.string.garden_sprinklers
+    GoodNightDevice.NEON -> R.string.garden_led_strip
+    GoodNightDevice.LAMP -> R.string.garden_bulb
+    GoodNightDevice.POOL_PUMP -> R.string.home_pool_pump
+    GoodNightDevice.POOL_HEATING -> R.string.home_pool_heating
 }
 
 private val SR = Locale.forLanguageTag("sr-Latn")

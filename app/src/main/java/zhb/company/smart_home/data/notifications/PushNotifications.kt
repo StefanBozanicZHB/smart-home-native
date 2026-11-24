@@ -93,5 +93,8 @@ class PushNotifications(
         const val CHANNEL_HEATING = "heating_alerts"
         const val CHANNEL_SYSTEM = "system_status"
         const val CHANNEL_REPORTS = "reports"
+
+        /** The channels this app creates; a notification on any other id would not be shown. */
+        val CHANNELS = setOf(CHANNEL_NODES, CHANNEL_HEATING, CHANNEL_SYSTEM, CHANNEL_REPORTS)
     }
 }

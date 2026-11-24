@@ -1,6 +1,7 @@
 package zhb.company.smart_home.data.notifications
 
 import android.content.Context
+import androidx.core.util.AtomicFile
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,7 +46,8 @@ data class InboxEntry(
  */
 class NotificationInbox(context: Context, private val log: NotificationLog) {
 
-    private val file = File(context.filesDir, "notification_inbox.json")
+    // Written to a temporary file and swapped in: a write cut short (process killed) keeps the old list.
+    private val file = AtomicFile(File(context.filesDir, "notification_inbox.json"))
     private val mutex = Mutex()
     private val json = Json { ignoreUnknownKeys = true }
     private val _entries = MutableStateFlow(load())
@@ -87,12 +89,20 @@ class NotificationInbox(context: Context, private val log: NotificationLog) {
         val next = change(_entries.value)
         if (next !== _entries.value) {
             _entries.value = next
-            runCatching { file.writeText(json.encodeToString(next)) }
+            save(json.encodeToString(next))
         }
     }
 
+    private fun save(text: String) {
+        val out = runCatching { file.startWrite() }.getOrNull() ?: return
+        runCatching {
+            out.write(text.toByteArray(Charsets.UTF_8))
+            file.finishWrite(out)
+        }.onFailure { file.failWrite(out) }
+    }
+
     private fun load(): List<InboxEntry> =
-        runCatching { json.decodeFromString<List<InboxEntry>>(file.readText()) }.getOrDefault(emptyList())
+        runCatching { json.decodeFromString<List<InboxEntry>>(String(file.readFully(), Charsets.UTF_8)) }.getOrDefault(emptyList())
 
     companion object {
         const val VIA_NOTIFICATION = "notification"

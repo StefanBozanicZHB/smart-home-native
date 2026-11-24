@@ -1,6 +1,8 @@
 package zhb.company.smart_home.domain
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -30,7 +32,7 @@ class GoodNightUseCaseTest {
         val connector = FakeMqttConnector()
         val repo = connectedRepository(connector)
 
-        assertFalse(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))())
+        assertFalse(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))().sent.isNotEmpty())
         assertEquals(0, connector.lastConnection!!.published.count { !it.topic.endsWith("/config/get") })
     }
 
@@ -46,7 +48,7 @@ class GoodNightUseCaseTest {
             retained = true,
         )
 
-        assertTrue(GoodNightUseCase(node1, Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))())
+        assertTrue(GoodNightUseCase(node1, Node2Repository(repo, backgroundScope), Node6Repository(repo, backgroundScope))().sent.isNotEmpty())
         val topics = connector.lastConnection!!.published.map { it.topic }
         assertTrue("bozaSub/kuca/node1/fountain/pump/set" in topics)
         assertTrue("bozaSub/kuca/node1/run/stop" in topics)
@@ -64,7 +66,7 @@ class GoodNightUseCaseTest {
             retained = true,
         )
 
-        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), node2, Node6Repository(repo, backgroundScope))())
+        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), node2, Node6Repository(repo, backgroundScope))().sent.isNotEmpty())
         val sent = connector.lastConnection!!.published.filter { it.topic.startsWith("bozaSub/kuca/node2/") && !it.topic.endsWith("/config/get") }
         assertEquals(listOf("bozaSub/kuca/node2/lamp/set" to """{"on":false,"id":"g"}"""), sent.map { it.topic to it.payload })
     }
@@ -76,7 +78,7 @@ class GoodNightUseCaseTest {
         val node6 = Node6Repository(repo, backgroundScope, commandTimeoutMs = 1_000, newId = { "p" })
         repo.handleMessage("bozaSub/kuca/node6/state", """{"seq":5,"up":300,"pump":true,"pump_left":7140,"ds18b20":true}""", retained = true)
 
-        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)())
+        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)().sent.isNotEmpty())
         val sent = connector.lastConnection!!.published.filter { it.topic == "bozaSub/kuca/node6/pump/set" }
         assertEquals(listOf("""{"on":false,"id":"p"}"""), sent.map { it.payload })
     }
@@ -92,8 +94,33 @@ class GoodNightUseCaseTest {
             retained = true,
         )
 
-        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)())
+        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)().sent.isNotEmpty())
         val sent = connector.lastConnection!!.published.filter { it.topic.startsWith("bozaSub/kuca/node6/") && !it.topic.endsWith("/config/get") }
         assertEquals(listOf("bozaSub/kuca/node6/heating/set" to """{"on":false,"id":"h"}"""), sent.map { it.topic to it.payload })
+    }
+
+    @Test
+    fun `reports the devices that did not confirm switching off`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = connectedRepository(connector)
+        var n = 0
+        val node6 = Node6Repository(repo, backgroundScope, commandTimeoutMs = 1_000, newId = { "c${++n}" })
+        repo.handleMessage(
+            "bozaSub/kuca/node6/state",
+            """{"seq":5,"up":300,"pump":true,"pump_left":null,"heating":true,"heating_left":null,"ds18b20":true}""",
+            retained = true,
+        )
+        val useCase = GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)
+
+        // The node answers only the pump command; the heating command times out.
+        val result = async { useCase() }
+        runCurrent()
+        val pumpId = Regex(""""id":"([^"]+)"""").find(connector.lastConnection!!.published.single { it.topic.endsWith("/pump/set") }.payload)!!.groupValues[1]
+        repo.handleMessage("bozaSub/kuca/node6/result", """{"cmd":"pump/set","id":"$pumpId","ok":true,"rev":1}""", retained = false)
+        val outcome = result.await()
+
+        assertEquals(listOf(GoodNightDevice.POOL_PUMP, GoodNightDevice.POOL_HEATING), outcome.sent)
+        assertEquals(listOf(GoodNightDevice.POOL_HEATING), outcome.failed)
+        assertFalse(outcome.alreadyOff)
     }
 }

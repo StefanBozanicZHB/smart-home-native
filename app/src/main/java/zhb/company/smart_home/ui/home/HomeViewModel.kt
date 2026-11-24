@@ -212,8 +212,14 @@ class HomeViewModel(
             HomeIntent.ShowDevicesOnDialog -> extras.update { it.copy(showDevicesOnDialog = true) }
             HomeIntent.DismissDevicesOnDialog -> extras.update { it.copy(showDevicesOnDialog = false) }
             HomeIntent.Goodnight -> viewModelScope.launch {
-                val turnedOff = goodNightUseCase()
-                _effects.send(HomeEffect.ShowToast(if (turnedOff) R.string.goodnight_toast_off else R.string.goodnight_toast_already_off))
+                val result = goodNightUseCase()
+                _effects.send(
+                    when {
+                        result.alreadyOff -> HomeEffect.ShowToast(R.string.goodnight_toast_already_off)
+                        result.failed.isEmpty() -> HomeEffect.ShowToast(R.string.goodnight_toast_off)
+                        else -> HomeEffect.GoodnightIncomplete(result.failed)
+                    },
+                )
             }
         }
     }

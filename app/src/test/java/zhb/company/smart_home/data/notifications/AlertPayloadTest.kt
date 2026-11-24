@@ -27,6 +27,23 @@ class AlertPayloadTest {
     }
 
     @Test
+    fun unknownChannelFallsBackToTheChannelOfTheType() {
+        // Android shows nothing on a channel the app never created.
+        assertEquals(PushNotifications.CHANNEL_NODES, AlertPayload.parse(offline + ("channel_id" to "new_channel"))!!.channel)
+        assertEquals(PushNotifications.CHANNEL_SYSTEM, AlertPayload.parse(mapOf("title" to "x", "channel_id" to "other"))!!.channel)
+    }
+
+    @Test
+    fun messagesWithoutTagDoNotReplaceEachOther() {
+        assertEquals("node-node5", AlertPayload.parse(offline)!!.notificationTag)
+        val a = AlertPayload.parse(mapOf("title" to "Izveštaj", "id" to "r1"))!!
+        val b = AlertPayload.parse(mapOf("title" to "Izveštaj", "id" to "r2"))!!
+        val c = AlertPayload.parse(mapOf("title" to "Poruka", "at_ms" to "1"))!!
+        val d = AlertPayload.parse(mapOf("title" to "Poruka", "at_ms" to "2"))!!
+        assertEquals(4, setOf(a.notificationTag, b.notificationTag, c.notificationTag, d.notificationTag).size)
+    }
+
+    @Test
     fun receiptKeepsTimesAsNumbers() {
         val f = AlertPayload.parse(offline)!!.receiptFields(1700000121500L, "1.0.0")
         assertEquals(1700000121500L, f["received_ms"])

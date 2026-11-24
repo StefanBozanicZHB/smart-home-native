@@ -3,6 +3,8 @@ package zhb.company.smart_home.data.node
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import zhb.company.smart_home.data.mqtt.MqttConnectionState
 import zhb.company.smart_home.data.mqtt.MqttQualityOfService
@@ -43,12 +45,15 @@ class NodeCommandClient(
 
     /**
      * A command whose payload cannot carry an id (a bare JSON `null`, e.g. removing a schedule):
-     * the answer is matched by its `cmd` ([command], the topic after `<node>/`) instead.
+     * the answer is matched by its `cmd` ([command], the topic after `<node>/`) instead. Such
+     * commands go one at a time, so two of the same kind cannot take each other's answer.
      */
-    suspend fun sendWithoutId(topic: String, command: String, payload: String): CommandOutcome {
-        if (mqtt.connectionState.value !is MqttConnectionState.Connected) return CommandOutcome.NotConnected
-        return sendAndAwait(commandKey(command), topic) { payload }
+    suspend fun sendWithoutId(topic: String, command: String, payload: String): CommandOutcome = withoutIdLock.withLock {
+        if (mqtt.connectionState.value !is MqttConnectionState.Connected) return@withLock CommandOutcome.NotConnected
+        sendAndAwait(commandKey(command), topic) { payload }
     }
+
+    private val withoutIdLock = Mutex()
 
     private suspend fun sendAndAwait(id: String, topic: String, payload: (id: String) -> String): CommandOutcome {
         val answer = CompletableDeferred<NodeCommandResult>()

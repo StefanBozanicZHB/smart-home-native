@@ -91,6 +91,9 @@ sealed interface HomeIntent {
 
 sealed interface HomeEffect {
     data class ShowToast(@androidx.annotation.StringRes val messageRes: Int) : HomeEffect
+
+    /** "Laku noć" sent switch-off commands that [devices] did not confirm. */
+    data class GoodnightIncomplete(val devices: List<zhb.company.smart_home.domain.GoodNightDevice>) : HomeEffect
 }
 
 /** Front door (Node 3): lock state, card reader health and the last access attempt. */

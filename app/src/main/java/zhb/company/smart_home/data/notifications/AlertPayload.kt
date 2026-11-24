@@ -17,6 +17,13 @@ data class AlertPayload(
     val atMs: Long?,
     val data: Map<String, String>,
 ) {
+    /**
+     * Tag of the shown notification: [tag] when the notifier groups messages, else one of its own,
+     * so messages without a tag do not replace each other.
+     */
+    val notificationTag: String
+        get() = tag ?: id?.let { "id-$it" } ?: "msg-${title.hashCode()}-${atMs ?: 0}"
+
     /** Fields stored in Firebase `notification_log/<id>` when the message arrives. */
     fun receiptFields(receivedMs: Long, appVersion: String): Map<String, Any> = buildMap {
         put("received_ms", receivedMs)
@@ -45,12 +52,16 @@ data class AlertPayload(
             fallbackTag: String? = null,
         ): AlertPayload? {
             val title = data["title"]?.takeIf { it.isNotEmpty() } ?: fallbackTitle ?: return null
-            val channel = data["channel_id"]?.takeIf { it.isNotEmpty() } ?: fallbackChannel ?: when (data["type"]) {
-                "node_status" -> PushNotifications.CHANNEL_NODES
-                "heating" -> PushNotifications.CHANNEL_HEATING
-                "report" -> PushNotifications.CHANNEL_REPORTS
-                else -> PushNotifications.CHANNEL_SYSTEM
-            }
+            // Android drops a notification posted to a channel the app never created, so an unknown
+            // id (e.g. a new one on the RPi side) falls back to the channel for the message type.
+            val channel = (data["channel_id"]?.takeIf { it.isNotEmpty() } ?: fallbackChannel)
+                ?.takeIf { it in PushNotifications.CHANNELS }
+                ?: when (data["type"]) {
+                    "node_status" -> PushNotifications.CHANNEL_NODES
+                    "heating" -> PushNotifications.CHANNEL_HEATING
+                    "report" -> PushNotifications.CHANNEL_REPORTS
+                    else -> PushNotifications.CHANNEL_SYSTEM
+                }
             val id = data["id"]?.takeIf { SAFE_ID.matches(it) }
             return AlertPayload(
                 id = id,
