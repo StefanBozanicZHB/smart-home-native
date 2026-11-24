@@ -1,8 +1,20 @@
 package zhb.company.smart_home.ui.history
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.WifiTethering
@@ -357,10 +369,9 @@ fun AvailabilityCard(state: HistoryState, nodes: List<Pair<String, String>>) {
     // A picked node without history falls back to the first one that has it.
     val node = if (withData.isEmpty() || withData.any { it.first == picked }) picked else withData.first().first
     DashboardCard {
-        CardHeader(Icons.Outlined.WifiTethering, stringResource(R.string.history_availability_title)) {
-            if (withData.size > 1) PeriodTabs(remember(withData) { withData.map { it.first to it.first } }, node, { picked = it })
-            else if (withData.size == 1) Text(withData.first().first, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        CardHeader(Icons.Outlined.WifiTethering, stringResource(R.string.history_availability_title))
+        // Up to seven nodes with long names: a menu under the header instead of tabs in it.
+        if (withData.isNotEmpty()) NodePicker(withData, node, onPick = { picked = it })
         val days = byNode[node].orEmpty()
         if (days.none { it.second != null }) {
             HistoryPlaceholder(state.error, state.isLoading(HistoryPeriod.MONTH))
@@ -374,6 +385,46 @@ fun AvailabilityCard(state: HistoryState, nodes: List<Pair<String, String>>) {
         val avg = known.average() * 100
         val label = nodes.firstOrNull { it.first == node }?.second ?: node
         ChartReadout(stringResource(R.string.history_availability_caption, label, String.format(SR, "%.1f", avg)))
+    }
+}
+
+/**
+ * The shown node by name ("Grejanje · node5"); with more than one node it opens a menu of the
+ * others. [nodes] are (id, name) pairs.
+ */
+@Composable
+private fun NodePicker(nodes: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val current = nodes.firstOrNull { it.first == selected } ?: nodes.first()
+    val text: @Composable () -> Unit = {
+        Text("${current.second} · ${current.first}", style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    if (nodes.size == 1) {
+        Box(modifier = Modifier.padding(vertical = 4.dp)) { text() }
+        return
+    }
+    Box {
+        TextButton(
+            onClick = { open = true },
+            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+            modifier = Modifier.semantics { contentDescription = "${current.second}, ${current.first}" },
+        ) {
+            text()
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            nodes.forEach { (id, name) ->
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    trailingIcon = { Text(id, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    leadingIcon = if (id == selected) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
+                    onClick = {
+                        onPick(id)
+                        open = false
+                    },
+                )
+            }
+        }
     }
 }
 
