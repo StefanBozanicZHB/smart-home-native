@@ -20,12 +20,13 @@ import zhb.company.smart_home.domain.node.NodeJson
 object Node6Topics {
     const val BASE = "bozaSub/kuca/node6/"
     const val PUMP_SET = "${BASE}pump/set"
+    const val HEATING_SET = "${BASE}heating/set"
     const val CONFIG_GET = "${BASE}config/get"
     const val STATE = "state"
     const val RESULT = "result"
 }
 
-/** Pool (Node 6): pump state with its switch-off timer, and the pump command answered on `node6/result`. */
+/** Pool (Node 6): pump and heating with their switch-off timers; commands are answered on `node6/result`. */
 class Node6Repository(
     private val mqtt: SmartHomeRepository,
     scope: CoroutineScope,
@@ -54,6 +55,10 @@ class Node6Repository(
     /** [minutes] (1-1440) switches the pump off by itself after that time. */
     suspend fun setPump(on: Boolean, minutes: Int? = null): CommandOutcome =
         commands.send(Node6Topics.PUMP_SET) { id -> NodeJson.switchCommand(id, on, minutes) }
+
+    /** Pool heating (a second relay, independent of the pump); [minutes] (1-1440) as for the pump. */
+    suspend fun setHeating(on: Boolean, minutes: Int? = null): CommandOutcome =
+        commands.send(Node6Topics.HEATING_SET) { id -> NodeJson.switchCommand(id, on, minutes) }
 
     private fun onMessage(topic: String, payload: String, @Suppress("UNUSED_PARAMETER") retained: Boolean) {
         if (!topic.startsWith(Node6Topics.BASE)) return

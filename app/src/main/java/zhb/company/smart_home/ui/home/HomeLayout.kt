@@ -26,6 +26,7 @@ data class HomeSignals(
     val heatingMainSwitch: Boolean,
     val sprinklerAuto: Boolean,
     val sprinklerRunning: Boolean,
+    /** The pool pump or the pool heating is on. */
     val poolPumpOn: Boolean,
 )
 

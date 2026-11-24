@@ -43,6 +43,9 @@ data class GardenState(
     val fountainLightLeftSeconds: Int? = null,
     val poolPumpOn: Boolean = false,
     val poolPumpLeftSeconds: Int? = null,
+    /** Null while Node 6 does not report a heating relay (firmware before `node6-2.0.1`). */
+    val poolHeatingOn: Boolean? = null,
+    val poolHeatingLeftSeconds: Int? = null,
     val poolTemperature: String = NO_VALUE,
     /** False when Node 6 reports that its water temperature sensor did not answer. */
     val poolSensorOk: Boolean = true,
@@ -80,6 +83,7 @@ sealed interface GardenIntent {
     data class SetFountainLight(val on: Boolean, val minutes: Int? = null) : GardenIntent
     /** [minutes] switches the pool pump off by itself after that time. */
     data class SetPoolPump(val on: Boolean, val minutes: Int? = null) : GardenIntent
+    data class SetPoolHeating(val on: Boolean, val minutes: Int? = null) : GardenIntent
     /** Water one zone for its planned minutes (asks for minutes if it has none). */
     data class StartZone(val zone: Int) : GardenIntent
     data class StartZoneFor(val zone: Int, val minutes: Int) : GardenIntent

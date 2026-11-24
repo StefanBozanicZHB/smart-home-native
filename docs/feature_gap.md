@@ -35,7 +35,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Temperatures (yard, ground floor, upper floor), connected/disconnected status | ✓ | ✓ | ✅ |
 | Room cards with online dot | ✓ | ✓ | ✅ |
 | Front door unlock / gate | `node3/vrata` (old API) | `node3/door/open` with confirmation from the node; lock state, card reader health, last access attempt (Node 3 v2 API) | ✅ (new API) |
-| Shortcuts: LED strip, sprinklers, fountain, pool pump, pool heater | ✓ | ✓ | ✅ |
+| Shortcuts: LED strip, sprinklers, fountain, pool pump, pool heating | ✓ | ✓ (pool heating once Node 6 reports it) | ✅ |
 | "Devices on" count + list dialog | ✓ | ✓ | ✅ |
 | GoodNight | turns off everything incl. the front door and heating | doors/gate excluded on purpose; heating excluded since `18ce72e` | ⚠️ intentional difference |
 | Heating card | tube temp, relay, main switch (old API) | flow temp, pump, main switch (Node 5 v2 API) | ✅ (new API) |
@@ -48,7 +48,7 @@ Legend: ✅ same · ⚠️ different / partial · ❌ missing in native · 🗑�
 | Fountain pump and light | ✓ | ✓, plus automatic switch-off after 30 min – 4 h (Node 1 v2 API) | ✅ (new API) |
 | Sprinklers 1–6 manual, all on/off, "currently running" | ✓ (old API) | manual run of one zone or all, stop, zone/phase/time left, queued zones, last run event (Node 1 v2 API) | ✅ (new API) |
 | Sprinkler schedule | old timer: start, on, off, sets, auto | "Plan zalivanja" on Node 1: days, up to 4 start times, minutes per zone, soak cycles, rain pause | ✅ (new API) |
-| Pool pump, pool heating, pool temperature | ✓ (old topics; heating had no firmware behind it) | pump via `node6/pump/set` with automatic switch-off, water temperature from `node6/temperature`; heating removed (Node 6 v2 API) | ✅ (new API) |
+| Pool pump, pool heating, pool temperature | ✓ (old topics) | pump via `node6/pump/set`, heating via `node6/heating/set` (independent relay, `node6-2.0.1`; hidden while the node does not report `heating`), both with automatic switch-off; water temperature from `node6/temperature` | ✅ (new API) |
 | Sprinkler location map ("Pregled prskalica") | ✓ | ✓ (location dialog) | ✅ |
 
 ### House (upper floor, node8)

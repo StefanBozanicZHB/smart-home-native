@@ -80,4 +80,20 @@ class GoodNightUseCaseTest {
         val sent = connector.lastConnection!!.published.filter { it.topic == "bozaSub/kuca/node6/pump/set" }
         assertEquals(listOf("""{"on":false,"id":"p"}"""), sent.map { it.payload })
     }
+
+    @Test
+    fun `switches the pool heating off with a Node 6 command`() = runTest {
+        val connector = FakeMqttConnector()
+        val repo = connectedRepository(connector)
+        val node6 = Node6Repository(repo, backgroundScope, commandTimeoutMs = 1_000, newId = { "h" })
+        repo.handleMessage(
+            "bozaSub/kuca/node6/state",
+            """{"seq":5,"up":300,"pump":false,"pump_left":null,"heating":true,"heating_left":null,"ds18b20":true}""",
+            retained = true,
+        )
+
+        assertTrue(GoodNightUseCase(Node1Repository(repo, backgroundScope), Node2Repository(repo, backgroundScope), node6)())
+        val sent = connector.lastConnection!!.published.filter { it.topic.startsWith("bozaSub/kuca/node6/") && !it.topic.endsWith("/config/get") }
+        assertEquals(listOf("bozaSub/kuca/node6/heating/set" to """{"on":false,"id":"h"}"""), sent.map { it.topic to it.payload })
+    }
 }

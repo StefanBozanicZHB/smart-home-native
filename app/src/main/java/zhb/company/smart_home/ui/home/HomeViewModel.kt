@@ -100,7 +100,7 @@ class HomeViewModel(
                     heatingMainSwitch = heatingSummary.mainSwitch,
                     sprinklerAuto = sprinklerAuto,
                     sprinklerRunning = sprinklerRunning,
-                    poolPumpOn = pool?.pump ?: false,
+                    poolPumpOn = pool?.pump == true || pool?.heating == true,
                 ),
             ),
             heating = heatingSummary,
@@ -116,6 +116,7 @@ class HomeViewModel(
             ledStripOn = lights?.neon ?: false,
             fountainOn = yardState?.fountain?.pump ?: false,
             poolPumpOn = pool?.pump ?: false,
+            poolHeatingOn = pool?.heating,
             yardNodeOnline = home.isNodeOnline(2),
             fountainNodeOnline = home.isNodeOnline(1),
             poolNodeOnline = home.isNodeOnline(6),
@@ -197,6 +198,10 @@ class HomeViewModel(
             }
             is HomeIntent.TogglePoolPump -> viewModelScope.launch {
                 val outcome = node6.setPump(intent.on)
+                if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
+            }
+            is HomeIntent.TogglePoolHeating -> viewModelScope.launch {
+                val outcome = node6.setHeating(intent.on)
                 if (outcome !is CommandOutcome.Accepted) _effects.send(HomeEffect.ShowToast(R.string.garden_msg_failed))
             }
             HomeIntent.TurnHeatingOn -> viewModelScope.launch {

@@ -9,7 +9,7 @@ import zhb.company.smart_home.data.garden.Node6Repository
 
 /**
  * Turns off everything that is on: Node 1 fountain and watering, Node 2 yard lights, Node 6 pool
- * pump. The commands are sent together and their answers awaited.
+ * pump and heating. The commands are sent together and their answers awaited.
  */
 class GoodNightUseCase(
     private val node1: Node1Repository,
@@ -27,6 +27,7 @@ class GoodNightUseCase(
             if (lights?.neon == true) add { node2.setNeon(false) }
             if (lights?.lamp == true) add { node2.setLamp(false) }
             if (node6.state.value?.pump == true) add { node6.setPump(false) }
+            if (node6.state.value?.heating == true) add { node6.setHeating(false) }
         }
         coroutineScope { jsonCommands.map { async { it() } }.awaitAll() }
         return jsonCommands.isNotEmpty()

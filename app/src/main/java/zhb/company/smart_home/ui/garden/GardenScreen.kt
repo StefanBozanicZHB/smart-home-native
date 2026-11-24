@@ -228,18 +228,23 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
     }
 }
 
-/** "Uključi na…" for outputs the node switches off by itself (fountain on Node 1, lights on Node 2). */
+/** "Uključi na…" for outputs the node switches off by itself (fountain, lights, pool). */
 @Composable
-private fun TimerRow(title: String, enabled: Boolean, items: List<Pair<String, (Int) -> Unit>>) {
+private fun TimerRow(
+    title: String,
+    enabled: Boolean,
+    items: List<Pair<String, (Int) -> Unit>>,
+    choices: List<Int> = FOUNTAIN_TIMER_MINUTES,
+) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        items.forEach { (label, onPick) -> TimerMenu(label, enabled, onPick = onPick) }
+        items.forEach { (label, onPick) -> TimerMenu(label, enabled, choices, onPick = onPick) }
     }
 }
 
 private val FOUNTAIN_TIMER_MINUTES = listOf(30, 60, 120, 240)
 
-/** The pool pump usually runs for hours (filtering). */
+/** The pool pump and heating usually run for hours. */
 private val POOL_TIMER_MINUTES = listOf(60, 120, 240, 480)
 
 @Composable
@@ -430,10 +435,22 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
         state.poolPumpLeftSeconds?.takeIf { state.poolPumpOn }?.let {
             Text(stringResource(R.string.garden_off_in, leftText(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.garden_pool_timer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-            TimerMenu(stringResource(R.string.garden_pool_pump_short), enabled, POOL_TIMER_MINUTES) { onIntent(GardenIntent.SetPoolPump(true, it)) }
+        val heatingOn = state.poolHeatingOn
+        if (heatingOn != null) {
+            SwitchRow(stringResource(R.string.garden_pool_heating), heatingOn, enabled) { onIntent(GardenIntent.SetPoolHeating(it)) }
+            state.poolHeatingLeftSeconds?.takeIf { heatingOn }?.let {
+                Text(stringResource(R.string.garden_off_in, leftText(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+        TimerRow(
+            stringResource(R.string.garden_pool_timer),
+            enabled,
+            buildList {
+                add(stringResource(R.string.garden_fountain_pump_short) to { m: Int -> onIntent(GardenIntent.SetPoolPump(true, m)) })
+                if (heatingOn != null) add(stringResource(R.string.garden_pool_heating_short) to { m: Int -> onIntent(GardenIntent.SetPoolHeating(true, m)) })
+            },
+            POOL_TIMER_MINUTES,
+        )
     }
 }
 
@@ -556,7 +573,7 @@ private fun GardenPreview() {
             GardenContent(
                 GardenState(
                     yardOnline = true, node1Online = true, node1Ready = true, poolOnline = true,
-                    temperature = "28.4", ledStripOn = true, ledStripLeftSeconds = 3600, poolPumpOn = true, poolPumpLeftSeconds = 7140, poolTemperature = "26.4",
+                    temperature = "28.4", ledStripOn = true, ledStripLeftSeconds = 3600, poolPumpOn = true, poolPumpLeftSeconds = 7140, poolHeatingOn = true, poolHeatingLeftSeconds = 3600, poolTemperature = "26.4",
                     fountainLightOn = true, fountainLightLeftSeconds = 5400, irrigation = PreviewIrrigation,
                 ),
                 onIntent = {},

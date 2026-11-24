@@ -55,6 +55,8 @@ data class HomeState(
     val ledStripOn: Boolean = false,
     val fountainOn: Boolean = false,
     val poolPumpOn: Boolean = false,
+    /** Null while Node 6 does not report a heating relay (firmware before `node6-2.0.1`). */
+    val poolHeatingOn: Boolean? = null,
 
     /** Online state of the nodes behind the home tiles; an offline node's tile is disabled. */
     val yardNodeOnline: Boolean = false,
@@ -75,6 +77,7 @@ sealed interface HomeIntent {
     data class ToggleLedStrip(val on: Boolean) : HomeIntent
     data class ToggleFountain(val on: Boolean) : HomeIntent
     data class TogglePoolPump(val on: Boolean) : HomeIntent
+    data class TogglePoolHeating(val on: Boolean) : HomeIntent
     data object TurnHeatingOn : HomeIntent
     data object ShowDevicesOnDialog : HomeIntent
     data object DismissDevicesOnDialog : HomeIntent

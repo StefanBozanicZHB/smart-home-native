@@ -63,6 +63,8 @@ class GardenViewModel(
             fountainLightLeftSeconds = live?.fountain?.lightLeftSeconds,
             poolPumpOn = pool?.pump ?: false,
             poolPumpLeftSeconds = pool?.pumpLeftSeconds,
+            poolHeatingOn = pool?.heating,
+            poolHeatingLeftSeconds = pool?.heatingLeftSeconds,
             poolTemperature = Readings.temperature(home.temperaturePool),
             poolSensorOk = pool?.sensorOk != false,
             irrigation = IrrigationUi(
@@ -87,6 +89,7 @@ class GardenViewModel(
             is GardenIntent.SetLedStrip -> command(null) { node2.setNeon(intent.on, intent.minutes) }
             is GardenIntent.SetBulb -> command(null) { node2.setLamp(intent.on, intent.minutes) }
             is GardenIntent.SetPoolPump -> command(null) { node6.setPump(intent.on, intent.minutes) }
+            is GardenIntent.SetPoolHeating -> command(null) { node6.setHeating(intent.on, intent.minutes) }
             is GardenIntent.SetFountainPump -> command(null) { node1.setPump(intent.on, intent.minutes) }
             is GardenIntent.SetFountainLight -> command(null) { node1.setLight(intent.on, intent.minutes) }
             is GardenIntent.StartZone -> {

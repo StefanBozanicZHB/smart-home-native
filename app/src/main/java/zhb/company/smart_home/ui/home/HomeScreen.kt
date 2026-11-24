@@ -273,11 +273,15 @@ private fun GardenHeroCard(state: HomeState, onOpen: () -> Unit) {
 @Composable
 private fun SummerTiles(state: HomeState, onOpenGarden: () -> Unit) {
     val tiles = buildList<@Composable (Modifier) -> Unit> {
-        if (state.poolPumpOn) add { m ->
+        val poolHeating = state.poolHeatingOn == true
+        if (state.poolPumpOn || poolHeating) add { m ->
             ActionTile(
                 icon = Icons.Outlined.Pool,
                 label = "${stringResource(R.string.garden_pool)} · ${state.poolTemp}°",
-                detail = stringResource(R.string.home_pool_running),
+                detail = listOfNotNull(
+                    stringResource(R.string.home_pool_running).takeIf { state.poolPumpOn },
+                    stringResource(R.string.home_pool_heating_running).takeIf { poolHeating },
+                ).joinToString(", "),
                 onClick = onOpenGarden,
                 modifier = m,
             )
@@ -310,7 +314,7 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
         }
         TileGrid(
             columns = adaptiveColumns(2),
-            tiles = listOf(
+            tiles = listOfNotNull(
                 { m ->
                     DeviceTile(
                         Icons.Outlined.Lightbulb, stringResource(R.string.home_led_strip), state.ledStripOn,
@@ -331,6 +335,15 @@ private fun Devices(state: HomeState, onIntent: (HomeIntent) -> Unit) {
                         { onIntent(HomeIntent.TogglePoolPump(it)) }, m,
                         detail = "${state.poolTemp}°", enabled = state.poolNodeOnline, disabledReason = offline,
                     )
+                },
+                state.poolHeatingOn?.let { heatingOn ->
+                    { m: Modifier ->
+                        DeviceTile(
+                            Icons.Outlined.LocalFireDepartment, stringResource(R.string.home_pool_heating), heatingOn,
+                            { onIntent(HomeIntent.TogglePoolHeating(it)) }, m,
+                            detail = "${state.poolTemp}°", enabled = state.poolNodeOnline, disabledReason = offline,
+                        )
+                    }
                 },
                 { m ->
                     ActionTile(
@@ -419,7 +432,7 @@ private val PreviewSummer = HomeState(
     sections = HomeLayout.sections(HomeSignals(false, true, false, true)),
     heating = HeatingSummary(online = true, mainSwitch = false),
     outdoorTemp = "31.2", groundTemp = "25.1", groundHumidity = "52", upperTemp = "26.8", upperHumidity = "48",
-    poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true,
+    poolTemp = "26.4", sprinklerAuto = true, sprinklerStartTime = "05:30", poolPumpOn = true, poolHeatingOn = true,
     yardNodeOnline = true, fountainNodeOnline = true, poolNodeOnline = true, doorNodeOnline = true,
     devicesOnList = listOf("Pumpa bazena"),
 )
