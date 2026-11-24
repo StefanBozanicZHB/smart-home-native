@@ -126,6 +126,7 @@
     <string name="garden_fountain_light_short">Svetlo…</string>
     <string name="garden_on_for">Uključi na %1$s</string>
     <string name="garden_off_in">gasi se za %1$s</string>
+    <string name="garden_waiting">čeka čvor…</string>
     <string name="garden_minutes_short">%1$d min</string>
     <string name="garden_zone_minutes">%1$d minuta po planu</string>
     <string name="garden_zone_running">zaliva se sada</string>

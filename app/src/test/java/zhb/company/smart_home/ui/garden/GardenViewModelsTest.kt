@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -136,5 +137,56 @@ class GardenViewModelsTest {
         assertFalse(f.plan.state.value.dirty)
         assertEquals("2026-11-22", f.garden.state.value.irrigation.pausedUntil)
         assertNull(f.garden.state.value.irrigation.run)
+    }
+
+    @Test
+    fun `a switch shows the request at once and only that output waits`() = runTest {
+        val f = fixture()
+        f.mqtt.connect("token")
+        f.deliver("state", state())
+        f.mqtt.handleMessage("bozaSub/kuca/node6/state", """{"seq":1,"up":60,"pump":false,"pump_left":null,"ds18b20":true}""", true)
+        runCurrent()
+
+        f.garden.onIntent(GardenIntent.SetFountainPump(true))
+        runCurrent()
+        assertTrue(f.garden.state.value.fountainPumpOn)
+        assertEquals(setOf(GardenOutput.FOUNTAIN_PUMP), f.garden.state.value.pending)
+
+        // Another output is not blocked, and a second tap on the waiting one sends nothing.
+        f.garden.onIntent(GardenIntent.SetPoolPump(true))
+        f.garden.onIntent(GardenIntent.SetFountainPump(false))
+        runCurrent()
+        assertEquals(setOf(GardenOutput.FOUNTAIN_PUMP, GardenOutput.POOL_PUMP), f.garden.state.value.pending)
+        assertEquals(1, f.sent("fountain/pump/set").size)
+
+        // Node 1 publishes its state and answers: the pump stays on, nothing is waiting for it.
+        f.deliver("state", state().replace(""""pump":false""", """"pump":true"""))
+        f.deliver("result", """{"cmd":"fountain/pump/set","id":"id-1","ok":true}""", retained = false)
+        runCurrent()
+        assertTrue(f.garden.state.value.fountainPumpOn)
+        assertEquals(setOf(GardenOutput.POOL_PUMP), f.garden.state.value.pending)
+        assertTrue(f.garden.state.value.slow.isEmpty())
+        assertNull(f.garden.state.value.message)
+    }
+
+    @Test
+    fun `a node that does not answer turns only its switch back, after the timeout`() = runTest {
+        val f = fixture()
+        f.mqtt.connect("token")
+        f.mqtt.handleMessage("bozaSub/kuca/node6/state", """{"seq":1,"up":60,"pump":false,"pump_left":null,"ds18b20":true}""", true)
+        runCurrent()
+
+        f.garden.onIntent(GardenIntent.SetPoolPump(true))
+        runCurrent()
+        assertTrue(f.garden.state.value.poolPumpOn)
+        assertTrue(f.garden.state.value.slow.isEmpty()) // no hint for a normal, quick answer
+        advanceTimeBy(SLOW_ANSWER_MS + 1)
+        assertEquals(setOf(GardenOutput.POOL_PUMP), f.garden.state.value.slow)
+        advanceTimeBy(10_001)
+        runCurrent()
+        assertFalse(f.garden.state.value.poolPumpOn)
+        assertTrue(f.garden.state.value.pending.isEmpty())
+        assertTrue(f.garden.state.value.slow.isEmpty())
+        assertEquals(GardenMessage.Timeout, f.garden.state.value.message)
     }
 }

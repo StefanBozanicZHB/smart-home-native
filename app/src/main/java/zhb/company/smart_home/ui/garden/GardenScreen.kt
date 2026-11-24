@@ -173,32 +173,32 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                         DeviceTile(
                             Icons.Outlined.Water, stringResource(R.string.garden_fountain_pump), state.fountainPumpOn,
                             { onIntent(GardenIntent.SetFountainPump(it)) }, m,
-                            detail = state.fountainPumpLeftSeconds?.let { stringResource(R.string.garden_off_in, leftText(it)) },
-                            enabled = state.node1Online && !state.busy, disabledReason = if (state.node1Online) null else offline,
+                            detail = waitingOr(GardenOutput.FOUNTAIN_PUMP in state.slow, state.fountainPumpLeftSeconds),
+                            enabled = state.node1Online, disabledReason = if (state.node1Online) null else offline,
                         )
                     },
                     { m ->
                         DeviceTile(
                             Icons.Outlined.Light, stringResource(R.string.garden_fountain_light), state.fountainLightOn,
                             { onIntent(GardenIntent.SetFountainLight(it)) }, m,
-                            detail = state.fountainLightLeftSeconds?.let { stringResource(R.string.garden_off_in, leftText(it)) },
-                            enabled = state.node1Online && !state.busy, disabledReason = if (state.node1Online) null else offline,
+                            detail = waitingOr(GardenOutput.FOUNTAIN_LIGHT in state.slow, state.fountainLightLeftSeconds),
+                            enabled = state.node1Online, disabledReason = if (state.node1Online) null else offline,
                         )
                     },
                     { m ->
                         DeviceTile(
                             Icons.Outlined.Lightbulb, stringResource(R.string.garden_led_strip), state.ledStripOn,
                             { onIntent(GardenIntent.SetLedStrip(it)) }, m,
-                            detail = state.ledStripLeftSeconds?.let { stringResource(R.string.garden_off_in, leftText(it)) },
-                            enabled = state.yardOnline && !state.busy, disabledReason = if (state.yardOnline) null else offline,
+                            detail = waitingOr(GardenOutput.LED_STRIP in state.slow, state.ledStripLeftSeconds),
+                            enabled = state.yardOnline, disabledReason = if (state.yardOnline) null else offline,
                         )
                     },
                     { m ->
                         DeviceTile(
                             Icons.Outlined.WbIncandescent, stringResource(R.string.garden_bulb), state.bulbOn,
                             { onIntent(GardenIntent.SetBulb(it)) }, m,
-                            detail = state.bulbLeftSeconds?.let { stringResource(R.string.garden_off_in, leftText(it)) },
-                            enabled = state.yardOnline && !state.busy, disabledReason = if (state.yardOnline) null else offline,
+                            detail = waitingOr(GardenOutput.BULB in state.slow, state.bulbLeftSeconds),
+                            enabled = state.yardOnline, disabledReason = if (state.yardOnline) null else offline,
                         )
                     },
                 ),
@@ -208,7 +208,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
             Column {
                 TimerRow(
                     stringResource(R.string.garden_fountain_timer),
-                    state.node1Online && !state.busy,
+                    state.node1Online,
                     listOf(
                         stringResource(R.string.garden_fountain_pump_short) to { m: Int -> onIntent(GardenIntent.SetFountainPump(true, m)) },
                         stringResource(R.string.garden_fountain_light_short) to { m: Int -> onIntent(GardenIntent.SetFountainLight(true, m)) },
@@ -216,7 +216,7 @@ private fun GardenContent(state: GardenState, onIntent: (GardenIntent) -> Unit, 
                 )
                 TimerRow(
                     stringResource(R.string.garden_lights_timer),
-                    state.yardOnline && !state.busy,
+                    state.yardOnline,
                     listOf(
                         stringResource(R.string.garden_led_strip_short) to { m: Int -> onIntent(GardenIntent.SetLedStrip(true, m)) },
                         stringResource(R.string.garden_bulb_short) to { m: Int -> onIntent(GardenIntent.SetBulb(true, m)) },
@@ -275,7 +275,7 @@ private fun TimerMenu(label: String, enabled: Boolean, choices: List<Int> = FOUN
 private fun SprinklerCard(state: GardenState, onIntent: (GardenIntent) -> Unit, onOpenPlan: () -> Unit) {
     val irrigation = state.irrigation
     val run = irrigation.run
-    val canCommand = state.node1Online && state.node1Ready && !state.busy
+    val canCommand = state.node1Online && state.node1Ready
     DashboardCard {
         CardHeader(Icons.Outlined.WaterDrop, stringResource(R.string.garden_sprinklers)) {
             when {
@@ -430,21 +430,20 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
         if (state.poolOnline && !state.poolSensorOk) {
             Text(stringResource(R.string.garden_pool_sensor_missing), style = MaterialTheme.typography.bodySmall, color = AppTheme.status.warning)
         }
-        val enabled = state.poolOnline && !state.busy
-        SwitchRow(stringResource(R.string.garden_pool_pump), state.poolPumpOn, enabled) { onIntent(GardenIntent.SetPoolPump(it)) }
-        state.poolPumpLeftSeconds?.takeIf { state.poolPumpOn }?.let {
-            Text(stringResource(R.string.garden_off_in, leftText(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SwitchRow(stringResource(R.string.garden_pool_pump), state.poolPumpOn, state.poolOnline) { onIntent(GardenIntent.SetPoolPump(it)) }
+        waitingOr(GardenOutput.POOL_PUMP in state.slow, state.poolPumpLeftSeconds?.takeIf { state.poolPumpOn })?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         val heatingOn = state.poolHeatingOn
         if (heatingOn != null) {
-            SwitchRow(stringResource(R.string.garden_pool_heating), heatingOn, enabled) { onIntent(GardenIntent.SetPoolHeating(it)) }
-            state.poolHeatingLeftSeconds?.takeIf { heatingOn }?.let {
-                Text(stringResource(R.string.garden_off_in, leftText(it)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SwitchRow(stringResource(R.string.garden_pool_heating), heatingOn, state.poolOnline) { onIntent(GardenIntent.SetPoolHeating(it)) }
+            waitingOr(GardenOutput.POOL_HEATING in state.slow, state.poolHeatingLeftSeconds?.takeIf { heatingOn })?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         TimerRow(
             stringResource(R.string.garden_pool_timer),
-            enabled,
+            state.poolOnline,
             buildList {
                 add(stringResource(R.string.garden_fountain_pump_short) to { m: Int -> onIntent(GardenIntent.SetPoolPump(true, m)) })
                 if (heatingOn != null) add(stringResource(R.string.garden_pool_heating_short) to { m: Int -> onIntent(GardenIntent.SetPoolHeating(true, m)) })
@@ -452,6 +451,14 @@ private fun PoolCard(state: GardenState, onIntent: (GardenIntent) -> Unit) {
             POOL_TIMER_MINUTES,
         )
     }
+}
+
+/** "čeka čvor…" while the answer is late, else the time until the output switches off. */
+@Composable
+private fun waitingOr(waiting: Boolean, leftSeconds: Int?): String? = when {
+    waiting -> stringResource(R.string.garden_waiting)
+    leftSeconds != null -> stringResource(R.string.garden_off_in, leftText(leftSeconds))
+    else -> null
 }
 
 @Composable

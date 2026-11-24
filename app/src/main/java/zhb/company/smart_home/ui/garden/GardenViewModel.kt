@@ -3,13 +3,16 @@ package zhb.company.smart_home.ui.garden
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node1Snapshot
 import zhb.company.smart_home.data.garden.Node2Repository
@@ -32,7 +35,11 @@ class GardenViewModel(
 
     private data class UiExtras(
         val showLocationDialog: Boolean = false,
-        val busy: Boolean = false,
+        /** Requested position per output while its command waits for the answer. */
+        val pending: Map<GardenOutput, Boolean> = emptyMap(),
+        val slow: Set<GardenOutput> = emptySet(),
+        /** A sprinkler command (start or stop) is waiting for Node 1's answer; further ones are ignored. */
+        val irrigationBusy: Boolean = false,
         val dialog: GardenDialog? = null,
         val message: GardenMessage? = null,
     )
@@ -46,6 +53,7 @@ class GardenViewModel(
     private fun mapState(home: SmartHomeState, yard: Node1Snapshot, lights: Node2State?, pool: Node6State?, ui: UiExtras): GardenState {
         val config = yard.config
         val live = yard.state
+        fun shown(output: GardenOutput, actual: Boolean) = ui.pending[output] ?: actual
         return GardenState(
             yardOnline = home.isNodeOnline(2),
             node1Online = home.isNodeOnline(1),
@@ -53,17 +61,17 @@ class GardenViewModel(
             poolOnline = home.isNodeOnline(6),
             temperature = Readings.temperature(home.temperatureOutdoor),
             outdoorSensorOk = lights?.sensorOk != false,
-            ledStripOn = lights?.neon ?: false,
+            ledStripOn = shown(GardenOutput.LED_STRIP, lights?.neon ?: false),
             ledStripLeftSeconds = lights?.neonLeftSeconds,
-            bulbOn = lights?.lamp ?: false,
+            bulbOn = shown(GardenOutput.BULB, lights?.lamp ?: false),
             bulbLeftSeconds = lights?.lampLeftSeconds,
-            fountainPumpOn = live?.fountain?.pump ?: false,
+            fountainPumpOn = shown(GardenOutput.FOUNTAIN_PUMP, live?.fountain?.pump ?: false),
             fountainPumpLeftSeconds = live?.fountain?.pumpLeftSeconds,
-            fountainLightOn = live?.fountain?.light ?: false,
+            fountainLightOn = shown(GardenOutput.FOUNTAIN_LIGHT, live?.fountain?.light ?: false),
             fountainLightLeftSeconds = live?.fountain?.lightLeftSeconds,
-            poolPumpOn = pool?.pump ?: false,
+            poolPumpOn = shown(GardenOutput.POOL_PUMP, pool?.pump ?: false),
             poolPumpLeftSeconds = pool?.pumpLeftSeconds,
-            poolHeatingOn = pool?.heating,
+            poolHeatingOn = pool?.heating?.let { shown(GardenOutput.POOL_HEATING, it) },
             poolHeatingLeftSeconds = pool?.heatingLeftSeconds,
             poolTemperature = Readings.temperature(home.temperaturePool),
             poolSensorOk = pool?.sensorOk != false,
@@ -77,7 +85,8 @@ class GardenViewModel(
                 clockKnown = live == null || live.time != null,
                 storage = live?.storage,
             ),
-            busy = ui.busy,
+            pending = ui.pending.keys,
+            slow = ui.slow,
             dialog = ui.dialog,
             message = ui.message,
             showLocationDialog = ui.showLocationDialog,
@@ -86,12 +95,12 @@ class GardenViewModel(
 
     fun onIntent(intent: GardenIntent) {
         when (intent) {
-            is GardenIntent.SetLedStrip -> command(null) { node2.setNeon(intent.on, intent.minutes) }
-            is GardenIntent.SetBulb -> command(null) { node2.setLamp(intent.on, intent.minutes) }
-            is GardenIntent.SetPoolPump -> command(null) { node6.setPump(intent.on, intent.minutes) }
-            is GardenIntent.SetPoolHeating -> command(null) { node6.setHeating(intent.on, intent.minutes) }
-            is GardenIntent.SetFountainPump -> command(null) { node1.setPump(intent.on, intent.minutes) }
-            is GardenIntent.SetFountainLight -> command(null) { node1.setLight(intent.on, intent.minutes) }
+            is GardenIntent.SetLedStrip -> switch(GardenOutput.LED_STRIP, intent.on) { node2.setNeon(intent.on, intent.minutes) }
+            is GardenIntent.SetBulb -> switch(GardenOutput.BULB, intent.on) { node2.setLamp(intent.on, intent.minutes) }
+            is GardenIntent.SetPoolPump -> switch(GardenOutput.POOL_PUMP, intent.on) { node6.setPump(intent.on, intent.minutes) }
+            is GardenIntent.SetPoolHeating -> switch(GardenOutput.POOL_HEATING, intent.on) { node6.setHeating(intent.on, intent.minutes) }
+            is GardenIntent.SetFountainPump -> switch(GardenOutput.FOUNTAIN_PUMP, intent.on) { node1.setPump(intent.on, intent.minutes) }
+            is GardenIntent.SetFountainLight -> switch(GardenOutput.FOUNTAIN_LIGHT, intent.on) { node1.setLight(intent.on, intent.minutes) }
             is GardenIntent.StartZone -> {
                 val minutes = state.value.irrigation.zoneMinutes.getOrNull(intent.zone - 1) ?: 0
                 if (minutes == 0) {
@@ -114,10 +123,10 @@ class GardenViewModel(
             GardenIntent.ConfirmReplace -> {
                 val pending = extras.value.dialog as? GardenDialog.ConfirmReplace ?: return
                 extras.update { it.copy(dialog = null) }
-                command(GardenMessage.Started) { node1.startRun(pending.zones, pending.minutes) }
+                irrigationCommand(GardenMessage.Started) { node1.startRun(pending.zones, pending.minutes) }
             }
             GardenIntent.DismissDialog -> extras.update { it.copy(dialog = null) }
-            GardenIntent.StopRun -> command(GardenMessage.Stopped) { node1.stopRun() }
+            GardenIntent.StopRun -> irrigationCommand(GardenMessage.Stopped) { node1.stopRun() }
             GardenIntent.MessageShown -> extras.update { it.copy(message = null) }
             GardenIntent.OpenLocationDialog -> extras.update { it.copy(showLocationDialog = true) }
             GardenIntent.DismissLocationDialog -> extras.update { it.copy(showLocationDialog = false) }
@@ -129,20 +138,64 @@ class GardenViewModel(
         if (state.value.irrigation.run != null) {
             extras.update { it.copy(dialog = GardenDialog.ConfirmReplace(zones, minutes)) }
         } else {
-            command(GardenMessage.Started) { node1.startRun(zones, minutes) }
+            irrigationCommand(GardenMessage.Started) { node1.startRun(zones, minutes) }
         }
     }
 
-    private fun command(success: GardenMessage?, block: suspend () -> CommandOutcome) {
+    /**
+     * Switches one output: it shows [on] at once and only that output waits for the answer. After
+     * an accepted command it waits briefly for the node's new state, so the switch does not jump
+     * back; on failure it returns to the real state and a message says why.
+     */
+    private fun switch(output: GardenOutput, on: Boolean, block: suspend () -> CommandOutcome) {
+        if (output in extras.value.pending) return
         viewModelScope.launch {
-            extras.update { it.copy(busy = true) }
-            val message = when (val outcome = block()) {
-                is CommandOutcome.Accepted -> if (!outcome.saved) GardenMessage.NotSaved else success
-                is CommandOutcome.Rejected -> GardenMessage.Rejected(outcome.error)
-                CommandOutcome.Timeout -> GardenMessage.Timeout
-                CommandOutcome.NotConnected -> GardenMessage.NotConnected
+            extras.update { it.copy(pending = it.pending + (output to on)) }
+            val slowHint = launch {
+                delay(SLOW_ANSWER_MS)
+                extras.update { it.copy(slow = it.slow + output) }
             }
-            extras.update { it.copy(busy = false, message = message ?: it.message) }
+            val outcome = block()
+            if (outcome is CommandOutcome.Accepted) {
+                withTimeoutOrNull(STATE_AFTER_ANSWER_MS) { actualStates().first { actual(output, it) == on } }
+            }
+            slowHint.cancel()
+            val message = messageFor(outcome, success = null)
+            extras.update { it.copy(pending = it.pending - output, slow = it.slow - output, message = message ?: it.message) }
         }
+    }
+
+    private data class Actual(val yard: Node1Snapshot, val lights: Node2State?, val pool: Node6State?)
+
+    private fun actualStates() = combine(node1.snapshot, node2.state, node6.state, ::Actual)
+
+    private fun actual(output: GardenOutput, a: Actual): Boolean? = when (output) {
+        GardenOutput.FOUNTAIN_PUMP -> a.yard.state?.fountain?.pump
+        GardenOutput.FOUNTAIN_LIGHT -> a.yard.state?.fountain?.light
+        GardenOutput.LED_STRIP -> a.lights?.neon
+        GardenOutput.BULB -> a.lights?.lamp
+        GardenOutput.POOL_PUMP -> a.pool?.pump
+        GardenOutput.POOL_HEATING -> a.pool?.heating
+    }
+
+    private fun irrigationCommand(success: GardenMessage, block: suspend () -> CommandOutcome) {
+        if (extras.value.irrigationBusy) return
+        viewModelScope.launch {
+            extras.update { it.copy(irrigationBusy = true) }
+            val message = messageFor(block(), success)
+            extras.update { it.copy(irrigationBusy = false, message = message ?: it.message) }
+        }
+    }
+
+    private fun messageFor(outcome: CommandOutcome, success: GardenMessage?): GardenMessage? = when (outcome) {
+        is CommandOutcome.Accepted -> if (!outcome.saved) GardenMessage.NotSaved else success
+        is CommandOutcome.Rejected -> GardenMessage.Rejected(outcome.error)
+        CommandOutcome.Timeout -> GardenMessage.Timeout
+        CommandOutcome.NotConnected -> GardenMessage.NotConnected
+    }
+
+    private companion object {
+        /** The node publishes its state right around the answer; this only bridges the gap. */
+        const val STATE_AFTER_ANSWER_MS = 3_000L
     }
 }
