@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -101,10 +102,15 @@ private fun NotificationsContent(
     onLabel: (InboxEntry, String) -> Unit,
     today: LocalDate = LocalDate.now(),
 ) {
-    val toLabel = entries.count { it.needsLabel }
+    val toLabel = remember(entries) { entries.count { it.needsLabel } }
     var filter by rememberSaveable { mutableStateOf(if (toLabel > 0) Filter.TO_LABEL else Filter.ALL) }
-    val shown = if (filter == Filter.TO_LABEL) entries.filter { it.needsLabel } else entries
-    val zone = ZoneId.systemDefault()
+    // Grouped once per list and filter, not on every recomposition.
+    val days = remember(entries, filter) {
+        val zone = ZoneId.systemDefault()
+        val shown = if (filter == Filter.TO_LABEL) entries.filter { it.needsLabel } else entries
+        shown.groupBy { Instant.ofEpochMilli(it.atMs).atZone(zone).toLocalDate() }
+    }
+    val resolutions = remember(entries) { resolutions(entries) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
@@ -127,12 +133,12 @@ private fun NotificationsContent(
         }
         if (filter == Filter.TO_LABEL) {
             item { AlertBanner(Icons.Outlined.Info, stringResource(R.string.inbox_label_help), Tone.NEUTRAL) }
-            if (shown.isEmpty()) item { AlertBanner(Icons.Outlined.CheckCircle, stringResource(R.string.inbox_all_labeled), Tone.ACTIVE) }
+            if (days.isEmpty()) item { AlertBanner(Icons.Outlined.CheckCircle, stringResource(R.string.inbox_all_labeled), Tone.ACTIVE) }
         }
-        shown.groupBy { Instant.ofEpochMilli(it.atMs).atZone(zone).toLocalDate() }.forEach { (day, items) ->
-            item(key = "day-$day") { SectionLabel(dayLabel(day, today)) }
-            items(items, key = { it.key }) { entry ->
-                EntryCard(entry, NotificationInbox.resolution(entry, entries), onLabel, onOpenReport)
+        days.forEach { (day, items) ->
+            item(key = "day-$day", contentType = "day") { SectionLabel(dayLabel(day, today)) }
+            items(items, key = { it.key }, contentType = { "entry" }) { entry ->
+                EntryCard(entry, resolutions[entry.key], onLabel, onOpenReport)
             }
         }
     }
@@ -220,10 +226,23 @@ private fun iconFor(e: InboxEntry): ImageVector = when {
 private fun dayLabel(day: LocalDate, today: LocalDate): String = when (day) {
     today -> stringResource(R.string.inbox_today)
     today.minusDays(1) -> stringResource(R.string.inbox_yesterday)
-    else -> day.format(DateTimeFormatter.ofPattern("EEEE, d. M.", SR)).replaceFirstChar { it.titlecase(SR) }
+    else -> day.format(DAY_FORMAT).replaceFirstChar { it.titlecase(SR) }
 }
 
-private fun time(ms: Long): String = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm", SR))
+private val DAY_FORMAT = DateTimeFormatter.ofPattern("EEEE, d. M.", SR)
+private val TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm", SR)
+
+private fun time(ms: Long): String = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).format(TIME_FORMAT)
+
+/**
+ * The entry that resolved each problem, by the problem's key. [NotificationInbox.resolution] only
+ * looks at entries with the same tag, so each problem is checked against its own tag's entries
+ * instead of the whole inbox.
+ */
+private fun resolutions(entries: List<InboxEntry>): Map<String, InboxEntry> =
+    entries.filter { it.tag != null }.groupBy { it.tag }.values
+        .flatMap { group -> group.mapNotNull { e -> NotificationInbox.resolution(e, group)?.let { e.key to it } } }
+        .toMap()
 
 @Preview(name = "Notifications", heightDp = 1100)
 @Composable
