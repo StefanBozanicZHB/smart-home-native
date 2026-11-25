@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Front door (Material "door_front"). -->
+<!-- Open front door (Material "meeting_room") for the door widget. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +7,5 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M19,19V5c0,-1.1 -0.9,-2 -2,-2H7C5.9,3 5,3.9 5,5v14H3v2h18v-2H19zM15,13h-2v-2h2V13z" />
+        android:pathData="M14,6v15H3v-2h2V3h9v1h5v15h2v2h-4V6H14zM10,11v2h2v-2H10z" />
 </vector>

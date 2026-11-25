@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The door icon moves down with the disc while pressed (see widget_door_background). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <inset android:drawable="@drawable/ic_door_widget" android:insetTop="3dp" android:insetBottom="0dp" />
+    </item>
+    <item>
+        <inset android:drawable="@drawable/ic_door_widget" android:insetTop="0dp" android:insetBottom="3dp" />
+    </item>
+</selector>

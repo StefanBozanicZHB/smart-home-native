@@ -1,4 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <solid android:color="#FF11705A" />
-</shape>
+<!-- Door widget button: a raised green disc with a soft shadow; while pressed it sinks (moves down
+     onto its shadow and gets darker), and a light ripple spreads from the touch. Static drawables
+     only, drawn by the launcher: nothing runs in the app. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#40FFFFFF">
+    <item android:id="@android:id/mask">
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+    <item>
+        <selector>
+            <item android:state_pressed="true">
+                <layer-list>
+                    <!-- pressed: no shadow below, the disc sits lower and darker -->
+                    <item android:top="3dp">
+                        <shape android:shape="oval">
+                            <gradient android:angle="270" android:startColor="#FF0B5747" android:endColor="#FF0E6452" />
+                            <stroke android:width="1dp" android:color="#22FFFFFF" />
+                        </shape>
+                    </item>
+                </layer-list>
+            </item>
+            <item>
+                <layer-list>
+                    <!-- shadow -->
+                    <item android:top="3dp">
+                        <shape android:shape="oval">
+                            <solid android:color="#40000000" />
+                        </shape>
+                    </item>
+                    <!-- raised disc, lighter at the top -->
+                    <item android:bottom="3dp">
+                        <shape android:shape="oval">
+                            <gradient android:angle="270" android:startColor="#FF23A383" android:endColor="#FF11705A" />
+                            <stroke android:width="1dp" android:color="#40FFFFFF" />
+                        </shape>
+                    </item>
+                </layer-list>
+            </item>
+        </selector>
+    </item>
+</ripple>
