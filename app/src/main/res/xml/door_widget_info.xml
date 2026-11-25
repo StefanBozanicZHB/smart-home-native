@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Front door button (widget/DoorWidget.kt): 1x1, never updated (updatePeriodMillis 0, no work in
+     the background); a tap sends the open command once. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/door_widget_description"
+    android:initialLayout="@layout/widget_door"
+    android:previewLayout="@layout/widget_door"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:resizeMode="none"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

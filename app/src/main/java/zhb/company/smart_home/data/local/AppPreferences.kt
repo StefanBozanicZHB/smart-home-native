@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import zhb.company.smart_home.data.mqtt.BrokerStore
 import zhb.company.smart_home.data.notifications.QuietHours
 
 private val Context.dataStore by preferencesDataStore(name = "smart_home_prefs")
@@ -29,13 +30,14 @@ interface SessionStore {
     suspend fun clearSession()
 }
 
-/** App settings and the saved sign-in session, in DataStore. */
-class AppPreferences(private val context: Context) : SessionStore {
+/** App settings, the saved sign-in session and the brokers for the door widget, in DataStore. */
+class AppPreferences(private val context: Context) : SessionStore, BrokerStore {
 
     private object Keys {
         val USERNAME = stringPreferencesKey("username")
         val SESSION = stringPreferencesKey("session")
         val PASSWORD = stringPreferencesKey("password")
+        val BROKERS = stringPreferencesKey("brokers")
         val DARK_THEME = booleanPreferencesKey("dark_theme")
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
         val NOTIFICATION_PERMISSION_ASKED = booleanPreferencesKey("notification_permission_asked")
@@ -100,6 +102,16 @@ class AppPreferences(private val context: Context) : SessionStore {
             it.remove(Keys.SESSION)
             it.remove(Keys.PASSWORD)
         }
+    }
+
+    override suspend fun sealedBrokers(): String? = context.dataStore.data.first()[Keys.BROKERS]
+
+    override suspend fun saveSealedBrokers(sealed: String) {
+        context.dataStore.edit { it[Keys.BROKERS] = sealed }
+    }
+
+    override suspend fun clearBrokers() {
+        context.dataStore.edit { it.remove(Keys.BROKERS) }
     }
 
     suspend fun setDarkTheme(enabled: Boolean) {

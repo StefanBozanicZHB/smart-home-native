@@ -590,6 +590,10 @@
     <!-- Home screen widget -->
     <string name="widget_name">Kuća</string>
     <string name="widget_description">Temperature napolju i u kući i rad toplotne pumpe</string>
+    <string name="door_widget_name">Ulazna vrata</string>
+    <string name="door_widget_description">Dugme koje otključava ulazna vrata jednim dodirom</string>
+    <string name="door_widget_action">Otključaj ulazna vrata</string>
+    <string name="door_widget_signed_out">Prijavi se u aplikaciju da bi dugme radilo.</string>
     <string name="widget_empty">Otvori aplikaciju jednom da se widget popuni.</string>
     <string name="widget_outdoor">Napolju</string>
     <string name="widget_pump_running">Pumpa radi</string>

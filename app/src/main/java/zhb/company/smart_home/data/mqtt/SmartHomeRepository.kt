@@ -50,6 +50,8 @@ class SmartHomeRepository(
     private val clock: () -> Long = System::currentTimeMillis,
     private val nodeStatus: NodeStatusTracker = NodeStatusTracker(),
     healthCheckIntervalMs: Long = 15_000,
+    /** Keeps the brokers for the door widget; null in tests. */
+    private val brokerCache: BrokerCache? = null,
 ) {
     private val _state = MutableStateFlow(SmartHomeState())
     val state: StateFlow<SmartHomeState> = _state.asStateFlow()
@@ -111,10 +113,8 @@ class SmartHomeRepository(
             _connectionState.value = MqttConnectionState.Failed(it.message ?: "Konfiguracija nije pronađena")
             return
         }
-        endpoints = listOfNotNull(
-            MqttEndpoint.parse(config.mqttServer, config.mqttPort, config.mqttUsername, config.mqttPassword),
-            MqttEndpoint.parse(config.backupMqttServer, config.backupMqttPort, config.backupMqttUsername, config.backupMqttPassword),
-        )
+        endpoints = config.toEndpoints()
+        brokerCache?.save(endpoints)
         if (!connectToAnyEndpoint()) {
             _connectionState.value = MqttConnectionState.Failed("Konektivnost sa serverom ne postoji!")
         }
@@ -124,6 +124,7 @@ class SmartHomeRepository(
     fun disconnect() {
         cancelReconnect()
         endpoints = emptyList()
+        scope?.launch { brokerCache?.clear() }
         paused = false
         closeConnection()
         _connectionState.value = MqttConnectionState.Idle

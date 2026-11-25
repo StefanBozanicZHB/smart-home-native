@@ -18,7 +18,10 @@ import zhb.company.smart_home.widget.WidgetStore
 import zhb.company.smart_home.data.notifications.NotificationLog
 import zhb.company.smart_home.data.notifications.PushNotifications
 import zhb.company.smart_home.data.remote.FirebaseRtdbApi
+import zhb.company.smart_home.data.door.DoorOpener
 import zhb.company.smart_home.data.door.Node3Repository
+import zhb.company.smart_home.data.mqtt.BrokerCache
+import zhb.company.smart_home.data.mqtt.EncryptedBrokerCache
 import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.garden.Node6Repository
@@ -35,6 +38,14 @@ val mqttModule = module {
             configSource = get<FirebaseRtdbApi>(),
             connector = get(),
             scope = get(named(APP_SCOPE)),
+            brokerCache = get(),
+        )
+    }
+    single<BrokerCache> { EncryptedBrokerCache(get<AppPreferences>(), get()) }
+    single {
+        DoorOpener(
+            mqtt = get(), node3 = get(), auth = get(), brokers = get(),
+            configSource = get<FirebaseRtdbApi>(), connector = get(),
         )
     }
     single { ConnectionLifecycle(repository = get(), scope = get(named(APP_SCOPE))) }
