@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -306,7 +307,8 @@ data class LegendToggle(val color: Color, val label: String, val visible: Boolea
 @Composable
 fun ToggleLegend(items: List<LegendToggle>, modifier: Modifier = Modifier) {
     val off = MaterialTheme.colorScheme.outline
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+    // Wraps to a second line when the entries do not fit (four places on a narrow phone).
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         items.forEach { item ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,

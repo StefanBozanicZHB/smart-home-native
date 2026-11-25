@@ -539,6 +539,7 @@
     <string name="history_pump_legend_hours">sati rada po danu</string>
     <string name="history_pump_total">Ukupno: %1$s</string>
     <string name="history_outdoor">Napolju</string>
+    <string name="history_bedroom_ground">Spavaća soba</string>
     <string name="history_outdoor_value">napolju %1$s</string>
     <string name="history_climate_title">Temperatura i vlažnost</string>
     <string name="history_room_target_title">Soba i cilj: %1$s</string>

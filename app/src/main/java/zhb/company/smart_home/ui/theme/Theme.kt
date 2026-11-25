@@ -82,6 +82,8 @@ data class StatusColors(
     val warm: Color,
     val warmContainer: Color,
     val onWarmContainer: Color,
+    /** A fourth chart line color with no status meaning (e.g. the bedroom next to the other rooms). */
+    val accent: Color,
 )
 
 private val LightStatus = StatusColors(
@@ -90,6 +92,7 @@ private val LightStatus = StatusColors(
     danger = Color(0xFFBA1A1A), dangerContainer = Color(0xFFFFDAD6), onDangerContainer = Color(0xFF410002),
     cold = Color(0xFF185FA5), coldContainer = Color(0xFFE6F1FB), onColdContainer = Color(0xFF0C447C),
     warm = Color(0xFFD85A30), warmContainer = Color(0xFFFAECE7), onWarmContainer = Color(0xFF712B13),
+    accent = Color(0xFF7F55B1),
 )
 
 private val DarkStatus = StatusColors(
@@ -98,6 +101,7 @@ private val DarkStatus = StatusColors(
     danger = Color(0xFFFFB4AB), dangerContainer = Color(0xFF93000A), onDangerContainer = Color(0xFFFFDAD6),
     cold = Color(0xFF85B7EB), coldContainer = Color(0xFF0C447C), onColdContainer = Color(0xFFE6F1FB),
     warm = Color(0xFFF0997B), warmContainer = Color(0xFF712B13), onWarmContainer = Color(0xFFFAECE7),
+    accent = Color(0xFFC4A7E7),
 )
 
 private val LocalStatusColors = staticCompositionLocalOf { LightStatus }

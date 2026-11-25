@@ -283,7 +283,8 @@ fun ClimateHistoryCard(state: HistoryState) {
     val warm = AppTheme.status.warm
     val active = AppTheme.status.active
     val cold = AppTheme.status.cold
-    val colors = remember(warm, active, cold) { mapOf(Place.GROUND to warm, Place.UPPER to active, Place.OUTDOOR to cold) }
+    val accent = AppTheme.status.accent
+    val colors = remember(warm, active, cold, accent) { mapOf(Place.GROUND to warm, Place.UPPER to active, Place.BEDROOM to accent, Place.OUTDOOR to cold) }
     DashboardCard {
         CardHeader(Icons.AutoMirrored.Outlined.ShowChart, stringResource(R.string.history_climate_title)) {
             PeriodTabs(periodOptions(), period, { period = it })
@@ -350,6 +351,7 @@ fun ClimateHistoryCard(state: HistoryState) {
 enum class Place(val label: Int, val temperature: String, val humidity: String?) {
     GROUND(R.string.home_room_ground, HistorySeriesNames.ROOM_GROUND_T, HistorySeriesNames.ROOM_GROUND_H),
     UPPER(R.string.home_room_upper, HistorySeriesNames.ROOM_UPPER_T, HistorySeriesNames.ROOM_UPPER_H),
+    BEDROOM(R.string.history_bedroom_ground, HistorySeriesNames.BEDROOM_GROUND_T, HistorySeriesNames.BEDROOM_GROUND_H),
     OUTDOOR(R.string.history_outdoor, HistorySeriesNames.OUTDOOR_T, null),
 }
 

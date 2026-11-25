@@ -10,6 +10,7 @@ object NodeLabels {
         "node5" to "Grejanje",
         "node6" to "Bazen",
         "node8" to "Dnevni boravak (sprat)",
+        "node11" to "Spavaća soba (prizemlje)",
     )
 
     fun of(nodeId: String): String = LABELS[nodeId] ?: nodeId
@@ -18,7 +19,7 @@ object NodeLabels {
      * Nodes in the house that are in use. Anything else on the broker (an old test board's
      * retained `status`, a retired node) is not shown and does not raise alerts.
      */
-    val ACTIVE: List<String> = LABELS.keys.sorted()
+    val ACTIVE: List<String> = LABELS.keys.sortedBy { it.removePrefix("node").toIntOrNull() ?: Int.MAX_VALUE }
 
     fun isActive(nodeId: String): Boolean = nodeId in ACTIVE
 }

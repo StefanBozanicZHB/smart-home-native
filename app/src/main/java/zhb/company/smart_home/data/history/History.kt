@@ -25,6 +25,9 @@ object HistorySeriesNames {
     const val ROOM_GROUND_H = "room_ground_h"
     const val ROOM_UPPER_T = "room_upper_t"
     const val ROOM_UPPER_H = "room_upper_h"
+    // Node 11, bedroom on the ground floor: only measured, not a heating zone.
+    const val BEDROOM_GROUND_T = "bedroom_ground_t"
+    const val BEDROOM_GROUND_H = "bedroom_ground_h"
     const val OUTDOOR_T = "outdoor_t"
     const val OUTDOOR_H = "outdoor_h"
     const val PUMP = "pump"
