@@ -74,9 +74,12 @@ class HiveMqConnector(
                 .get(timeoutSeconds, TimeUnit.SECONDS)
 
             HiveMqConnection(client, publishCheckMs)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             givenUp.set(true)
             clientRef.get()?.disconnect()
+            // Why it failed (timeout, refused, not authorized, TLS); never the credentials.
+            val cause = (e.cause ?: e)
+            runCatching { android.util.Log.w("HiveMqConnector", "${endpoint.host}:${endpoint.port}: ${cause.javaClass.simpleName}: ${cause.message}") }
             null
         }
     }
