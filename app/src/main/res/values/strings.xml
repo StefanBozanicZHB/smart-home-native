@@ -605,6 +605,114 @@
     <string name="widget_heating_unreachable">Grejanje: čvor nije dostupan</string>
     <string name="widget_at">u %1$s</string>
 
+    <!-- Wall display (tablet on the wall, docs/wall_display.md) -->
+    <string name="settings_wall_mode">Zidni ekran</string>
+    <string name="settings_wall_mode_hint">Za tablet na zidu: sat, prognoza i stanje kuće preko celog ekrana, bez prijave i obaveštenja. Uključuje tamnu temu.</string>
+    <string-array name="wall_weekdays">
+        <item>nedelja</item>
+        <item>ponedeljak</item>
+        <item>utorak</item>
+        <item>sreda</item>
+        <item>četvrtak</item>
+        <item>petak</item>
+        <item>subota</item>
+    </string-array>
+    <string-array name="wall_weekdays_short">
+        <item>Ned</item>
+        <item>Pon</item>
+        <item>Uto</item>
+        <item>Sre</item>
+        <item>Čet</item>
+        <item>Pet</item>
+        <item>Sub</item>
+    </string-array>
+    <string-array name="wall_months">
+        <item>januar</item>
+        <item>februar</item>
+        <item>mart</item>
+        <item>april</item>
+        <item>maj</item>
+        <item>jun</item>
+        <item>jul</item>
+        <item>avgust</item>
+        <item>septembar</item>
+        <item>oktobar</item>
+        <item>novembar</item>
+        <item>decembar</item>
+    </string-array>
+    <string name="wall_sunrise">izlazak %1$s</string>
+    <string name="wall_sunset">zalazak %1$s</string>
+    <string name="wall_day_length">dan traje %1$d h %2$d min</string>
+    <string name="wall_outside">Napolju · dvorište</string>
+    <string name="wall_forecast_source">prognoza: Open-Meteo.com</string>
+    <string name="wall_forecast_old">prognoza stara %1$d h</string>
+    <string name="wall_forecast_none">Prognoza još nije stigla.</string>
+    <string name="wall_measured">izmereno</string>
+    <string name="wall_measured_stale">izmereno u %1$s</string>
+    <string name="wall_today_range">danas %1$s° / %2$s°</string>
+    <string name="wall_wind">vetar %1$d km/h</string>
+    <string name="wall_now">sada</string>
+    <string name="wall_today">Danas</string>
+    <string name="wall_rain_mm">%1$d mm</string>
+    <string name="wall_weather_clear">Vedro</string>
+    <string name="wall_weather_partly">Delimično oblačno</string>
+    <string name="wall_weather_cloudy">Oblačno</string>
+    <string name="wall_weather_fog">Magla</string>
+    <string name="wall_weather_drizzle">Rosulja</string>
+    <string name="wall_weather_rain">Kiša</string>
+    <string name="wall_weather_showers">Pljuskovi</string>
+    <string name="wall_weather_snow">Sneg</string>
+    <string name="wall_weather_thunder">Grmljavina</string>
+    <string name="wall_rooms">Sobe</string>
+    <string name="wall_room_upper">Boravak, sprat</string>
+    <string name="wall_room_ground">Boravak, prizemlje</string>
+    <string name="wall_room_bedroom">Spavaća, prizemlje</string>
+    <string name="wall_here">ovde</string>
+    <string name="wall_humidity">vlažnost %1$s %%</string>
+    <string name="wall_stale_since">nije osveženo od %1$s</string>
+    <string name="wall_heating">Grejanje · toplotna pumpa</string>
+    <string name="wall_heating_running_for">radi %1$d min</string>
+    <string name="wall_heating_running">radi</string>
+    <string name="wall_heating_idle">miruje</string>
+    <string name="wall_heating_safe">bezbedni režim</string>
+    <string name="wall_heating_min_today">min danas</string>
+    <string name="wall_heating_flow">polaz %1$s°</string>
+    <string name="wall_heating_off_season">van sezone</string>
+    <string name="wall_heating_last_run">Poslednji rad</string>
+    <string name="wall_heating_main_switch">Glavni prekidač</string>
+    <string name="wall_heating_main_off">isključen</string>
+    <string name="wall_date_short">%1$d. %2$s</string>
+    <string name="wall_yesterday">juče %1$s</string>
+    <string name="wall_door">Ulazna vrata</string>
+    <string name="wall_door_locked">zaključana</string>
+    <string name="wall_door_open">otključana</string>
+    <string name="wall_door_reader">Čitač kartica</string>
+    <string name="wall_door_reader_down">ne radi</string>
+    <string name="wall_door_no_events">Nema ulazaka otkad je ekran uključen.</string>
+    <string name="wall_access_button">dugme iznutra</string>
+    <string name="wall_access_app">aplikacija</string>
+    <string name="wall_access_card">kartica · %1$s</string>
+    <string name="wall_access_card_known">poznata</string>
+    <string name="wall_access_unknown_card">nepoznata kartica</string>
+    <string name="wall_access_granted">otvoreno</string>
+    <string name="wall_access_denied">odbijeno</string>
+    <string name="wall_yard">Dvorište i bazen</string>
+    <string name="wall_yard_lights">Neon / lampa</string>
+    <string name="wall_yard_fountain">Fontana</string>
+    <string name="wall_yard_starts_at">pali se u %1$s</string>
+    <string name="wall_yard_pool">Voda u bazenu</string>
+    <string name="wall_on">uključeno</string>
+    <string name="wall_off">isključeno</string>
+    <string name="wall_nodes_online">%1$d/%2$d čvorova na vezi</string>
+    <string name="wall_broker">broker</string>
+    <string name="wall_broker_down">nema veze sa brokerom</string>
+    <string name="wall_battery">tablet %1$d %% · na bateriji</string>
+    <string name="wall_battery_charging">tablet %1$d %% · puni se</string>
+    <string name="wall_open_app">Otvori aplikaciju</string>
+    <string name="wall_problem_signed_out">Niste prijavljeni: otvorite aplikaciju (zupčanik) i prijavite se jednom.</string>
+    <string name="wall_problem_network">Nema interneta: prijava ili konfiguracija nisu dostupni, pokušavam ponovo.</string>
+    <string name="wall_problem_broker">Nijedan broker se ne javlja, pokušavam ponovo.</string>
+
     <!-- Serbian plural forms: one (1, 21, 31 …), few (2–4, 22–24 …), other (0, 5–20, 25 …). -->
     <plurals name="garden_zone_minutes">
         <item quantity="one">%1$d minut po planu</item>
@@ -615,5 +723,10 @@
         <item quantity="one">za %1$d dan u %2$s</item>
         <item quantity="few">za %1$d dana u %2$s</item>
         <item quantity="other">za %1$d dana u %2$s</item>
+    </plurals>
+    <plurals name="wall_heating_cycles">
+        <item quantity="one">%1$d ciklus</item>
+        <item quantity="few">%1$d ciklusa</item>
+        <item quantity="other">%1$d ciklusa</item>
     </plurals>
 </resources>

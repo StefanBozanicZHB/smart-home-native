@@ -11,12 +11,14 @@ import zhb.company.smart_home.data.local.AppPreferences
 import zhb.company.smart_home.data.mqtt.SmartHomeRepository
 import zhb.company.smart_home.data.repository.AuthRepository
 import zhb.company.smart_home.data.notifications.QuietHours
+import zhb.company.smart_home.data.wall.WallMode
 
 /** App settings on the System tab: theme, notifications, quiet hours, sign-out. Applied right away. */
 class SettingsViewModel(
     private val preferences: AppPreferences,
     private val auth: AuthRepository,
     private val mqtt: SmartHomeRepository,
+    private val wallMode: WallMode,
 ) : ViewModel() {
 
     /** Forgets the saved session and closes the broker connection, then calls [onDone]. */
@@ -31,8 +33,9 @@ class SettingsViewModel(
     val state: StateFlow<SettingsState> = combine(
         preferences.isDarkTheme,
         preferences.notificationsEnabled,
-    ) { darkTheme, notifications ->
-        SettingsState(darkTheme = darkTheme, notifications = notifications)
+        preferences.wallMode,
+    ) { darkTheme, notifications, wall ->
+        SettingsState(darkTheme = darkTheme, notifications = notifications, wallMode = wall)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsState())
 
     val quietHours: StateFlow<QuietHours?> = preferences.quietHours
@@ -42,6 +45,7 @@ class SettingsViewModel(
         when (intent) {
             is SettingsIntent.ToggleDarkTheme -> viewModelScope.launch { preferences.setDarkTheme(intent.enabled) }
             is SettingsIntent.ToggleNotifications -> viewModelScope.launch { preferences.setNotificationsEnabled(intent.enabled) }
+            is SettingsIntent.ToggleWallMode -> viewModelScope.launch { wallMode.setEnabled(intent.enabled) }
             is SettingsIntent.SetQuietHours -> viewModelScope.launch {
                 runCatching { preferences.setQuietHours(intent.enabled, intent.start, intent.end) }
             }

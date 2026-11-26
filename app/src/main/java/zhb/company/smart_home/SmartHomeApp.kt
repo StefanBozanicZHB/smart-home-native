@@ -17,6 +17,8 @@ import zhb.company.smart_home.di.mqttModule
 import zhb.company.smart_home.di.networkModule
 import zhb.company.smart_home.di.viewModelModule
 
+import zhb.company.smart_home.data.wall.WallMode
+import zhb.company.smart_home.ui.wall.WallRestart
 import zhb.company.smart_home.widget.WidgetLiveSync
 
 class SmartHomeApp : Application() {
@@ -29,6 +31,9 @@ class SmartHomeApp : Application() {
         watchVisibilityAndNetwork(get())
         get<PushNotifications>().start()
         get<WidgetLiveSync>().start()
+        val wallMode = get<WallMode>()
+        wallMode.start()
+        WallRestart.install(this) { wallMode.isOn }
     }
 
     /** Feeds app foreground/background and default-network events (back, or switched) to the MQTT connection. */

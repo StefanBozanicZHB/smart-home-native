@@ -37,7 +37,7 @@ class HomeAlertMessagingService : FirebaseMessagingService() {
         // Into the in-app list first: it keeps the message even if notifications are off.
         runBlocking { inbox.add(payload, receivedMs) }
         // Turned off in the app's settings: only the list keeps it (also while unsubscribing is pending).
-        if (push.hasPermission() && runBlocking { preferences.notificationsEnabled.first() }) {
+        if (push.hasPermission() && runBlocking { push.receivesPush().first() }) {
             val quiet = runBlocking { preferences.quietHours.first() }
             val now = java.time.LocalTime.now()
             show(this, payload, silent = quiet.silence(payload, now.hour * 60 + now.minute))

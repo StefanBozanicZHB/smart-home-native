@@ -83,6 +83,18 @@ class SmartHomeRepository(
     @Volatile
     private var currentNetwork: Long? = null
 
+    /**
+     * Try a broker on the home network first, whether it is the primary or the backup one (the wall
+     * tablet is always at home, so it should not depend on Tailscale or the cloud). Takes effect on
+     * the next connect.
+     */
+    @Volatile
+    var preferLanBroker: Boolean = false
+
+    /** Last Will sent with every new connection (the wall tablet's `tablet1/status`); null = none. */
+    @Volatile
+    var will: MqttWill? = null
+
     /** True once the user has signed in and the broker config is known in this process. */
     val hasSession: Boolean get() = endpoints.isNotEmpty()
 
@@ -169,6 +181,13 @@ class SmartHomeRepository(
         reconnectNow()
     }
 
+    /** Replaces the connection with a new one (e.g. after [will] or [preferLanBroker] changed). */
+    fun reconnect() {
+        if (!hasSession || paused) return
+        closeConnection()
+        reconnectNow()
+    }
+
     /** Closes the connection on purpose; an attempt still in flight is discarded when it returns. */
     private fun closeConnection() {
         val current = synchronized(this) {
@@ -229,10 +248,12 @@ class SmartHomeRepository(
     }
 
     private fun connectOnce(started: Long): Boolean {
-        for (endpoint in endpoints) {
+        val ordered = if (preferLanBroker) endpoints.sortedByDescending { it.isOnLan } else endpoints
+        val will = will
+        for (endpoint in ordered) {
             if (epoch != started) return false
             val attempt = Attempt()
-            val connected = connector.connect(endpoint, MqttTopics.SUBSCRIBE_ALL, attempt)
+            val connected = connector.connect(endpoint, MqttTopics.SUBSCRIBE_ALL, attempt, will)
             if (connected == null) {
                 attempt.abandoned = true
                 logWarning("Broker ${endpoint.host}:${endpoint.port} not reachable")
@@ -342,6 +363,8 @@ class SmartHomeRepository(
             MqttTopics.NODE6_TEMPERATURE -> state.copy(temperaturePool = formatTemperature(payload)).arrived(Reading.POOL_TEMPERATURE)
             MqttTopics.NODE8_TEMPERATURE -> state.copy(temperatureLivingRoomUp = formatTemperature(payload)).arrived(Reading.UPPER_TEMPERATURE)
             MqttTopics.NODE8_HUMIDITY -> state.copy(humidityLivingRoomUp = payload).arrived(Reading.UPPER_HUMIDITY)
+            MqttTopics.NODE11_TEMPERATURE -> state.copy(temperatureBedroomDown = formatTemperature(payload)).arrived(Reading.BEDROOM_TEMPERATURE)
+            MqttTopics.NODE11_HUMIDITY -> state.copy(humidityBedroomDown = payload).arrived(Reading.BEDROOM_HUMIDITY)
 
             else -> state
         }.withStale(clock())

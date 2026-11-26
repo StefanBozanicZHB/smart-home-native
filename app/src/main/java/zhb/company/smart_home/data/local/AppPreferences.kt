@@ -44,6 +44,7 @@ class AppPreferences(private val context: Context) : SessionStore, BrokerStore {
         val QUIET_ENABLED = booleanPreferencesKey("quiet_hours_enabled")
         val QUIET_START = stringPreferencesKey("quiet_hours_start")
         val QUIET_END = stringPreferencesKey("quiet_hours_end")
+        val WALL_MODE = booleanPreferencesKey("wall_mode")
     }
 
     val isDarkTheme: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_THEME] ?: false }
@@ -112,6 +113,17 @@ class AppPreferences(private val context: Context) : SessionStore, BrokerStore {
 
     override suspend fun clearBrokers() {
         context.dataStore.edit { it.remove(Keys.BROKERS) }
+    }
+
+    /** Wall display mode on this device (the tablet on the wall); off by default. */
+    val wallMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.WALL_MODE] ?: false }
+
+    /** Turning it on also switches to the dark theme, the wall's default (it can be switched back). */
+    suspend fun setWallMode(enabled: Boolean) {
+        context.dataStore.edit {
+            it[Keys.WALL_MODE] = enabled
+            if (enabled) it[Keys.DARK_THEME] = true
+        }
     }
 
     suspend fun setDarkTheme(enabled: Boolean) {

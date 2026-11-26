@@ -24,6 +24,10 @@ data class SmartHomeState(
     val temperatureLivingRoomUp: String = "--",
     val humidityLivingRoomUp: String = "--",
 
+    // node11 - bedroom, ground floor
+    val temperatureBedroomDown: String = "--",
+    val humidityBedroomDown: String = "--",
+
     // keyed by node id, e.g. "node4"
     val nodeHealth: Map<String, NodeHealth> = emptyMap(),
 
@@ -58,6 +62,8 @@ enum class Reading(val node: String) {
     POOL_TEMPERATURE("node6"),
     UPPER_TEMPERATURE("node8"),
     UPPER_HUMIDITY("node8"),
+    BEDROOM_TEMPERATURE("node11"),
+    BEDROOM_HUMIDITY("node11"),
     ;
 
     companion object {

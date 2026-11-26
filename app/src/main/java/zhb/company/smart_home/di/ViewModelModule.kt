@@ -22,6 +22,7 @@ import zhb.company.smart_home.ui.reports.ReportsViewModel
 import zhb.company.smart_home.ui.settings.ConnectionsViewModel
 import zhb.company.smart_home.ui.settings.SettingsViewModel
 import zhb.company.smart_home.ui.system.NodeDetailViewModel
+import zhb.company.smart_home.ui.wall.WallViewModel
 
 val viewModelModule = module {
     viewModel { AuthViewModel(get()) }
@@ -34,7 +35,7 @@ val viewModelModule = module {
     viewModel { PipeSensorsViewModel(get(), get()) }
     viewModel { PipeCalibrationViewModel(get()) }
     viewModel { HouseViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get()) }
     viewModel { ConnectionsViewModel(get()) }
     viewModel { params -> NodeDetailViewModel(params.get(), get()) }
     viewModel { ThemeStateHolder(get()) }
@@ -42,4 +43,10 @@ val viewModelModule = module {
     viewModel { HistoryViewModel(get()) }
     viewModel { NotificationsViewModel(get(), NotificationManagerCompat.from(androidContext())) }
     viewModel { params -> ReportDetailViewModel(params.get(), get()) }
+    viewModel {
+        WallViewModel(
+            mqtt = get(), node1 = get(), node2 = get(), node3 = get(), node5 = get(), doorLog = get(),
+            weather = get(), reporter = get(), wallMode = get(), history = get(),
+        )
+    }
 }

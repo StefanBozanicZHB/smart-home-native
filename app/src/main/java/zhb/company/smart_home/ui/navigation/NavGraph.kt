@@ -110,6 +110,8 @@ private val FLOW_ROUTES = setOf(Destination.Auth.route, Destination.MqttConnect.
 
 @Composable
 fun SmartHomeNavGraph(
+    /** The wall opens the normal screens at Home when it is already connected. */
+    startDestination: String = Destination.Auth.route,
     repository: SmartHomeRepository = koinInject(),
     pendingNavigation: PendingNavigation = koinInject(),
 ) {
@@ -161,7 +163,7 @@ fun SmartHomeNavGraph(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Destination.Auth.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             // Tabs and the sign-in flow cross-fade. A sub-screen (plan, sensors, reports, node
             // detail…) slides in from the right and back out to the right, so going deeper and

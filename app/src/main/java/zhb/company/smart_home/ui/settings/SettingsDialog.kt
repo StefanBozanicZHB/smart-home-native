@@ -75,7 +75,15 @@ fun SystemSettingsDialog(onDismiss: () -> Unit, onSignedOut: () -> Unit = {}, vi
                     enabled = state.notifications,
                     onToggle = { viewModel.onIntent(SettingsIntent.ToggleNotifications(it)) },
                 )
-                if (state.notifications) quiet?.let { q -> QuietHoursSetting(q) { viewModel.onIntent(it) } }
+                if (state.notifications && !state.wallMode) quiet?.let { q -> QuietHoursSetting(q) { viewModel.onIntent(it) } }
+                SwitchRow(stringResource(R.string.settings_wall_mode), state.wallMode) {
+                    viewModel.onIntent(SettingsIntent.ToggleWallMode(it))
+                }
+                Text(
+                    stringResource(R.string.settings_wall_mode_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         },
     )

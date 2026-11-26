@@ -25,4 +25,22 @@ class MqttEndpointTest {
         assertTrue(MqttEndpoint("h", 8883).useTls)
         assertFalse(MqttEndpoint("h", 1883).useTls)
     }
+
+    private fun lan(host: String) = MqttEndpoint(host, 1883).isOnLan
+
+    @Test
+    fun `private home network addresses are on the LAN`() {
+        assertTrue(lan("192.168.0.100"))
+        assertTrue(lan("10.0.0.5"))
+        assertTrue(lan("172.20.1.1"))
+    }
+
+    @Test
+    fun `Tailscale, public addresses and host names are not on the LAN`() {
+        assertFalse(lan("100.107.23.16"))
+        assertFalse(lan("172.32.0.1"))
+        assertFalse(lan("8.8.8.8"))
+        assertFalse(lan("broker.hivemq.cloud"))
+        assertFalse(lan("192.168.0"))
+    }
 }

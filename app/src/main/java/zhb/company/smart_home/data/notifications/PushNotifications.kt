@@ -10,6 +10,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import zhb.company.smart_home.R
@@ -32,9 +34,13 @@ class PushNotifications(
         // Receipts and labels that could not be sent earlier (no network).
         scope.launch { log.flush() }
         scope.launch {
-            preferences.notificationsEnabled.distinctUntilChanged().collect(::applySubscription)
+            receivesPush().distinctUntilChanged().collect(::applySubscription)
         }
     }
+
+    /** The setting is on and this device is not the wall display (it is nobody's phone). */
+    fun receivesPush(): Flow<Boolean> =
+        combine(preferences.notificationsEnabled, preferences.wallMode) { enabled, wall -> enabled && !wall }
 
     /** Android 13+ needs the runtime permission; older versions always allow notifications. */
     fun hasPermission(): Boolean =

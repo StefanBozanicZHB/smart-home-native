@@ -18,10 +18,14 @@ class HiveMqConnector(
     private val publishCheckMs: Long = 2_000,
 ) : MqttConnector {
 
+    override fun connect(endpoint: MqttEndpoint, topicFilter: String, listener: MqttConnectionListener): MqttConnection? =
+        connect(endpoint, topicFilter, listener, will = null)
+
     override fun connect(
         endpoint: MqttEndpoint,
         topicFilter: String,
         listener: MqttConnectionListener,
+        will: MqttWill?,
     ): MqttConnection? {
         // A timed-out attempt keeps connecting in the background; once given up it is closed
         // (now, or as soon as it does connect), so it never lives on next to the next attempt.
@@ -39,6 +43,18 @@ class HiveMqConnector(
                     if (!givenUp.get()) listener.onDisconnected(context.cause.message)
                 }
                 .let { if (endpoint.useTls) it.sslWithDefaultConfig() else it }
+                .let {
+                    if (will == null) {
+                        it
+                    } else {
+                        it.willPublish()
+                            .topic(will.topic)
+                            .payload(will.payload.toByteArray(Charsets.UTF_8))
+                            .qos(MqttQos.AT_LEAST_ONCE)
+                            .retain(true)
+                            .applyWillPublish()
+                    }
+                }
                 .let {
                     if (endpoint.username.isBlank()) {
                         it

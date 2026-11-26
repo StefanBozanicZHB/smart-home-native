@@ -4,11 +4,14 @@ data class SettingsState(
     val darkTheme: Boolean = false,
     /** Push notifications from the house system (FCM topic subscription). */
     val notifications: Boolean = true,
+    /** This device is the wall display. */
+    val wallMode: Boolean = false,
 )
 
 sealed interface SettingsIntent {
     data class ToggleDarkTheme(val enabled: Boolean) : SettingsIntent
     data class ToggleNotifications(val enabled: Boolean) : SettingsIntent
+    data class ToggleWallMode(val enabled: Boolean) : SettingsIntent
     /** Applied right away; [start]/[end] are "HH:MM" and already validated. */
     data class SetQuietHours(val enabled: Boolean, val start: String, val end: String) : SettingsIntent
 }

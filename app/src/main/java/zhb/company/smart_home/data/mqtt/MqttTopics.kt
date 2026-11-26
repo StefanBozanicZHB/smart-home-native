@@ -23,4 +23,8 @@ object MqttTopics {
     // node8 - living room, upper floor: the same as node4
     const val NODE8_TEMPERATURE = "$BASE/node8/temperature"
     const val NODE8_HUMIDITY = "$BASE/node8/humidity"
+
+    // node11 - bedroom, ground floor: the same as node4
+    const val NODE11_TEMPERATURE = "$BASE/node11/temperature"
+    const val NODE11_HUMIDITY = "$BASE/node11/humidity"
 }

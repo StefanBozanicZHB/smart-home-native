@@ -26,6 +26,11 @@ import zhb.company.smart_home.data.garden.Node1Repository
 import zhb.company.smart_home.data.garden.Node2Repository
 import zhb.company.smart_home.data.garden.Node6Repository
 import zhb.company.smart_home.domain.GoodNightUseCase
+import zhb.company.smart_home.data.wall.DoorLog
+import zhb.company.smart_home.data.wall.TabletReporter
+import zhb.company.smart_home.data.wall.WallMode
+import zhb.company.smart_home.data.wall.WeatherRepository
+import java.io.File
 
 /** Process-wide scope for background work that outlives screens (reconnects, health checks). */
 const val APP_SCOPE = "appScope"
@@ -62,6 +67,16 @@ val mqttModule = module {
     single(createdAtStart = true) { Node3Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
     single(createdAtStart = true) { Node6Repository(mqtt = get(), scope = get(named(APP_SCOPE))) }
     single { GoodNightUseCase(get(), get(), get()) }
+    // Wall display (tablet on the wall). The door log listens from the start, for retained events.
+    single(createdAtStart = true) { DoorLog(mqtt = get()) }
+    single { WeatherRepository(httpClient = get(), cacheFile = File(androidContext().filesDir, "forecast.json")) }
+    single { TabletReporter(context = androidContext(), mqtt = get(), scope = get(named(APP_SCOPE))) }
+    single {
+        WallMode(
+            preferences = get(), mqtt = get(), auth = get(), reporter = get(), weather = get(),
+            scope = get(named(APP_SCOPE)),
+        )
+    }
     single { PushNotifications(context = androidContext(), preferences = get(), scope = get(named(APP_SCOPE)), log = get()) }
     single { NotificationLog(context = androidContext(), httpClient = get(), auth = get()) }
     single { NotificationInbox(context = androidContext(), log = get()) }
