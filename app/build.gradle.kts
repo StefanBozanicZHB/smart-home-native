@@ -41,7 +41,7 @@ android {
 
     defaultConfig {
         applicationId = "zhb.company.smart_home"
-        minSdk = 26
+        minSdk = 24
         targetSdk = 36
         versionCode = 18
         versionName = "2.2.0"
@@ -77,6 +77,8 @@ android {
     }
 
     compileOptions {
+        // java.time and other Java 8+ APIs on Android 7 (the wall tablet runs API 24).
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -154,6 +156,8 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

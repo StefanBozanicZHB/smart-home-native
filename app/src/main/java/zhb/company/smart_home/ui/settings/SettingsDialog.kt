@@ -2,6 +2,7 @@ package zhb.company.smart_home.ui.settings
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -118,10 +119,14 @@ private fun NotificationsSetting(
             color = MaterialTheme.colorScheme.error,
         )
         TextButton(onClick = {
-            context.startActivity(
+            // The notification settings screen exists from Android 8; older versions get app info.
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-            )
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            } else {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+            }
+            context.startActivity(intent)
         }) { Text(stringResource(R.string.settings_notifications_open_system)) }
     }
 }

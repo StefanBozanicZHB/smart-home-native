@@ -1,12 +1,12 @@
 package zhb.company.smart_home.data.notifications
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
@@ -54,30 +54,26 @@ class PushNotifications(
         }
     }
 
+    /** Channels exist from Android 8; on older versions the compat call does nothing. */
     private fun createChannels() {
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        manager.createNotificationChannels(
+        NotificationManagerCompat.from(context).createNotificationChannelsCompat(
             listOf(
-                NotificationChannel(
-                    CHANNEL_NODES,
-                    context.getString(R.string.notification_channel_nodes),
-                    NotificationManager.IMPORTANCE_HIGH,
-                ).apply { description = context.getString(R.string.notification_channel_nodes_description) },
-                NotificationChannel(
-                    CHANNEL_HEATING,
-                    context.getString(R.string.notification_channel_heating),
-                    NotificationManager.IMPORTANCE_HIGH,
-                ).apply { description = context.getString(R.string.notification_channel_heating_description) },
-                NotificationChannel(
-                    CHANNEL_REPORTS,
-                    context.getString(R.string.notification_channel_reports),
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply { description = context.getString(R.string.notification_channel_reports_description) },
-                NotificationChannel(
-                    CHANNEL_SYSTEM,
-                    context.getString(R.string.notification_channel_system),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply { description = context.getString(R.string.notification_channel_system_description) },
+                NotificationChannelCompat.Builder(CHANNEL_NODES, NotificationManagerCompat.IMPORTANCE_HIGH)
+                    .setName(context.getString(R.string.notification_channel_nodes))
+                    .setDescription(context.getString(R.string.notification_channel_nodes_description))
+                    .build(),
+                NotificationChannelCompat.Builder(CHANNEL_HEATING, NotificationManagerCompat.IMPORTANCE_HIGH)
+                    .setName(context.getString(R.string.notification_channel_heating))
+                    .setDescription(context.getString(R.string.notification_channel_heating_description))
+                    .build(),
+                NotificationChannelCompat.Builder(CHANNEL_REPORTS, NotificationManagerCompat.IMPORTANCE_LOW)
+                    .setName(context.getString(R.string.notification_channel_reports))
+                    .setDescription(context.getString(R.string.notification_channel_reports_description))
+                    .build(),
+                NotificationChannelCompat.Builder(CHANNEL_SYSTEM, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+                    .setName(context.getString(R.string.notification_channel_system))
+                    .setDescription(context.getString(R.string.notification_channel_system_description))
+                    .build(),
             ),
         )
     }
